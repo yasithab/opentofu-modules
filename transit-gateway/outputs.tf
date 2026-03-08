@@ -1,0 +1,55 @@
+################################################################################
+# Transit Gateway
+################################################################################
+
+output "arn" {
+  description = "EC2 Transit Gateway Amazon Resource Name (ARN)"
+  value       = try(aws_ec2_transit_gateway.this.arn, null)
+}
+
+output "id" {
+  description = "EC2 Transit Gateway identifier"
+  value       = try(aws_ec2_transit_gateway.this.id, null)
+}
+
+output "owner_id" {
+  description = "Identifier of the AWS account that owns the EC2 Transit Gateway"
+  value       = try(aws_ec2_transit_gateway.this.owner_id, null)
+}
+
+output "association_default_route_table_id" {
+  description = "Identifier of the default association route table"
+  value       = try(aws_ec2_transit_gateway.this.association_default_route_table_id, null)
+}
+
+output "propagation_default_route_table_id" {
+  description = "Identifier of the default propagation route table"
+  value       = try(aws_ec2_transit_gateway.this.propagation_default_route_table_id, null)
+}
+
+################################################################################
+# Resource Access Manager
+################################################################################
+
+output "ram_resource_share_id" {
+  description = "The Amazon Resource Name (ARN) of the resource share"
+  value       = try(aws_ram_resource_share.this.id, null)
+}
+
+################################################################################
+# VPC Attachment
+################################################################################
+
+output "vpc_attachments" {
+  description = "Map of VPC attachments created"
+  value       = aws_ec2_transit_gateway_vpc_attachment.this
+}
+
+################################################################################
+# TGW Peering Attachment
+################################################################################
+
+output "peering_attachments" {
+  description = "Map of TGW peering attachments created"
+  value       = aws_ec2_transit_gateway_peering_attachment.this
+}

@@ -1,0 +1,547 @@
+locals {
+  tags = merge(var.tags, {
+    ManagedBy = "opentofu"
+  })
+}
+
+resource "aws_dynamodb_table" "this" {
+  name                        = var.name
+  billing_mode                = var.billing_mode
+  hash_key                    = var.hash_key
+  range_key                   = var.range_key
+  read_capacity               = var.read_capacity
+  write_capacity              = var.write_capacity
+  stream_enabled              = var.stream_enabled
+  stream_view_type            = var.stream_view_type
+  table_class                 = var.table_class
+  deletion_protection_enabled = var.deletion_protection_enabled
+  restore_date_time           = var.restore_date_time
+  restore_source_name         = var.restore_source_name
+  restore_source_table_arn    = var.restore_source_table_arn
+  restore_to_latest_time      = var.restore_to_latest_time
+
+  ttl {
+    enabled        = var.ttl_enabled
+    attribute_name = var.ttl_attribute_name
+  }
+
+  point_in_time_recovery {
+    enabled                 = var.point_in_time_recovery_enabled
+    recovery_period_in_days = var.point_in_time_recovery_period_in_days
+  }
+
+  dynamic "attribute" {
+    for_each = var.attributes
+
+    content {
+      name = attribute.value.name
+      type = attribute.value.type
+    }
+  }
+
+  dynamic "local_secondary_index" {
+    for_each = var.local_secondary_indexes
+
+    content {
+      name               = local_secondary_index.value.name
+      range_key          = local_secondary_index.value.range_key
+      projection_type    = local_secondary_index.value.projection_type
+      non_key_attributes = lookup(local_secondary_index.value, "non_key_attributes", null)
+    }
+  }
+
+  dynamic "global_secondary_index" {
+    for_each = var.global_secondary_indexes
+
+    content {
+      name               = global_secondary_index.value.name
+      projection_type    = global_secondary_index.value.projection_type
+      read_capacity      = lookup(global_secondary_index.value, "read_capacity", null)
+      write_capacity     = lookup(global_secondary_index.value, "write_capacity", null)
+      non_key_attributes = lookup(global_secondary_index.value, "non_key_attributes", null)
+
+      dynamic "key_schema" {
+        for_each = try(global_secondary_index.value.key_schema, concat(
+          [{ attribute_name = global_secondary_index.value.hash_key, key_type = "HASH" }],
+          try(global_secondary_index.value.range_key, null) != null ? [{ attribute_name = global_secondary_index.value.range_key, key_type = "RANGE" }] : []
+        ))
+        content {
+          attribute_name = key_schema.value.attribute_name
+          key_type       = key_schema.value.key_type
+        }
+      }
+
+      dynamic "on_demand_throughput" {
+        for_each = try([global_secondary_index.value.on_demand_throughput], [])
+
+        content {
+          max_read_request_units  = try(on_demand_throughput.value.max_read_request_units, null)
+          max_write_request_units = try(on_demand_throughput.value.max_write_request_units, null)
+        }
+      }
+
+      dynamic "warm_throughput" {
+        for_each = try([global_secondary_index.value.warm_throughput], [])
+
+        content {
+          read_units_per_second  = try(warm_throughput.value.read_units_per_second, null)
+          write_units_per_second = try(warm_throughput.value.write_units_per_second, null)
+        }
+      }
+    }
+  }
+
+  dynamic "replica" {
+    for_each = var.replica_regions
+
+    content {
+      region_name                 = replica.value.region_name
+      kms_key_arn                 = lookup(replica.value, "kms_key_arn", null)
+      propagate_tags              = lookup(replica.value, "propagate_tags", null)
+      point_in_time_recovery      = lookup(replica.value, "point_in_time_recovery", null)
+      consistency_mode            = try(replica.value.consistency_mode, null)
+      deletion_protection_enabled = try(replica.value.deletion_protection_enabled, null)
+    }
+  }
+
+  dynamic "global_table_witness" {
+    for_each = var.global_table_witness != null ? [var.global_table_witness] : []
+
+    content {
+      region_name = global_table_witness.value.region_name
+    }
+  }
+
+  server_side_encryption {
+    enabled     = var.server_side_encryption_enabled
+    kms_key_arn = var.server_side_encryption_kms_key_arn
+  }
+
+  dynamic "import_table" {
+    for_each = length(var.import_table) > 0 ? [var.import_table] : []
+
+    content {
+      input_format           = import_table.value.input_format
+      input_compression_type = try(import_table.value.input_compression_type, null)
+
+      dynamic "input_format_options" {
+        for_each = try([import_table.value.input_format_options], [])
+
+        content {
+
+          dynamic "csv" {
+            for_each = try([input_format_options.value.csv], [])
+
+            content {
+              delimiter   = try(csv.value.delimiter, null)
+              header_list = try(csv.value.header_list, null)
+            }
+          }
+        }
+      }
+
+      s3_bucket_source {
+        bucket       = import_table.value.bucket
+        bucket_owner = try(import_table.value.bucket_owner, null)
+        key_prefix   = try(import_table.value.key_prefix, null)
+      }
+    }
+  }
+
+  dynamic "on_demand_throughput" {
+    for_each = length(var.on_demand_throughput) > 0 ? [var.on_demand_throughput] : []
+
+    content {
+      max_read_request_units  = try(on_demand_throughput.value.max_read_request_units, null)
+      max_write_request_units = try(on_demand_throughput.value.max_write_request_units, null)
+    }
+  }
+
+  dynamic "warm_throughput" {
+    for_each = length(var.warm_throughput) > 0 ? [var.warm_throughput] : []
+
+    content {
+      read_units_per_second  = try(warm_throughput.value.read_units_per_second, null)
+      write_units_per_second = try(warm_throughput.value.write_units_per_second, null)
+    }
+  }
+
+  tags = merge(local.tags, { Name = format("%s", var.name) })
+
+  timeouts {
+    create = lookup(var.timeouts, "create", null)
+    delete = lookup(var.timeouts, "delete", null)
+    update = lookup(var.timeouts, "update", null)
+  }
+
+  lifecycle {
+    enabled         = var.enabled && !var.autoscaling_enabled
+    prevent_destroy = true
+  }
+}
+
+resource "aws_dynamodb_table" "autoscaled" {
+  name                        = var.name
+  billing_mode                = var.billing_mode
+  hash_key                    = var.hash_key
+  range_key                   = var.range_key
+  read_capacity               = var.read_capacity
+  write_capacity              = var.write_capacity
+  stream_enabled              = var.stream_enabled
+  stream_view_type            = var.stream_view_type
+  table_class                 = var.table_class
+  deletion_protection_enabled = var.deletion_protection_enabled
+  restore_date_time           = var.restore_date_time
+  restore_source_name         = var.restore_source_name
+  restore_source_table_arn    = var.restore_source_table_arn
+  restore_to_latest_time      = var.restore_to_latest_time
+
+  ttl {
+    enabled        = var.ttl_enabled
+    attribute_name = var.ttl_attribute_name
+  }
+
+  point_in_time_recovery {
+    enabled                 = var.point_in_time_recovery_enabled
+    recovery_period_in_days = var.point_in_time_recovery_period_in_days
+  }
+
+  dynamic "attribute" {
+    for_each = var.attributes
+
+    content {
+      name = attribute.value.name
+      type = attribute.value.type
+    }
+  }
+
+  dynamic "local_secondary_index" {
+    for_each = var.local_secondary_indexes
+
+    content {
+      name               = local_secondary_index.value.name
+      range_key          = local_secondary_index.value.range_key
+      projection_type    = local_secondary_index.value.projection_type
+      non_key_attributes = lookup(local_secondary_index.value, "non_key_attributes", null)
+    }
+  }
+
+  dynamic "global_secondary_index" {
+    for_each = var.global_secondary_indexes
+
+    content {
+      name               = global_secondary_index.value.name
+      projection_type    = global_secondary_index.value.projection_type
+      read_capacity      = lookup(global_secondary_index.value, "read_capacity", null)
+      write_capacity     = lookup(global_secondary_index.value, "write_capacity", null)
+      non_key_attributes = lookup(global_secondary_index.value, "non_key_attributes", null)
+
+      dynamic "key_schema" {
+        for_each = try(global_secondary_index.value.key_schema, concat(
+          [{ attribute_name = global_secondary_index.value.hash_key, key_type = "HASH" }],
+          try(global_secondary_index.value.range_key, null) != null ? [{ attribute_name = global_secondary_index.value.range_key, key_type = "RANGE" }] : []
+        ))
+        content {
+          attribute_name = key_schema.value.attribute_name
+          key_type       = key_schema.value.key_type
+        }
+      }
+
+      dynamic "on_demand_throughput" {
+        for_each = try([global_secondary_index.value.on_demand_throughput], [])
+
+        content {
+          max_read_request_units  = try(on_demand_throughput.value.max_read_request_units, null)
+          max_write_request_units = try(on_demand_throughput.value.max_write_request_units, null)
+        }
+      }
+
+      dynamic "warm_throughput" {
+        for_each = try([global_secondary_index.value.warm_throughput], [])
+
+        content {
+          read_units_per_second  = try(warm_throughput.value.read_units_per_second, null)
+          write_units_per_second = try(warm_throughput.value.write_units_per_second, null)
+        }
+      }
+    }
+  }
+
+  dynamic "replica" {
+    for_each = var.replica_regions
+
+    content {
+      region_name                 = replica.value.region_name
+      kms_key_arn                 = lookup(replica.value, "kms_key_arn", null)
+      propagate_tags              = lookup(replica.value, "propagate_tags", null)
+      point_in_time_recovery      = lookup(replica.value, "point_in_time_recovery", null)
+      consistency_mode            = try(replica.value.consistency_mode, null)
+      deletion_protection_enabled = try(replica.value.deletion_protection_enabled, null)
+    }
+  }
+
+  dynamic "global_table_witness" {
+    for_each = var.global_table_witness != null ? [var.global_table_witness] : []
+
+    content {
+      region_name = global_table_witness.value.region_name
+    }
+  }
+
+  server_side_encryption {
+    enabled     = var.server_side_encryption_enabled
+    kms_key_arn = var.server_side_encryption_kms_key_arn
+  }
+
+  dynamic "import_table" {
+    for_each = length(var.import_table) > 0 ? [var.import_table] : []
+
+    content {
+      input_format           = import_table.value.input_format
+      input_compression_type = try(import_table.value.input_compression_type, null)
+
+      dynamic "input_format_options" {
+        for_each = try([import_table.value.input_format_options], [])
+
+        content {
+
+          dynamic "csv" {
+            for_each = try([input_format_options.value.csv], [])
+
+            content {
+              delimiter   = try(csv.value.delimiter, null)
+              header_list = try(csv.value.header_list, null)
+            }
+          }
+        }
+      }
+
+      s3_bucket_source {
+        bucket       = import_table.value.bucket
+        bucket_owner = try(import_table.value.bucket_owner, null)
+        key_prefix   = try(import_table.value.key_prefix, null)
+      }
+    }
+  }
+
+  dynamic "on_demand_throughput" {
+    for_each = length(var.on_demand_throughput) > 0 ? [var.on_demand_throughput] : []
+
+    content {
+      max_read_request_units  = try(on_demand_throughput.value.max_read_request_units, null)
+      max_write_request_units = try(on_demand_throughput.value.max_write_request_units, null)
+    }
+  }
+
+  dynamic "warm_throughput" {
+    for_each = length(var.warm_throughput) > 0 ? [var.warm_throughput] : []
+
+    content {
+      read_units_per_second  = try(warm_throughput.value.read_units_per_second, null)
+      write_units_per_second = try(warm_throughput.value.write_units_per_second, null)
+    }
+  }
+
+  tags = merge(local.tags, { Name = format("%s", var.name) })
+
+  timeouts {
+    create = lookup(var.timeouts, "create", null)
+    delete = lookup(var.timeouts, "delete", null)
+    update = lookup(var.timeouts, "update", null)
+  }
+
+  lifecycle {
+    enabled        = var.enabled && var.autoscaling_enabled && !var.ignore_changes_global_secondary_index
+    ignore_changes = [read_capacity, write_capacity]
+  }
+}
+
+################################################################################
+# Resource Policy
+################################################################################
+
+resource "aws_dynamodb_resource_policy" "this" {
+  resource_arn                        = try(aws_dynamodb_table.this.arn, aws_dynamodb_table.autoscaled.arn, aws_dynamodb_table.autoscaled_gsi_ignore.arn)
+  policy                              = var.resource_policy
+  confirm_remove_self_resource_access = var.resource_policy_confirm_remove_self_access
+
+  lifecycle {
+    enabled = var.enabled && var.resource_policy != null
+  }
+}
+
+resource "aws_dynamodb_table" "autoscaled_gsi_ignore" {
+  name                        = var.name
+  billing_mode                = var.billing_mode
+  hash_key                    = var.hash_key
+  range_key                   = var.range_key
+  read_capacity               = var.read_capacity
+  write_capacity              = var.write_capacity
+  stream_enabled              = var.stream_enabled
+  stream_view_type            = var.stream_view_type
+  table_class                 = var.table_class
+  deletion_protection_enabled = var.deletion_protection_enabled
+  restore_date_time           = var.restore_date_time
+  restore_source_name         = var.restore_source_name
+  restore_source_table_arn    = var.restore_source_table_arn
+  restore_to_latest_time      = var.restore_to_latest_time
+
+  ttl {
+    enabled        = var.ttl_enabled
+    attribute_name = var.ttl_attribute_name
+  }
+
+  point_in_time_recovery {
+    enabled                 = var.point_in_time_recovery_enabled
+    recovery_period_in_days = var.point_in_time_recovery_period_in_days
+  }
+
+  dynamic "attribute" {
+    for_each = var.attributes
+
+    content {
+      name = attribute.value.name
+      type = attribute.value.type
+    }
+  }
+
+  dynamic "local_secondary_index" {
+    for_each = var.local_secondary_indexes
+
+    content {
+      name               = local_secondary_index.value.name
+      range_key          = local_secondary_index.value.range_key
+      projection_type    = local_secondary_index.value.projection_type
+      non_key_attributes = lookup(local_secondary_index.value, "non_key_attributes", null)
+    }
+  }
+
+  dynamic "global_secondary_index" {
+    for_each = var.global_secondary_indexes
+
+    content {
+      name               = global_secondary_index.value.name
+      projection_type    = global_secondary_index.value.projection_type
+      read_capacity      = lookup(global_secondary_index.value, "read_capacity", null)
+      write_capacity     = lookup(global_secondary_index.value, "write_capacity", null)
+      non_key_attributes = lookup(global_secondary_index.value, "non_key_attributes", null)
+
+      dynamic "key_schema" {
+        for_each = try(global_secondary_index.value.key_schema, concat(
+          [{ attribute_name = global_secondary_index.value.hash_key, key_type = "HASH" }],
+          try(global_secondary_index.value.range_key, null) != null ? [{ attribute_name = global_secondary_index.value.range_key, key_type = "RANGE" }] : []
+        ))
+        content {
+          attribute_name = key_schema.value.attribute_name
+          key_type       = key_schema.value.key_type
+        }
+      }
+
+      dynamic "on_demand_throughput" {
+        for_each = try([global_secondary_index.value.on_demand_throughput], [])
+
+        content {
+          max_read_request_units  = try(on_demand_throughput.value.max_read_request_units, null)
+          max_write_request_units = try(on_demand_throughput.value.max_write_request_units, null)
+        }
+      }
+
+      dynamic "warm_throughput" {
+        for_each = try([global_secondary_index.value.warm_throughput], [])
+
+        content {
+          read_units_per_second  = try(warm_throughput.value.read_units_per_second, null)
+          write_units_per_second = try(warm_throughput.value.write_units_per_second, null)
+        }
+      }
+    }
+  }
+
+  dynamic "replica" {
+    for_each = var.replica_regions
+
+    content {
+      region_name                 = replica.value.region_name
+      kms_key_arn                 = lookup(replica.value, "kms_key_arn", null)
+      propagate_tags              = lookup(replica.value, "propagate_tags", null)
+      point_in_time_recovery      = lookup(replica.value, "point_in_time_recovery", null)
+      consistency_mode            = try(replica.value.consistency_mode, null)
+      deletion_protection_enabled = try(replica.value.deletion_protection_enabled, null)
+    }
+  }
+
+  dynamic "global_table_witness" {
+    for_each = var.global_table_witness != null ? [var.global_table_witness] : []
+
+    content {
+      region_name = global_table_witness.value.region_name
+    }
+  }
+
+  server_side_encryption {
+    enabled     = var.server_side_encryption_enabled
+    kms_key_arn = var.server_side_encryption_kms_key_arn
+  }
+
+  dynamic "import_table" {
+    for_each = length(var.import_table) > 0 ? [var.import_table] : []
+
+    content {
+      input_format           = import_table.value.input_format
+      input_compression_type = try(import_table.value.input_compression_type, null)
+
+      dynamic "input_format_options" {
+        for_each = try([import_table.value.input_format_options], [])
+
+        content {
+
+          dynamic "csv" {
+            for_each = try([input_format_options.value.csv], [])
+
+            content {
+              delimiter   = try(csv.value.delimiter, null)
+              header_list = try(csv.value.header_list, null)
+            }
+          }
+        }
+      }
+
+      s3_bucket_source {
+        bucket       = import_table.value.bucket
+        bucket_owner = try(import_table.value.bucket_owner, null)
+        key_prefix   = try(import_table.value.key_prefix, null)
+      }
+    }
+  }
+
+  dynamic "on_demand_throughput" {
+    for_each = length(var.on_demand_throughput) > 0 ? [var.on_demand_throughput] : []
+
+    content {
+      max_read_request_units  = try(on_demand_throughput.value.max_read_request_units, null)
+      max_write_request_units = try(on_demand_throughput.value.max_write_request_units, null)
+    }
+  }
+
+  dynamic "warm_throughput" {
+    for_each = length(var.warm_throughput) > 0 ? [var.warm_throughput] : []
+
+    content {
+      read_units_per_second  = try(warm_throughput.value.read_units_per_second, null)
+      write_units_per_second = try(warm_throughput.value.write_units_per_second, null)
+    }
+  }
+
+  tags = merge(local.tags, { Name = format("%s", var.name) })
+
+  timeouts {
+    create = lookup(var.timeouts, "create", null)
+    delete = lookup(var.timeouts, "delete", null)
+    update = lookup(var.timeouts, "update", null)
+  }
+
+  lifecycle {
+    enabled        = var.enabled && var.autoscaling_enabled && var.ignore_changes_global_secondary_index
+    ignore_changes = [global_secondary_index, read_capacity, write_capacity]
+  }
+}

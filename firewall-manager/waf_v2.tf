@@ -1,0 +1,54 @@
+resource "aws_fms_policy" "waf_v2" {
+  for_each = local.waf_v2_policies
+
+  name                               = lookup(each.value, "name", each.key)
+  delete_all_policy_resources        = lookup(each.value, "delete_all_policy_resources", true)
+  exclude_resource_tags              = lookup(each.value, "exclude_resource_tags", false)
+  delete_unused_fm_managed_resources = lookup(each.value, "delete_unused_fm_managed_resources", false)
+  remediation_enabled                = lookup(each.value, "remediation_enabled", false)
+  resource_type_list                 = lookup(each.value, "resource_type_list", null)
+  resource_type                      = lookup(each.value, "resource_type", null)
+  resource_tags                      = lookup(each.value, "resource_tags", null)
+  description                        = try(each.value.description, null)
+
+  dynamic "include_map" {
+    for_each = length(lookup(each.value, "include_account_ids", [])) > 0 || length(lookup(each.value, "include_orgunit_ids", [])) > 0 ? [1] : []
+    content {
+      account = lookup(each.value, "include_account_ids", [])
+      orgunit = lookup(each.value, "include_orgunit_ids", [])
+    }
+  }
+
+  dynamic "exclude_map" {
+    for_each = length(lookup(each.value, "exclude_account_ids", [])) > 0 || length(lookup(each.value, "exclude_orgunit_ids", [])) > 0 ? [1] : []
+    content {
+      account = lookup(each.value, "exclude_account_ids", [])
+      orgunit = lookup(each.value, "exclude_orgunit_ids", [])
+    }
+  }
+
+  security_service_policy_data {
+    type = "WAFV2"
+
+    managed_service_data = jsonencode({
+      type                  = "WAFV2"
+      preProcessRuleGroups  = lookup(each.value.policy_data, "pre_process_rule_groups", [])
+      postProcessRuleGroups = lookup(each.value.policy_data, "post_process_rule_groups", [])
+
+      defaultAction = {
+        type = upper(each.value.policy_data.default_action)
+      }
+
+      overrideCustomerWebACLAssociation       = lookup(each.value.policy_data, "override_customer_web_acl_association", false)
+      loggingConfiguration                    = lookup(each.value.policy_data, "logging_configuration", local.logging_configuration)
+      customRequestHandling                   = lookup(each.value.policy_data, "custom_request_handling", null)
+      customResponse                          = lookup(each.value.policy_data, "custom_response", null)
+      sampledRequestsEnabledForDefaultActions = lookup(each.value.policy_data, "sampled_requests_enabled_for_default_actions", false)
+      tokenDomains                            = lookup(each.value.policy_data, "token_domains", [])
+      webACLSource                            = lookup(each.value.policy_data, "web_acl_source", null)
+      optimizeUnassociatedWebACL              = lookup(each.value.policy_data, "optimize_unassociated_web_acl", false)
+    })
+  }
+
+  tags = merge(local.tags, lookup(each.value, "tags", {}))
+}

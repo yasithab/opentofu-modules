@@ -1,0 +1,90 @@
+name: Create Tags and Releases
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '.github/**'
+      - '.gitignore'
+      - 'README.md'
+      - 'Taskfile.yml'
+
+# Only one release job at a time - never cancel a running release.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on:
+      - runs-on=${{ github.run_id }}
+      - env=devops
+    timeout-minutes: 10
+    permissions:
+      contents: write   # tag + release creation
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history needed to read tags and merge commits
+          token: ${{ secrets.RW_GITHUB_TOKEN }}
+
+      - name: Get the current tag
+        id: current_tag
+        run: |
+          CURRENT_TAG=$(git tag --sort=-v:refname | head -n 1)
+          echo "Current tag: $CURRENT_TAG"
+          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+
+      - name: Determine new version
+        id: determine_version
+        run: |
+          # Extract version numbers
+          if [[ "${{ steps.current_tag.outputs.current_tag }}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            major=${BASH_REMATCH[1]}
+            minor=${BASH_REMATCH[2]}
+            patch=${BASH_REMATCH[3]}
+          else
+            echo "No valid tag found. Setting to v1.0.0"
+            major=1
+            minor=0
+            patch=0
+          fi
+
+          # Default to patch increment
+          UPDATED_MAJOR_VERSION=$major
+          UPDATED_MINOR_VERSION=$minor
+          UPDATED_PATCH_VERSION=$((patch + 1))
+
+          # Check merge commit messages for versioning
+          commits=$(git log master --merges -1 --pretty='%B' | awk 'NR==3')
+          echo "Commit message: $commits"
+          if [[ ${commits,,} =~ ^[[]major[]] ]]; then
+            UPDATED_MAJOR_VERSION=$((major + 1))
+            UPDATED_MINOR_VERSION=0
+            UPDATED_PATCH_VERSION=0
+          elif [[ ${commits,,} =~ ^[[]minor[]] ]]; then
+            UPDATED_MINOR_VERSION=$((minor + 1))
+            UPDATED_PATCH_VERSION=0
+          fi
+
+          UPDATED_TAG="v$UPDATED_MAJOR_VERSION.$UPDATED_MINOR_VERSION.$UPDATED_PATCH_VERSION"
+          echo "Updated tag: $UPDATED_TAG"
+          echo "UPDATED_TAG=$UPDATED_TAG" >> $GITHUB_OUTPUT
+
+      - name: Create new tag
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git tag ${{ steps.determine_version.outputs.UPDATED_TAG }}
+          git push origin ${{ steps.determine_version.outputs.UPDATED_TAG }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.RW_GITHUB_TOKEN }}
+
+      - name: Create a release
+        run: |
+          gh release create ${{ steps.determine_version.outputs.UPDATED_TAG }} --generate-notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.RW_GITHUB_TOKEN }}
