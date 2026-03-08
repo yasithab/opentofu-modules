@@ -17,9 +17,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on:
-      - runs-on=${{ github.run_id }}
-      - env=devops
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: write   # tag + release creation

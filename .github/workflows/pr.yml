@@ -17,9 +17,7 @@ jobs:
   # run and the new synchronize event starts a fresh one, so validate/lint/
   # security always run on fully-formatted code.
   format-generate:
-    runs-on:
-      - runs-on=${{ github.run_id }}
-      - env=devops
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write   # needed to push the fixup commit
@@ -75,9 +73,7 @@ jobs:
 
   # ── 2. Validate all modules ───────────────────────────────────────────────
   validate:
-    runs-on:
-      - runs-on=${{ github.run_id }}
-      - env=devops
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [format-generate]
     permissions:
@@ -147,9 +143,7 @@ jobs:
 
   # ── 3. Lint all modules ───────────────────────────────────────────────────
   lint:
-    runs-on:
-      - runs-on=${{ github.run_id }}
-      - env=devops
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [format-generate]
     permissions:
@@ -212,9 +206,7 @@ jobs:
 
   # ── 4. Security scan ──────────────────────────────────────────────────────
   security:
-    runs-on:
-      - runs-on=${{ github.run_id }}
-      - env=devops
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [format-generate]
     permissions:
