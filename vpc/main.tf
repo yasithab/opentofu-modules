@@ -280,12 +280,12 @@ resource "aws_subnet" "private" {
 }
 
 locals {
-  num_private_route_tables = var.create_multiple_private_route_tables && local.len_private_subnets > 0 ? local.len_private_subnets : (local.len_private_subnets > 0 ? 1 : 0)
+  num_private_route_tables = !var.regional_nat_gateway && var.create_multiple_private_route_tables && local.len_private_subnets > 0 ? local.len_private_subnets : (local.len_private_subnets > 0 ? 1 : 0)
 }
 
 # There are as many routing tables as the number of NAT gateways
 resource "aws_route_table" "private" {
-  count = local.create_private_subnets && local.max_subnet_length > 0 ? (local.num_private_route_tables == 1 ? 1 : local.nat_gateway_count) : 0
+  count = local.create_private_subnets && local.max_subnet_length > 0 ? (local.num_private_route_tables == 1 || var.regional_nat_gateway ? local.num_private_route_tables : local.nat_gateway_count) : 0
 
   vpc_id = local.vpc_id
 
@@ -411,12 +411,12 @@ locals {
 }
 
 resource "aws_route_table" "database" {
-  count = local.create_database_route_table ? (local.num_database_route_tables == 1 || var.single_nat_gateway || var.create_database_internet_gateway_route ? 1 : local.len_database_subnets) : 0
+  count = local.create_database_route_table ? (local.num_database_route_tables == 1 || var.single_nat_gateway || var.regional_nat_gateway || var.create_database_internet_gateway_route ? 1 : local.len_database_subnets) : 0
 
   vpc_id = local.vpc_id
 
   tags = merge(local.tags, {
-    "Name" = local.num_database_route_tables == 1 || var.single_nat_gateway || var.create_database_internet_gateway_route ? "${local.name}-${var.database_subnet_suffix}" : format(
+    "Name" = local.num_database_route_tables == 1 || var.single_nat_gateway || var.regional_nat_gateway || var.create_database_internet_gateway_route ? "${local.name}-${var.database_subnet_suffix}" : format(
       "${local.name}-${var.database_subnet_suffix}-%s",
       element(var.azs, count.index),
     )
@@ -430,7 +430,7 @@ resource "aws_route_table_association" "database" {
   route_table_id = element(
     coalescelist(aws_route_table.database[*].id, aws_route_table.private[*].id),
     var.create_database_subnet_route_table
-    ? (local.num_database_route_tables == 1 || var.single_nat_gateway || var.create_database_internet_gateway_route ? 0 : count.index)
+    ? (local.num_database_route_tables == 1 || var.single_nat_gateway || var.regional_nat_gateway || var.create_database_internet_gateway_route ? 0 : count.index)
     : count.index,
   )
 }
@@ -449,7 +449,7 @@ resource "aws_route" "database_internet_gateway" {
 
 
 resource "aws_route" "database_nat_gateway" {
-  count = local.create_database_route_table && !var.create_database_internet_gateway_route && var.create_database_nat_gateway_route && var.enable_nat_gateway ? (local.num_database_route_tables == 1 || var.single_nat_gateway ? 1 : local.len_database_subnets) : 0
+  count = local.create_database_route_table && !var.create_database_internet_gateway_route && var.create_database_nat_gateway_route && var.enable_nat_gateway && !var.regional_nat_gateway ? (local.num_database_route_tables == 1 || var.single_nat_gateway ? 1 : local.len_database_subnets) : 0
 
   route_table_id         = element(aws_route_table.database[*].id, count.index)
   destination_cidr_block = "0.0.0.0/0"
@@ -460,12 +460,36 @@ resource "aws_route" "database_nat_gateway" {
   }
 }
 
+resource "aws_route" "database_regional_nat_gateway" {
+  count = local.create_database_route_table && !var.create_database_internet_gateway_route && var.create_database_nat_gateway_route && var.enable_nat_gateway && var.regional_nat_gateway ? 1 : 0
+
+  route_table_id         = aws_route_table.database[0].id
+  destination_cidr_block = var.nat_gateway_destination_cidr_block
+  nat_gateway_id         = aws_nat_gateway.regional[0].id
+
+  timeouts {
+    create = "5m"
+  }
+}
+
 resource "aws_route" "database_dns64_nat_gateway" {
-  count = local.create_database_route_table && !var.create_database_internet_gateway_route && var.create_database_nat_gateway_route && var.enable_nat_gateway && var.enable_ipv6 && var.private_subnet_enable_dns64 ? (local.num_database_route_tables == 1 || var.single_nat_gateway ? 1 : local.len_database_subnets) : 0
+  count = local.create_database_route_table && !var.create_database_internet_gateway_route && var.create_database_nat_gateway_route && var.enable_nat_gateway && var.enable_ipv6 && var.private_subnet_enable_dns64 && !var.regional_nat_gateway ? (local.num_database_route_tables == 1 || var.single_nat_gateway ? 1 : local.len_database_subnets) : 0
 
   route_table_id              = element(aws_route_table.database[*].id, count.index)
   destination_ipv6_cidr_block = "64:ff9b::/96"
   nat_gateway_id              = element(aws_nat_gateway.this[*].id, count.index)
+
+  timeouts {
+    create = "5m"
+  }
+}
+
+resource "aws_route" "database_dns64_regional_nat_gateway" {
+  count = local.create_database_route_table && !var.create_database_internet_gateway_route && var.create_database_nat_gateway_route && var.enable_nat_gateway && var.regional_nat_gateway && var.enable_ipv6 && var.private_subnet_enable_dns64 ? 1 : 0
+
+  route_table_id              = aws_route_table.database[0].id
+  destination_ipv6_cidr_block = "64:ff9b::/96"
+  nat_gateway_id              = aws_nat_gateway.regional[0].id
 
   timeouts {
     create = "5m"
@@ -597,7 +621,7 @@ resource "aws_route_table_association" "redshift" {
   subnet_id = element(aws_subnet.redshift[*].id, count.index)
   route_table_id = element(
     coalescelist(try(aws_route_table.redshift.id, null), aws_route_table.private[*].id),
-    var.single_nat_gateway || var.create_redshift_subnet_route_table ? 0 : count.index,
+    var.single_nat_gateway || var.regional_nat_gateway || var.create_redshift_subnet_route_table ? 0 : count.index,
   )
 }
 
@@ -607,7 +631,7 @@ resource "aws_route_table_association" "redshift_public" {
   subnet_id = element(aws_subnet.redshift[*].id, count.index)
   route_table_id = element(
     coalescelist(try(aws_route_table.redshift.id, null), aws_route_table.public[*].id),
-    var.single_nat_gateway || var.create_redshift_subnet_route_table ? 0 : count.index,
+    var.single_nat_gateway || var.regional_nat_gateway || var.create_redshift_subnet_route_table ? 0 : count.index,
   )
 }
 
@@ -727,7 +751,7 @@ resource "aws_route_table_association" "elasticache" {
       try(aws_route_table.elasticache.id, null),
       aws_route_table.private[*].id,
     ),
-    var.single_nat_gateway || var.create_elasticache_subnet_route_table ? 0 : count.index,
+    var.single_nat_gateway || var.regional_nat_gateway || var.create_elasticache_subnet_route_table ? 0 : count.index,
   )
 }
 
@@ -931,7 +955,7 @@ resource "aws_route_table_association" "outpost" {
   subnet_id = element(aws_subnet.outpost[*].id, count.index)
   route_table_id = element(
     aws_route_table.private[*].id,
-    var.single_nat_gateway ? 0 : count.index,
+    var.single_nat_gateway || var.regional_nat_gateway ? 0 : count.index,
   )
 }
 
@@ -1013,7 +1037,7 @@ resource "aws_egress_only_internet_gateway" "this" {
 }
 
 resource "aws_route" "private_ipv6_egress" {
-  count = local.create && var.create_egress_only_igw && var.enable_ipv6 && local.len_private_subnets > 0 ? local.nat_gateway_count : 0
+  count = local.create && var.create_egress_only_igw && var.enable_ipv6 && local.len_private_subnets > 0 ? local.num_private_route_tables : 0
 
   route_table_id              = element(aws_route_table.private[*].id, count.index)
   destination_ipv6_cidr_block = "::/0"
@@ -1025,7 +1049,7 @@ resource "aws_route" "private_ipv6_egress" {
 ################################################################################
 
 locals {
-  nat_gateway_count = var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length
+  nat_gateway_count = var.regional_nat_gateway ? 0 : (var.single_nat_gateway ? 1 : var.one_nat_gateway_per_az ? length(var.azs) : local.max_subnet_length)
   nat_gateway_ips   = var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat[*].id
 }
 
@@ -1071,8 +1095,19 @@ resource "aws_nat_gateway" "this" {
   depends_on = [aws_internet_gateway.this]
 }
 
+resource "aws_nat_gateway" "regional" {
+  count = local.create && var.enable_nat_gateway && var.regional_nat_gateway ? 1 : 0
+
+  availability_mode = "regional"
+  vpc_id            = local.vpc_id
+
+  tags = merge(local.tags, {
+    "Name" = "${local.name}-regional"
+  }, var.nat_gateway_tags)
+}
+
 resource "aws_route" "private_nat_gateway" {
-  count = local.create && var.enable_nat_gateway && var.create_private_nat_gateway_route ? local.nat_gateway_count : 0
+  count = local.create && var.enable_nat_gateway && var.create_private_nat_gateway_route && !var.regional_nat_gateway ? local.nat_gateway_count : 0
 
   route_table_id         = element(aws_route_table.private[*].id, count.index)
   destination_cidr_block = var.nat_gateway_destination_cidr_block
@@ -1083,12 +1118,36 @@ resource "aws_route" "private_nat_gateway" {
   }
 }
 
+resource "aws_route" "private_regional_nat_gateway" {
+  count = local.create && var.enable_nat_gateway && var.regional_nat_gateway && var.create_private_nat_gateway_route ? local.num_private_route_tables : 0
+
+  route_table_id         = element(aws_route_table.private[*].id, count.index)
+  destination_cidr_block = var.nat_gateway_destination_cidr_block
+  nat_gateway_id         = aws_nat_gateway.regional[0].id
+
+  timeouts {
+    create = "5m"
+  }
+}
+
 resource "aws_route" "private_dns64_nat_gateway" {
-  count = local.create && var.enable_nat_gateway && var.enable_ipv6 && var.private_subnet_enable_dns64 ? local.nat_gateway_count : 0
+  count = local.create && var.enable_nat_gateway && var.enable_ipv6 && var.private_subnet_enable_dns64 && !var.regional_nat_gateway ? local.nat_gateway_count : 0
 
   route_table_id              = element(aws_route_table.private[*].id, count.index)
   destination_ipv6_cidr_block = "64:ff9b::/96"
   nat_gateway_id              = element(aws_nat_gateway.this[*].id, count.index)
+
+  timeouts {
+    create = "5m"
+  }
+}
+
+resource "aws_route" "private_dns64_regional_nat_gateway" {
+  count = local.create && var.enable_nat_gateway && var.regional_nat_gateway && var.enable_ipv6 && var.private_subnet_enable_dns64 ? local.num_private_route_tables : 0
+
+  route_table_id              = element(aws_route_table.private[*].id, count.index)
+  destination_ipv6_cidr_block = "64:ff9b::/96"
+  nat_gateway_id              = aws_nat_gateway.regional[0].id
 
   timeouts {
     create = "5m"

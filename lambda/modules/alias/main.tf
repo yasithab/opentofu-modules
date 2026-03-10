@@ -53,7 +53,7 @@ resource "aws_lambda_alias" "with_refresh" {
 }
 
 resource "aws_lambda_function_event_invoke_config" "this" {
-  for_each = var.enabled && var.create_async_event_config ? local.qualifiers : {}
+  for_each = { for k, v in local.qualifiers : k => v if var.enabled && var.create_async_event_config }
 
   function_name = var.function_name
   qualifier     = each.key == "version" ? local.version : var.name

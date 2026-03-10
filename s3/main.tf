@@ -36,8 +36,7 @@ resource "aws_s3_bucket" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled         = local.create
-    prevent_destroy = true
+    enabled = local.create
   }
 }
 

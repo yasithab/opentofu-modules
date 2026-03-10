@@ -126,8 +126,8 @@ variable "rules" {
     Each rule requires: name, priority, statement, and either action or override_action.
     See README for full rule structure reference.
   EOT
-  type    = any
-  default = []
+  type        = any
+  default     = []
 }
 
 variable "rule_json" {
@@ -137,8 +137,8 @@ variable "rule_json" {
     Use this for complex rules that exceed the structured variable schema (e.g., deeply
     nested and/or/not statements).
   EOT
-  type    = string
-  default = null
+  type        = string
+  default     = null
 }
 
 ###################################################
@@ -160,8 +160,8 @@ variable "association_config" {
       }
     Valid values for default_size_inspection_limit: KB_16, KB_32, KB_48, KB_64
   EOT
-  type    = any
-  default = null
+  type        = any
+  default     = null
 }
 
 variable "captcha_config" {
@@ -200,8 +200,8 @@ variable "data_protection_config" {
         ]
       }
   EOT
-  type    = any
-  default = null
+  type        = any
+  default     = null
 }
 
 ###################################################
@@ -297,8 +297,8 @@ variable "associations" {
     App Runner Service, Cognito User Pool, Verified Access Instance.
     Note: CloudFront distributions are associated via the distribution's web_acl_id attribute.
   EOT
-  type    = map(string)
-  default = {}
+  type        = map(string)
+  default     = {}
 }
 
 variable "rule_group_associations" {
@@ -327,8 +327,8 @@ variable "rule_group_associations" {
       })
     }
   EOT
-  type    = any
-  default = {}
+  type        = any
+  default     = {}
 }
 
 ###################################################
@@ -342,8 +342,8 @@ variable "logging_destination_arns" {
     Names must start with aws-waf-logs-.
     When empty, no logging configuration is created.
   EOT
-  type    = list(string)
-  default = []
+  type        = list(string)
+  default     = []
 }
 
 variable "logging_filter" {
@@ -366,8 +366,8 @@ variable "logging_filter" {
         ]
       }
   EOT
-  type    = any
-  default = null
+  type        = any
+  default     = null
 }
 
 variable "logging_redacted_fields" {
@@ -378,6 +378,6 @@ variable "logging_redacted_fields" {
       { method = {} }
       { single_header = { name = "authorization" } }
   EOT
-  type    = any
-  default = []
+  type        = any
+  default     = []
 }

@@ -139,6 +139,25 @@ resource "aws_config_delivery_channel" "this" {
   depends_on = [aws_config_configuration_recorder.this]
 }
 
+# -- Ordering Gate ------------------------------------------------------------
+# AWS requires: recorder must be stopped before delivery channel can be deleted.
+# This terraform_data resource sits between the delivery channel and the recorder
+# status, forcing strict sequential destruction:
+#   recorder_status (stop) → config_ordering → delivery_channel (delete) → recorder
+# Without this gate, OpenTofu may parallelise the destructions and the delivery
+# channel delete races the stop call, causing a 400 LastDeliveryChannelDeleteFailed.
+
+resource "terraform_data" "config_ordering" {
+  lifecycle {
+    enabled = local.create
+  }
+
+  depends_on = [
+    aws_config_configuration_recorder.this,
+    aws_config_delivery_channel.this,
+  ]
+}
+
 # -- Recorder Status ----------------------------------------------------------
 
 resource "aws_config_configuration_recorder_status" "this" {
@@ -149,7 +168,7 @@ resource "aws_config_configuration_recorder_status" "this" {
   name       = aws_config_configuration_recorder.this.name
   is_enabled = true
 
-  depends_on = [aws_config_delivery_channel.this]
+  depends_on = [terraform_data.config_ordering]
 }
 
 # -- Managed Config Rules -----------------------------------------------------

@@ -16,7 +16,7 @@ locals {
 ################################################################################
 
 resource "aws_ec2_managed_prefix_list" "this" {
-  for_each = local.enabled ? local.prefix_lists : {}
+  for_each = { for k, v in local.prefix_lists : k => v if local.enabled }
 
   name           = each.value.name
   address_family = lookup(each.value, "address_family", "IPv4")
@@ -38,7 +38,7 @@ resource "aws_ec2_managed_prefix_list" "this" {
 ################################################################################
 
 resource "aws_ram_resource_share" "this" {
-  for_each = local.enabled && var.enable_ram_share ? local.prefix_lists : {}
+  for_each = { for k, v in local.prefix_lists : k => v if local.enabled && var.enable_ram_share }
 
   name                      = each.value.name
   allow_external_principals = var.ram_allow_external_principals
@@ -48,7 +48,7 @@ resource "aws_ram_resource_share" "this" {
 }
 
 resource "aws_ram_resource_association" "this" {
-  for_each = local.enabled && var.enable_ram_share ? local.prefix_lists : {}
+  for_each = { for k, v in local.prefix_lists : k => v if local.enabled && var.enable_ram_share }
 
   resource_arn       = aws_ec2_managed_prefix_list.this[each.key].arn
   resource_share_arn = aws_ram_resource_share.this[each.key].arn

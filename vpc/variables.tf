@@ -1286,6 +1286,22 @@ variable "nat_gateway_connectivity_type" {
   }
 }
 
+variable "regional_nat_gateway" {
+  description = "Should be true to create a single regional NAT gateway (availability_mode = regional) that provides automatic high availability across all AZs without requiring public subnets or Elastic IPs. Mutually exclusive with single_nat_gateway and one_nat_gateway_per_az."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !(var.regional_nat_gateway && var.single_nat_gateway)
+    error_message = "regional_nat_gateway and single_nat_gateway are mutually exclusive. Set only one to true."
+  }
+
+  validation {
+    condition     = !(var.regional_nat_gateway && var.one_nat_gateway_per_az)
+    error_message = "regional_nat_gateway and one_nat_gateway_per_az are mutually exclusive. Set only one to true."
+  }
+}
+
 variable "nat_gateway_secondary_allocation_ids" {
   description = "List of secondary allocation EIP IDs for the NAT Gateway (zonal NAT gateways only)"
   type        = list(string)

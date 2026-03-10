@@ -771,10 +771,10 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
 # Cloudwatch
 ##################
 resource "aws_cloudwatch_log_group" "log" {
-  name                       = local.cw_log_group_name
-  retention_in_days          = var.cw_log_retention_in_days
-  skip_destroy               = var.cloudwatch_log_group_skip_destroy
-  log_group_class            = var.cloudwatch_log_group_class
+  name                        = local.cw_log_group_name
+  retention_in_days           = var.cw_log_retention_in_days
+  skip_destroy                = var.cloudwatch_log_group_skip_destroy
+  log_group_class             = var.cloudwatch_log_group_class
   deletion_protection_enabled = var.cloudwatch_log_group_deletion_protection_enabled
 
   tags = merge(local.tags, var.cw_tags)
@@ -819,7 +819,7 @@ resource "aws_security_group" "firehose" {
 
 # Allow inbound HTTPS from self when firehose and destination share the same SG
 resource "aws_vpc_security_group_ingress_rule" "firehose_self" {
-  for_each = local.search_destination_vpc_create_firehose_sg && var.vpc_security_group_same_as_destination ? { self = true } : {}
+  for_each = { for k in(local.search_destination_vpc_create_firehose_sg && var.vpc_security_group_same_as_destination ? ["self"] : []) : k => true }
 
   security_group_id            = aws_security_group.firehose.id
   ip_protocol                  = "tcp"
@@ -833,7 +833,7 @@ resource "aws_vpc_security_group_ingress_rule" "firehose_self" {
 
 # Allow outbound HTTPS to destination SG when firehose and destination are separate
 resource "aws_vpc_security_group_egress_rule" "firehose_egress_rule" {
-  for_each = local.search_destination_vpc_create_firehose_sg && !var.vpc_security_group_same_as_destination ? (local.vpc_create_destination_group ? { for key, value in [aws_security_group.destination.id] : key => value } : { for key, value in var.vpc_security_group_destination_ids : key => value }) : {}
+  for_each = local.search_destination_vpc_create_firehose_sg && !var.vpc_security_group_same_as_destination ? (local.vpc_create_destination_group ? { for key, value in [aws_security_group.destination.id] : key => value } : { for key, value in var.vpc_security_group_destination_ids : key => value }) : tomap({})
 
   security_group_id            = aws_security_group.firehose.id
   ip_protocol                  = "tcp"
@@ -859,7 +859,7 @@ resource "aws_security_group" "destination" {
 
 # Allow inbound HTTPS from firehose SGs (search/OpenSearch destination)
 resource "aws_vpc_security_group_ingress_rule" "destination_from_firehose_sg" {
-  for_each = local.vpc_create_destination_group && local.is_search_destination ? { for sg in local.search_destination_vpc_sgs : sg => sg } : {}
+  for_each = { for sg in local.search_destination_vpc_sgs : sg => sg if local.vpc_create_destination_group && local.is_search_destination }
 
   security_group_id            = aws_security_group.destination.id
   ip_protocol                  = "tcp"
@@ -873,7 +873,7 @@ resource "aws_vpc_security_group_ingress_rule" "destination_from_firehose_sg" {
 
 # Allow inbound HTTPS from Firehose CIDR blocks (non-search destination)
 resource "aws_vpc_security_group_ingress_rule" "destination_from_firehose_cidr" {
-  for_each = local.vpc_create_destination_group && !local.is_search_destination ? { for idx, cidr in local.firehose_cidr_blocks[local.destination][data.aws_region.current.region] : idx => cidr } : {}
+  for_each = { for idx, cidr in local.firehose_cidr_blocks[local.destination][data.aws_region.current.region] : idx => cidr if local.vpc_create_destination_group && !local.is_search_destination }
 
   security_group_id = aws_security_group.destination.id
   ip_protocol       = "tcp"
@@ -927,7 +927,7 @@ resource "aws_vpc_security_group_ingress_rule" "destination_existing_from_sg" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "destination_existing_from_cidr" {
-  for_each = local.vpc_configure_destination_group && !local.is_search_destination ? { for k, v in var.vpc_security_group_destination_ids : k => v } : {}
+  for_each = { for k, v in var.vpc_security_group_destination_ids : k => v if local.vpc_configure_destination_group && !local.is_search_destination }
 
   security_group_id = each.value
   ip_protocol       = "tcp"

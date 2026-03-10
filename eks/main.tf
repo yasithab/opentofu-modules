@@ -858,9 +858,9 @@ resource "aws_eks_identity_provider_config" "this" {
     groups_prefix                 = lookup(each.value, "groups_prefix", null)
     identity_provider_config_name = try(each.value.identity_provider_config_name, each.key)
     issuer_url                    = each.value.issuer_url
-    required_claims = lookup(each.value, "required_claims", null)
-    username_claim  = lookup(each.value, "username_claim", null)
-    username_prefix = lookup(each.value, "username_prefix", null)
+    required_claims               = lookup(each.value, "required_claims", null)
+    username_claim                = lookup(each.value, "username_claim", null)
+    username_prefix               = lookup(each.value, "username_prefix", null)
   }
 
   tags = merge(local.tags, try(each.value.tags, {}))

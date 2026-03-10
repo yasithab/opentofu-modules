@@ -70,7 +70,7 @@ module "eks_managed_node_group" {
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.35.1 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.34 |
 
 ## Inputs
 

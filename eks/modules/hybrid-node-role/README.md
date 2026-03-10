@@ -81,7 +81,7 @@ module "eks_hybrid_node_role" {
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.35.1 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.34 |
 
 ## Inputs
 
