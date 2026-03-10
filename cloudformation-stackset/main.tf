@@ -76,7 +76,7 @@ resource "aws_cloudformation_stack_set" "this" {
 ################################################################################
 
 resource "aws_cloudformation_stack_set_instance" "this" {
-  for_each = local.enabled ? { for idx, deployment in var.deployments : idx => deployment } : {}
+  for_each = { for idx, deployment in var.deployments : idx => deployment if local.enabled }
 
   stack_set_name            = aws_cloudformation_stack_set.this.name
   stack_set_instance_region = each.value.region

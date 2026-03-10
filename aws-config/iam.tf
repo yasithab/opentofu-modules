@@ -46,7 +46,7 @@ resource "aws_iam_role_policy_attachment" "config" {
   count = local.create_iam_role ? 1 : 0
 
   role       = aws_iam_role.config[0].name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSConfigRole"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWS_ConfigRole"
 }
 
 # Scoped S3 delivery policy - supplements AWSConfigRole with a least-privilege
