@@ -216,9 +216,9 @@ variable "scan_setting" {
 
 variable "selections" {
   type = map(object({
-    iam_role_arn   = optional(string)
-    resources      = optional(list(string), [])
-    not_resources  = optional(list(string), [])
+    iam_role_arn  = optional(string)
+    resources     = optional(list(string), [])
+    not_resources = optional(list(string), [])
     selection_tags = optional(list(object({
       type  = string
       key   = string

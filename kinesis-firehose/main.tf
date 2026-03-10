@@ -771,10 +771,10 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
 # Cloudwatch
 ##################
 resource "aws_cloudwatch_log_group" "log" {
-  name                       = local.cw_log_group_name
-  retention_in_days          = var.cw_log_retention_in_days
-  skip_destroy               = var.cloudwatch_log_group_skip_destroy
-  log_group_class            = var.cloudwatch_log_group_class
+  name                        = local.cw_log_group_name
+  retention_in_days           = var.cw_log_retention_in_days
+  skip_destroy                = var.cloudwatch_log_group_skip_destroy
+  log_group_class             = var.cloudwatch_log_group_class
   deletion_protection_enabled = var.cloudwatch_log_group_deletion_protection_enabled
 
   tags = merge(local.tags, var.cw_tags)
@@ -819,7 +819,7 @@ resource "aws_security_group" "firehose" {
 
 # Allow inbound HTTPS from self when firehose and destination share the same SG
 resource "aws_vpc_security_group_ingress_rule" "firehose_self" {
-  for_each = { for k in (local.search_destination_vpc_create_firehose_sg && var.vpc_security_group_same_as_destination ? ["self"] : []) : k => true }
+  for_each = { for k in(local.search_destination_vpc_create_firehose_sg && var.vpc_security_group_same_as_destination ? ["self"] : []) : k => true }
 
   security_group_id            = aws_security_group.firehose.id
   ip_protocol                  = "tcp"

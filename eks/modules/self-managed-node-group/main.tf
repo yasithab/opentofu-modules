@@ -48,8 +48,8 @@ data "aws_ssm_parameter" "ami" {
 module "user_data" {
   source = "../_user_data"
 
-  enabled  = var.enabled
-  ami_type = var.ami_type
+  enabled                   = var.enabled
+  ami_type                  = var.ami_type
   is_eks_managed_node_group = false
 
   cluster_name               = var.cluster_name
