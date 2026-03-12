@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0  # full history needed to read tags and merge commits
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -47,7 +47,7 @@ jobs:
         run: |
           CURRENT_TAG=$(git tag --sort=-v:refname | head -n 1)
           echo "Current tag: $CURRENT_TAG"
-          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+          echo "current_tag=$CURRENT_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Determine new version
         id: determine_version
@@ -98,20 +98,20 @@ jobs:
 
           UPDATED_TAG="v$UPDATED_MAJOR_VERSION.$UPDATED_MINOR_VERSION.$UPDATED_PATCH_VERSION"
           echo "Updated tag: $UPDATED_TAG"
-          echo "UPDATED_TAG=$UPDATED_TAG" >> $GITHUB_OUTPUT
+          echo "UPDATED_TAG=$UPDATED_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Create new tag
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git tag ${{ steps.determine_version.outputs.UPDATED_TAG }}
-          git push origin ${{ steps.determine_version.outputs.UPDATED_TAG }}
+          git tag "${{ steps.determine_version.outputs.UPDATED_TAG }}"
+          git push origin "${{ steps.determine_version.outputs.UPDATED_TAG }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create a release
         run: |
-          gh release create ${{ steps.determine_version.outputs.UPDATED_TAG }} --generate-notes
+          gh release create "${{ steps.determine_version.outputs.UPDATED_TAG }}" --generate-notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
