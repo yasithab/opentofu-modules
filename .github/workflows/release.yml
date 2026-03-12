@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # full history needed to read tags and merge commits
-          token: ${{ secrets.RW_GITHUB_TOKEN }}
+          token: ${{ secrets.GH_TOKEN }}
 
       - name: Get the current tag
         id: current_tag
@@ -104,10 +104,10 @@ jobs:
           git tag ${{ steps.determine_version.outputs.UPDATED_TAG }}
           git push origin ${{ steps.determine_version.outputs.UPDATED_TAG }}
         env:
-          GITHUB_TOKEN: ${{ secrets.RW_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Create a release
         run: |
           gh release create ${{ steps.determine_version.outputs.UPDATED_TAG }} --generate-notes
         env:
-          GITHUB_TOKEN: ${{ secrets.RW_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}

@@ -30,7 +30,7 @@ jobs:
           # Use releases list and filter out pre-releases (rc, beta, alpha)
           LATEST=$(curl -sSL \
             -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/opentofu/opentofu/releases?per_page=20" \
             | jq -r '[.[] | select(.prerelease == false and .draft == false)] | first | .tag_name | ltrimstr("v")')
@@ -52,7 +52,7 @@ jobs:
         run: |
           VER=$(curl -sSL \
             -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/minamijoyo/tfupdate/releases/latest" \
             | jq -r '.tag_name')
@@ -97,7 +97,7 @@ jobs:
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.RW_GITHUB_TOKEN }}
+          token: ${{ secrets.GH_TOKEN }}
           branch: automated/weekly-version-update
           delete-branch: false
           title: "chore: weekly version update - OpenTofu ${{ steps.opentofu.outputs.version }}, AWS provider ${{ steps.aws_provider.outputs.version }}"
