@@ -97,7 +97,7 @@ jobs:
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.RW_GITHUB_TOKEN }}
+          token: ${{ secrets.GH_TOKEN }}
           branch: automated/weekly-version-update
           delete-branch: false
           title: "chore: weekly version update - OpenTofu ${{ steps.opentofu.outputs.version }}, AWS provider ${{ steps.aws_provider.outputs.version }}"
