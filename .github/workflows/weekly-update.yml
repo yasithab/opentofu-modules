@@ -19,7 +19,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
@@ -61,7 +61,7 @@ jobs:
 
       - name: Cache tfupdate binary
         id: cache-tfupdate
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /usr/local/bin/tfupdate
           key: tfupdate-${{ steps.tfupdate_version.outputs.version }}-linux-amd64
@@ -95,7 +95,7 @@ jobs:
 
       # ── Create PR if anything changed ─────────────────────────────────
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GH_TOKEN }}
           branch: automated/weekly-version-update
