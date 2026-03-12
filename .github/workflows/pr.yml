@@ -67,7 +67,7 @@ jobs:
         git config --global user.email 'action@github.com'
         git add .
         if [ -n "$(git status --porcelain)" ]; then
-          git commit -m "chore: apply tofu fmt and terraform-docs [skip ci]"
+          git commit -m "chore: apply tofu fmt and terraform-docs"
           git push
         fi
 
