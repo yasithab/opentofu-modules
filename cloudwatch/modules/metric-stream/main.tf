@@ -17,16 +17,6 @@ resource "aws_cloudwatch_metric_stream" "this" {
   role_arn      = var.role_arn
   output_format = var.output_format
 
-  precondition {
-    condition     = var.name != null || var.name_prefix != null
-    error_message = "At least one of name or name_prefix must be specified."
-  }
-
-  precondition {
-    condition     = length(var.include_filter) == 0 || length(var.exclude_filter) == 0
-    error_message = "Only one of include_filter or exclude_filter can be specified, not both."
-  }
-
   dynamic "exclude_filter" {
     for_each = var.exclude_filter
 
@@ -66,5 +56,15 @@ resource "aws_cloudwatch_metric_stream" "this" {
 
   lifecycle {
     enabled = local.enabled
+
+    precondition {
+      condition     = var.name != null || var.name_prefix != null
+      error_message = "At least one of name or name_prefix must be specified."
+    }
+
+    precondition {
+      condition     = length(var.include_filter) == 0 || length(var.exclude_filter) == 0
+      error_message = "Only one of include_filter or exclude_filter can be specified, not both."
+    }
   }
 }
