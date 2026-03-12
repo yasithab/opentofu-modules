@@ -53,7 +53,7 @@ resource "aws_cloudformation_stack_set" "this" {
       max_concurrent_count         = try(operation_preferences.value.max_concurrent_count, null)
       max_concurrent_percentage    = try(operation_preferences.value.max_concurrent_percentage, null)
       region_concurrency_type      = try(operation_preferences.value.region_concurrency_type, null)
-      region_order                 = try(operation_preferences.value.region_order, [])
+      region_order                 = length(try(operation_preferences.value.region_order, [])) > 0 ? operation_preferences.value.region_order : null
     }
   }
 
@@ -86,8 +86,8 @@ resource "aws_cloudformation_stack_set_instance" "this" {
     for_each = var.permission_model == "SERVICE_MANAGED" ? [1] : []
     content {
       organizational_unit_ids = each.value.organizational_unit_ids
-      account_filter_type     = each.value.account_filter_type
-      accounts                = each.value.accounts
+      account_filter_type     = length(each.value.accounts) > 0 ? each.value.account_filter_type : null
+      accounts                = length(each.value.accounts) > 0 ? each.value.accounts : null
       accounts_url            = try(each.value.accounts_url, null)
     }
   }
@@ -108,7 +108,7 @@ resource "aws_cloudformation_stack_set_instance" "this" {
       max_concurrent_percentage    = operation_preferences.value.max_concurrent_percentage
       concurrency_mode             = try(operation_preferences.value.concurrency_mode, null)
       region_concurrency_type      = operation_preferences.value.region_concurrency_type
-      region_order                 = try(operation_preferences.value.region_order, [])
+      region_order                 = length(try(operation_preferences.value.region_order, [])) > 0 ? operation_preferences.value.region_order : null
     }
   }
 
