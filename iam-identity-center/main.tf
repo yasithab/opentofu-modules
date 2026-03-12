@@ -14,7 +14,7 @@ resource "aws_identitystore_group" "sso_groups" {
 ################################################################################
 
 resource "aws_identitystore_user" "sso_users" {
-  for_each          = var.sso_users == null ? {} : var.sso_users
+  for_each          = { for key, user in (var.sso_users == null ? {} : var.sso_users) : user.user_name => user }
   identity_store_id = local.sso_instance_id
 
   # Display name defaults to given_name + family_name when not explicitly set
