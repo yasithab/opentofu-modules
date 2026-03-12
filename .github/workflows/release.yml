@@ -33,6 +33,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write   # tag + release creation
+      issues: write     # create issue on failure
 
     steps:
       - name: Checkout repository
@@ -50,6 +51,8 @@ jobs:
 
       - name: Determine new version
         id: determine_version
+        env:
+          RAW_COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           # Extract version numbers
           if [[ "${{ steps.current_tag.outputs.current_tag }}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
@@ -72,13 +75,13 @@ jobs:
             # Use the manually selected bump type
             BUMP_TYPE="${{ inputs.bump }}"
           else
-            # Check merge commit messages for versioning
+            # Parse the first line of the head commit message for [MAJOR] or [MINOR]
             BUMP_TYPE="PATCH"
-            commits=$(git log master --merges -1 --pretty='%B' | awk 'NR==3')
-            echo "Commit message: $commits"
-            if [[ ${commits,,} =~ ^[[]major[]] ]]; then
+            FIRST_LINE=$(echo "$RAW_COMMIT_MSG" | head -n 1)
+            echo "Commit message first line: $FIRST_LINE"
+            if [[ ${FIRST_LINE,,} =~ ^\[major\] ]]; then
               BUMP_TYPE="MAJOR"
-            elif [[ ${commits,,} =~ ^[[]minor[]] ]]; then
+            elif [[ ${FIRST_LINE,,} =~ ^\[minor\] ]]; then
               BUMP_TYPE="MINOR"
             fi
           fi
@@ -111,3 +114,16 @@ jobs:
           gh release create ${{ steps.determine_version.outputs.UPDATED_TAG }} --generate-notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Release failed for ${context.sha.substring(0, 7)}`,
+              body: `The release pipeline failed.\n\n[View run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              labels: ['bug', 'automated']
+            })
