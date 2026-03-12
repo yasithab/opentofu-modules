@@ -34,12 +34,8 @@ resource "aws_cloudwatch_log_group" "this" {
 ################################################################################
 
 resource "aws_cloudwatch_log_stream" "this" {
-  for_each = var.log_streams
+  for_each = { for k, v in var.log_streams : k => v if local.enabled && var.create_log_streams }
 
   name           = try(each.value.name, each.key)
   log_group_name = aws_cloudwatch_log_group.this.name
-
-  lifecycle {
-    enabled = local.enabled && var.create_log_streams
-  }
 }
