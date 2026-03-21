@@ -28,14 +28,14 @@ module "fargate_profile" {
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.11.0 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 6.34 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.37.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 6.34 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.37.0 |
 
 ## Inputs
 
