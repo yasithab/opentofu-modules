@@ -279,14 +279,14 @@ resource "aws_instance" "this" {
 ################################################################################
 
 resource "aws_autoscaling_group" "this" {
-  name_prefix              = "${var.name}-"
-  min_size                 = 1
-  max_size                 = 1
-  desired_capacity         = 1
-  health_check_type        = "EC2"
+  name_prefix               = "${var.name}-"
+  min_size                  = 1
+  max_size                  = 1
+  desired_capacity          = 1
+  health_check_type         = "EC2"
   health_check_grace_period = 120
-  default_instance_warmup  = 120
-  vpc_zone_identifier      = [var.subnet_id]
+  default_instance_warmup   = 120
+  vpc_zone_identifier       = [var.subnet_id]
 
   launch_template {
     id      = aws_launch_template.this.id
