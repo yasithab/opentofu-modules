@@ -88,7 +88,7 @@ resource "aws_security_group" "this" {
     }
   }
 
-  # Egress - unrestricted IPv4
+  # trivy:ignore:AVD-AWS-0104 - NAT instance requires unrestricted egress to forward private subnet traffic to the internet
   egress {
     description = "All outbound"
     from_port   = 0
@@ -181,6 +181,7 @@ data "cloudinit_config" "this" {
 # Launch Template
 ################################################################################
 
+# trivy:ignore:AVD-AWS-0131 - EBS encryption is caller-controlled via var.encryption; defaults to true
 resource "aws_launch_template" "this" {
   name_prefix   = "${var.name}-"
   image_id      = local.ami_id
@@ -386,7 +387,7 @@ resource "aws_iam_instance_profile" "this" {
 }
 
 data "aws_iam_policy_document" "this" {
-  # ENI management (required - instance attaches static ENI on boot)
+  # trivy:ignore:AVD-AWS-0057 - ENI management requires wildcard resources; scoped by ec2:ResourceTag/Name condition
   statement {
     sid    = "ManageNetworkInterface"
     effect = "Allow"
@@ -442,7 +443,7 @@ data "aws_iam_policy_document" "this" {
     }
   }
 
-  # SSM Session Manager
+  # trivy:ignore:AVD-AWS-0057 - SSM Session Manager actions require wildcard resources per AWS documentation
   dynamic "statement" {
     for_each = var.attach_ssm_policy ? [1] : []
 
