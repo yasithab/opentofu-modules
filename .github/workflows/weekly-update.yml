@@ -19,7 +19,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
@@ -61,7 +61,7 @@ jobs:
 
       - name: Cache tfupdate binary
         id: cache-tfupdate
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /usr/local/bin/tfupdate
           key: tfupdate-${{ steps.tfupdate_version.outputs.version }}-linux-amd64
@@ -77,7 +77,7 @@ jobs:
           sudo chmod +x /usr/local/bin/tfupdate
 
       - name: Setup OpenTofu
-        uses: opentofu/setup-opentofu@v1
+        uses: opentofu/setup-opentofu@v2
         with:
           tofu_version: "${{ steps.opentofu.outputs.version }}"
 
@@ -95,9 +95,9 @@ jobs:
 
       # ── Create PR if anything changed ─────────────────────────────────
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
-          token: ${{ secrets.RW_GITHUB_TOKEN }}
+          token: ${{ secrets.GH_TOKEN }}
           branch: automated/weekly-version-update
           delete-branch: false
           title: "chore: weekly version update - OpenTofu ${{ steps.opentofu.outputs.version }}, AWS provider ${{ steps.aws_provider.outputs.version }}"

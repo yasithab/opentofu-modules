@@ -44,7 +44,7 @@ locals {
   # Filter permission sets by attached policy types
   aws_managed_permission_sets                           = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if can(pset_index.aws_managed_policies) }
   customer_managed_permission_sets                      = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if can(pset_index.customer_managed_policies) }
-  inline_policy_permission_sets                         = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if can(pset_index.inline_policy) }
+  inline_policy_permission_sets                         = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if can(pset_index.inline_policy) && try(pset_index.inline_policy, "") != "" }
   permissions_boundary_aws_managed_permission_sets      = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if can(pset_index.permissions_boundary.managed_policy_arn) }
   permissions_boundary_customer_managed_permission_sets = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if can(pset_index.permissions_boundary.customer_managed_policy_reference) }
 

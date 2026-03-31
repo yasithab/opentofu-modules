@@ -24,14 +24,14 @@ jobs:
 
     steps:
     - name: Check out repository code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ github.head_ref }}
-        token: ${{ secrets.RW_GITHUB_TOKEN }}
+        token: ${{ secrets.GH_TOKEN || github.token }}
         fetch-depth: 1
 
     - name: Setup OpenTofu
-      uses: opentofu/setup-opentofu@v1
+      uses: opentofu/setup-opentofu@v2
       with:
         tofu_version: "1.11.0"
 
@@ -40,7 +40,7 @@ jobs:
 
     - name: Cache terraform-docs binary
       id: cache-tfdocs
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: /usr/local/bin/terraform-docs
         key: terraform-docs-v0.19.0-linux-amd64
@@ -67,7 +67,7 @@ jobs:
         git config --global user.email 'action@github.com'
         git add .
         if [ -n "$(git status --porcelain)" ]; then
-          git commit -m "chore: apply tofu fmt and terraform-docs [skip ci]"
+          git commit -m "chore: apply tofu fmt and terraform-docs"
           git push
         fi
 
@@ -85,12 +85,12 @@ jobs:
 
     steps:
     - name: Check out repository code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 1
 
     - name: Setup OpenTofu
-      uses: opentofu/setup-opentofu@v1
+      uses: opentofu/setup-opentofu@v2
       with:
         tofu_version: "1.11.0"
 
@@ -98,7 +98,7 @@ jobs:
       uses: arduino/setup-task@v2
 
     - name: Cache OpenTofu provider plugins
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ env.TF_PLUGIN_CACHE_DIR }}
         # Bust the cache only when a provider version constraint changes
@@ -151,7 +151,7 @@ jobs:
 
     steps:
     - name: Check out repository code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 1
 
@@ -159,12 +159,12 @@ jobs:
       uses: arduino/setup-task@v2
 
     - name: Setup tflint
-      uses: terraform-linters/setup-tflint@v4
+      uses: terraform-linters/setup-tflint@v6
       with:
         tflint_version: latest
 
     - name: Cache tflint plugins
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.tflint.d/plugins
         key: tflint-plugins-${{ runner.os }}-${{ hashFiles('.tflint.hcl') }}
@@ -214,13 +214,13 @@ jobs:
 
     steps:
     - name: Check out repository code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 1
 
     - name: Run Trivy security scan
       id: trivy
-      uses: aquasecurity/trivy-action@0.30.0
+      uses: aquasecurity/trivy-action@0.35.0
       continue-on-error: true
       with:
         scan-type: config

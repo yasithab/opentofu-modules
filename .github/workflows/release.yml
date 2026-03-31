@@ -4,11 +4,24 @@ on:
   push:
     branches:
       - master
+      - main
     paths-ignore:
       - '.github/**'
       - '.gitignore'
       - 'README.md'
       - 'Taskfile.yml'
+
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        default: 'PATCH'
+        type: choice
+        options:
+          - MAJOR
+          - MINOR
+          - PATCH
 
 # Only one release job at a time - never cancel a running release.
 concurrency:
@@ -21,23 +34,26 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write   # tag + release creation
+      issues: write     # create issue on failure
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # full history needed to read tags and merge commits
-          token: ${{ secrets.RW_GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get the current tag
         id: current_tag
         run: |
           CURRENT_TAG=$(git tag --sort=-v:refname | head -n 1)
           echo "Current tag: $CURRENT_TAG"
-          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+          echo "current_tag=$CURRENT_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Determine new version
         id: determine_version
+        env:
+          RAW_COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           # Extract version numbers
           if [[ "${{ steps.current_tag.outputs.current_tag }}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
@@ -56,33 +72,59 @@ jobs:
           UPDATED_MINOR_VERSION=$minor
           UPDATED_PATCH_VERSION=$((patch + 1))
 
-          # Check merge commit messages for versioning
-          commits=$(git log master --merges -1 --pretty='%B' | awk 'NR==3')
-          echo "Commit message: $commits"
-          if [[ ${commits,,} =~ ^[[]major[]] ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Use the manually selected bump type
+            BUMP_TYPE="${{ inputs.bump }}"
+          else
+            # Parse the first line of the head commit message for [MAJOR] or [MINOR]
+            BUMP_TYPE="PATCH"
+            FIRST_LINE=$(echo "$RAW_COMMIT_MSG" | head -n 1)
+            echo "Commit message first line: $FIRST_LINE"
+            if [[ ${FIRST_LINE,,} =~ ^\[major\] ]]; then
+              BUMP_TYPE="MAJOR"
+            elif [[ ${FIRST_LINE,,} =~ ^\[minor\] ]]; then
+              BUMP_TYPE="MINOR"
+            fi
+          fi
+
+          echo "Bump type: $BUMP_TYPE"
+          if [[ "$BUMP_TYPE" == "MAJOR" ]]; then
             UPDATED_MAJOR_VERSION=$((major + 1))
             UPDATED_MINOR_VERSION=0
             UPDATED_PATCH_VERSION=0
-          elif [[ ${commits,,} =~ ^[[]minor[]] ]]; then
+          elif [[ "$BUMP_TYPE" == "MINOR" ]]; then
             UPDATED_MINOR_VERSION=$((minor + 1))
             UPDATED_PATCH_VERSION=0
           fi
 
           UPDATED_TAG="v$UPDATED_MAJOR_VERSION.$UPDATED_MINOR_VERSION.$UPDATED_PATCH_VERSION"
           echo "Updated tag: $UPDATED_TAG"
-          echo "UPDATED_TAG=$UPDATED_TAG" >> $GITHUB_OUTPUT
+          echo "UPDATED_TAG=$UPDATED_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Create new tag
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git tag ${{ steps.determine_version.outputs.UPDATED_TAG }}
-          git push origin ${{ steps.determine_version.outputs.UPDATED_TAG }}
+          git tag "${{ steps.determine_version.outputs.UPDATED_TAG }}"
+          git push origin "${{ steps.determine_version.outputs.UPDATED_TAG }}"
         env:
-          GITHUB_TOKEN: ${{ secrets.RW_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create a release
         run: |
-          gh release create ${{ steps.determine_version.outputs.UPDATED_TAG }} --generate-notes
+          gh release create "${{ steps.determine_version.outputs.UPDATED_TAG }}" --generate-notes
         env:
-          GITHUB_TOKEN: ${{ secrets.RW_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v8
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Release failed for ${context.sha.substring(0, 7)}`,
+              body: `The release pipeline failed.\n\n[View run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              labels: ['bug', 'automated']
+            })
