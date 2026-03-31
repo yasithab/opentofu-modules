@@ -1104,6 +1104,8 @@ resource "aws_nat_gateway" "regional" {
   tags = merge(local.tags, {
     "Name" = "${local.name}-regional"
   }, var.nat_gateway_tags)
+
+  depends_on = [aws_internet_gateway.this]
 }
 
 resource "aws_route" "private_nat_gateway" {
