@@ -285,7 +285,7 @@ locals {
   num_private_route_tables = var.enable_nat_gateway && local.nat_type == "multi_az" && var.create_multiple_private_route_tables && local.len_private_subnets > 0 ? local.len_private_subnets : (local.len_private_subnets > 0 ? 1 : 0)
 }
 
-# There are as many routing tables as the number of NAT gateways
+# One route table per AZ when multi_az, otherwise one shared route table
 resource "aws_route_table" "private" {
   count = local.create_private_subnets && local.max_subnet_length > 0 ? local.num_private_route_tables : 0
 
@@ -1051,7 +1051,11 @@ resource "aws_route" "private_ipv6_egress" {
 ################################################################################
 
 locals {
-  nat_gateway_count = local.nat_type == "regional" ? 0 : (local.nat_type == "single" ? 1 : local.nat_type == "multi_az" ? length(var.azs) : local.max_subnet_length)
+  nat_gateway_count = {
+    single   = 1
+    multi_az = length(var.azs)
+    regional = 0
+  }[local.nat_type]
   nat_gateway_ips   = var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat[*].id
 }
 
@@ -1111,7 +1115,7 @@ resource "aws_nat_gateway" "regional" {
 }
 
 resource "aws_route" "private_nat_gateway" {
-  count = local.create && var.enable_nat_gateway && var.create_private_nat_gateway_route && local.nat_type != "regional" ? local.nat_gateway_count : 0
+  count = local.create && var.enable_nat_gateway && var.create_private_nat_gateway_route && local.nat_type != "regional" ? local.num_private_route_tables : 0
 
   route_table_id         = element(aws_route_table.private[*].id, count.index)
   destination_cidr_block = var.nat_gateway_destination_cidr_block
@@ -1135,7 +1139,7 @@ resource "aws_route" "private_regional_nat_gateway" {
 }
 
 resource "aws_route" "private_dns64_nat_gateway" {
-  count = local.create && var.enable_nat_gateway && var.enable_ipv6 && var.private_subnet_enable_dns64 && local.nat_type != "regional" ? local.nat_gateway_count : 0
+  count = local.create && var.enable_nat_gateway && var.enable_ipv6 && var.private_subnet_enable_dns64 && local.nat_type != "regional" ? local.num_private_route_tables : 0
 
   route_table_id              = element(aws_route_table.private[*].id, count.index)
   destination_ipv6_cidr_block = "64:ff9b::/96"
