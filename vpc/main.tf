@@ -1056,7 +1056,7 @@ locals {
     multi_az = length(var.azs)
     regional = 0
   }[local.nat_type]
-  nat_gateway_ips   = var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat[*].id
+  nat_gateway_ips = var.reuse_nat_ips ? var.external_nat_ip_ids : aws_eip.nat[*].id
 }
 
 resource "aws_eip" "nat" {
