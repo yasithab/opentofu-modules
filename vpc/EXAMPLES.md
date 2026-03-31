@@ -104,6 +104,41 @@ module "vpc" {
 }
 ```
 
+## With Regional NAT Gateway
+
+Managed regional NAT gateway with automatic cross-AZ high availability. No EIP or public subnet required — AWS handles failover transparently. Creates a single private route table.
+
+```hcl
+module "vpc" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//vpc?depth=1&ref=v2.0.0"
+
+  enabled = true
+  name    = "regional-nat-vpc"
+
+  cidr = "10.40.0.0/16"
+  azs  = ["ap-southeast-1a", "ap-southeast-1b", "ap-southeast-1c"]
+
+  public_subnets   = ["10.40.0.0/24", "10.40.1.0/24", "10.40.2.0/24"]
+  private_subnets  = ["10.40.10.0/24", "10.40.11.0/24", "10.40.12.0/24"]
+  database_subnets = ["10.40.20.0/24", "10.40.21.0/24", "10.40.22.0/24"]
+
+  enable_nat_gateway = true
+  nat_gateway_type   = "regional"
+
+  create_database_subnet_group       = true
+  create_database_subnet_route_table = true
+
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Team        = "platform"
+    Environment = "production"
+    ManagedBy   = "opentofu"
+  }
+}
+```
+
 ## With Secondary CIDR, Intra Subnets, and Flow Logs
 
 Advanced multi-tier network with a secondary CIDR block, intra (routable but no-internet) subnets, and VPC flow logs.
