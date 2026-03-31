@@ -75,19 +75,6 @@ resource "aws_security_group" "this" {
     cidr_blocks = data.aws_vpc.this[0].cidr_block_associations[*].cidr_block
   }
 
-  dynamic "ingress" {
-    for_each = var.use_ssh && (length(var.ssh_cidr_blocks.ipv4) > 0 || length(var.ssh_cidr_blocks.ipv6) > 0) ? [1] : []
-
-    content {
-      description      = "SSH access"
-      from_port        = 22
-      to_port          = 22
-      protocol         = "tcp"
-      cidr_blocks      = var.ssh_cidr_blocks.ipv4
-      ipv6_cidr_blocks = var.ssh_cidr_blocks.ipv6
-    }
-  }
-
   # trivy:ignore:AVD-AWS-0104 - NAT instance requires unrestricted egress to forward private subnet traffic to the internet
   egress {
     description = "All outbound"
@@ -186,7 +173,6 @@ resource "aws_launch_template" "this" {
   name_prefix   = "${var.name}-"
   image_id      = local.ami_id
   instance_type = var.instance_type
-  key_name      = var.ssh_key_name
   user_data     = data.cloudinit_config.this.rendered
 
   iam_instance_profile {

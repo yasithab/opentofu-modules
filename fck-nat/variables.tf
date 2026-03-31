@@ -144,34 +144,6 @@ variable "route_tables_ids" {
 }
 
 ################################################################################
-# SSH (disabled by default)
-################################################################################
-
-variable "use_ssh" {
-  description = "Whether to allow SSH access via the security group."
-  type        = bool
-  default     = false
-}
-
-variable "ssh_key_name" {
-  description = "EC2 key pair name for SSH access."
-  type        = string
-  default     = null
-}
-
-variable "ssh_cidr_blocks" {
-  description = "CIDR blocks allowed for SSH ingress."
-  type = object({
-    ipv4 = list(string)
-    ipv6 = list(string)
-  })
-  default = {
-    ipv4 = []
-    ipv6 = []
-  }
-}
-
-################################################################################
 # SSM
 ################################################################################
 

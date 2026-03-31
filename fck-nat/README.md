@@ -36,12 +36,9 @@
 | <a name="input_kms_key_id"></a> [kms\_key\_id](#input\_kms\_key\_id) | KMS key ID for EBS volume encryption. Uses the default EBS key when null. | `string` | `null` | no |
 | <a name="input_local_port_range"></a> [local\_port\_range](#input\_local\_port\_range) | Ephemeral port range as 'min max' (e.g., '1024 65535'). Wider range reduces port exhaustion under high connection rates. Empty string uses the OS default. | `string` | `""` | no |
 | <a name="input_route_tables_ids"></a> [route\_tables\_ids](#input\_route\_tables\_ids) | Map of logical name to route table ID. A 0.0.0.0/0 route is created in each. | `map(string)` | `{}` | no |
-| <a name="input_ssh_cidr_blocks"></a> [ssh\_cidr\_blocks](#input\_ssh\_cidr\_blocks) | CIDR blocks allowed for SSH ingress. | <pre>object({<br/>    ipv4 = list(string)<br/>    ipv6 = list(string)<br/>  })</pre> | <pre>{<br/>  "ipv4": [],<br/>  "ipv6": []<br/>}</pre> | no |
-| <a name="input_ssh_key_name"></a> [ssh\_key\_name](#input\_ssh\_key\_name) | EC2 key pair name for SSH access. | `string` | `null` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
 | <a name="input_update_route_tables"></a> [update\_route\_tables](#input\_update\_route\_tables) | Whether to create 0.0.0.0/0 routes pointing to the fck-nat ENI in the given route tables. | `bool` | `false` | no |
 | <a name="input_use_spot_instances"></a> [use\_spot\_instances](#input\_use\_spot\_instances) | Use spot instances for additional cost savings. | `bool` | `false` | no |
-| <a name="input_use_ssh"></a> [use\_ssh](#input\_use\_ssh) | Whether to allow SSH access via the security group. | `bool` | `false` | no |
 
 ## Outputs
 
