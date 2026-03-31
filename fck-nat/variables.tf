@@ -147,8 +147,14 @@ variable "route_tables_ids" {
 # SSM
 ################################################################################
 
-variable "attach_ssm_policy" {
-  description = "Attach SSM Session Manager permissions to the IAM role."
+variable "attach_ssm_session_policy" {
+  description = "Attach SSM Session Manager permissions to the IAM role (allows interactive shell access)."
+  type        = bool
+  default     = false
+}
+
+variable "attach_ssm_patch_policy" {
+  description = "Attach SSM Patch Manager permissions to the IAM role (allows automated patching, no interactive access)."
   type        = bool
   default     = true
 }
