@@ -23,7 +23,8 @@
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | VPC ID to deploy fck-nat into. | `string` | n/a | yes |
 | <a name="input_additional_security_group_ids"></a> [additional\_security\_group\_ids](#input\_additional\_security\_group\_ids) | Additional security group IDs to attach to the fck-nat ENIs. | `list(string)` | `[]` | no |
 | <a name="input_ami_id"></a> [ami\_id](#input\_ami\_id) | Custom AMI ID. When null the latest fck-nat AL2023 AMI is auto-detected. | `string` | `null` | no |
-| <a name="input_attach_ssm_policy"></a> [attach\_ssm\_policy](#input\_attach\_ssm\_policy) | Attach SSM Session Manager permissions to the IAM role. | `bool` | `true` | no |
+| <a name="input_attach_ssm_patch_policy"></a> [attach\_ssm\_patch\_policy](#input\_attach\_ssm\_patch\_policy) | Attach SSM Patch Manager permissions to the IAM role (allows automated patching, no interactive access). | `bool` | `true` | no |
+| <a name="input_attach_ssm_session_policy"></a> [attach\_ssm\_session\_policy](#input\_attach\_ssm\_session\_policy) | Attach SSM Session Manager permissions to the IAM role (allows interactive shell access). | `bool` | `false` | no |
 | <a name="input_cloud_init_parts"></a> [cloud\_init\_parts](#input\_cloud\_init\_parts) | Additional cloud-init parts to append after the fck-nat configuration script. | <pre>list(object({<br/>    content      = string<br/>    content_type = string<br/>  }))</pre> | `[]` | no |
 | <a name="input_conntrack_max"></a> [conntrack\_max](#input\_conntrack\_max) | Maximum number of concurrent tracked connections. Higher values use more memory. 0 uses the OS default. | `number` | `0` | no |
 | <a name="input_credit_specification"></a> [credit\_specification](#input\_credit\_specification) | CPU credit option for burstable (T-type) instances: 'standard' or 'unlimited'. Null uses the instance default. | `string` | `null` | no |

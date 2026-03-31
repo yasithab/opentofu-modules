@@ -130,7 +130,7 @@ module "fck_nat" {
 
   additional_security_group_ids = [aws_security_group.extra.id]
 
-  attach_ssm_policy = true
+  attach_ssm_session_policy = true
 
   tags = {
     Environment = "production"

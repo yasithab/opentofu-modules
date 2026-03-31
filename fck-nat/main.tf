@@ -429,19 +429,34 @@ data "aws_iam_policy_document" "this" {
     }
   }
 
-  # trivy:ignore:AVD-AWS-0057 - SSM Session Manager actions require wildcard resources per AWS documentation
+  # trivy:ignore:AVD-AWS-0057 - SSM actions require wildcard resources per AWS documentation
   dynamic "statement" {
-    for_each = var.attach_ssm_policy ? [1] : []
+    for_each = var.attach_ssm_patch_policy ? [1] : []
 
     content {
-      sid    = "SessionManager"
+      sid    = "SSMPatchManager"
+      effect = "Allow"
+      actions = [
+        "ssm:UpdateInstanceInformation",
+        "ssm:GetDeployablePatchSnapshotForInstance",
+        "ssm:PutComplianceItems",
+      ]
+      resources = ["*"]
+    }
+  }
+
+  # trivy:ignore:AVD-AWS-0057 - SSM Session Manager actions require wildcard resources per AWS documentation
+  dynamic "statement" {
+    for_each = var.attach_ssm_session_policy ? [1] : []
+
+    content {
+      sid    = "SSMSessionManager"
       effect = "Allow"
       actions = [
         "ssmmessages:CreateControlChannel",
         "ssmmessages:CreateDataChannel",
         "ssmmessages:OpenControlChannel",
         "ssmmessages:OpenDataChannel",
-        "ssm:UpdateInstanceInformation",
       ]
       resources = ["*"]
     }
