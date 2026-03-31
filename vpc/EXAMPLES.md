@@ -18,12 +18,12 @@ module "vpc" {
   private_subnets = ["10.10.10.0/24", "10.10.11.0/24", "10.10.12.0/24"]
 
   enable_nat_gateway = true
-  single_nat_gateway = true
+  nat_gateway_type   = "single"
 
   tags = {
     Team        = "platform"
     Environment = "production"
-    ManagedBy   = "terraform"
+    ManagedBy   = "opentofu"
   }
 }
 ```
@@ -46,9 +46,8 @@ module "vpc" {
   private_subnets  = ["10.20.10.0/24", "10.20.11.0/24", "10.20.12.0/24"]
   database_subnets = ["10.20.20.0/24", "10.20.21.0/24", "10.20.22.0/24"]
 
-  enable_nat_gateway     = true
-  single_nat_gateway     = false
-  one_nat_gateway_per_az = true
+  enable_nat_gateway = true
+  nat_gateway_type   = "multi_az"
 
   create_database_subnet_group       = true
   create_database_subnet_route_table = true
@@ -89,7 +88,7 @@ module "vpc" {
   private_subnets = ["172.16.10.0/24", "172.16.11.0/24", "172.16.12.0/24"]
 
   enable_nat_gateway = true
-  single_nat_gateway = true
+  nat_gateway_type   = "single"
 
   enable_vpn_gateway = true
 
@@ -101,6 +100,41 @@ module "vpc" {
     Team        = "platform"
     Environment = "staging"
     ManagedBy   = "terraform"
+  }
+}
+```
+
+## With Regional NAT Gateway
+
+Managed regional NAT gateway with automatic cross-AZ high availability. No EIP or public subnet required — AWS handles failover transparently. Creates a single private route table.
+
+```hcl
+module "vpc" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//vpc?depth=1&ref=v2.0.0"
+
+  enabled = true
+  name    = "regional-nat-vpc"
+
+  cidr = "10.40.0.0/16"
+  azs  = ["ap-southeast-1a", "ap-southeast-1b", "ap-southeast-1c"]
+
+  public_subnets   = ["10.40.0.0/24", "10.40.1.0/24", "10.40.2.0/24"]
+  private_subnets  = ["10.40.10.0/24", "10.40.11.0/24", "10.40.12.0/24"]
+  database_subnets = ["10.40.20.0/24", "10.40.21.0/24", "10.40.22.0/24"]
+
+  enable_nat_gateway = true
+  nat_gateway_type   = "regional"
+
+  create_database_subnet_group       = true
+  create_database_subnet_route_table = true
+
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Team        = "platform"
+    Environment = "production"
+    ManagedBy   = "opentofu"
   }
 }
 ```
@@ -125,8 +159,8 @@ module "vpc" {
   intra_subnets    = ["10.30.20.0/24", "10.30.21.0/24", "10.30.22.0/24"]
   database_subnets = ["10.31.0.0/24", "10.31.1.0/24", "10.31.2.0/24"]
 
-  enable_nat_gateway     = true
-  one_nat_gateway_per_az = true
+  enable_nat_gateway = true
+  nat_gateway_type   = "multi_az"
 
   create_database_subnet_group = true
 

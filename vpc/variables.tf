@@ -1233,16 +1233,15 @@ variable "nat_gateway_destination_cidr_block" {
   default     = "0.0.0.0/0"
 }
 
-variable "single_nat_gateway" {
-  description = "Should be true if you want to provision a single shared NAT Gateway across all of your private networks"
-  type        = bool
-  default     = false
-}
+variable "nat_gateway_type" {
+  description = "Type of NAT Gateway to create when enable_nat_gateway is true. Valid values: 'single' (one shared NAT GW), 'multi_az' (one NAT GW per AZ — requires var.azs and enough public subnets), 'regional' (single regional NAT GW with automatic HA, no EIP/public subnet needed)."
+  type        = string
+  default     = "single"
 
-variable "one_nat_gateway_per_az" {
-  description = "Should be true if you want only one NAT Gateway per availability zone. Requires `var.azs` to be set, and the number of `public_subnets` created to be greater than or equal to the number of availability zones specified in `var.azs`"
-  type        = bool
-  default     = false
+  validation {
+    condition     = contains(["single", "multi_az", "regional"], var.nat_gateway_type)
+    error_message = "nat_gateway_type must be one of: 'single', 'multi_az', 'regional'."
+  }
 }
 
 variable "reuse_nat_ips" {
@@ -1286,21 +1285,6 @@ variable "nat_gateway_connectivity_type" {
   }
 }
 
-variable "regional_nat_gateway" {
-  description = "Should be true to create a single regional NAT gateway (availability_mode = regional) that provides automatic high availability across all AZs without requiring public subnets or Elastic IPs. Mutually exclusive with single_nat_gateway and one_nat_gateway_per_az."
-  type        = bool
-  default     = false
-
-  validation {
-    condition     = !(var.regional_nat_gateway && var.single_nat_gateway)
-    error_message = "regional_nat_gateway and single_nat_gateway are mutually exclusive. Set only one to true."
-  }
-
-  validation {
-    condition     = !(var.regional_nat_gateway && var.one_nat_gateway_per_az)
-    error_message = "regional_nat_gateway and one_nat_gateway_per_az are mutually exclusive. Set only one to true."
-  }
-}
 
 variable "nat_gateway_secondary_allocation_ids" {
   description = "List of secondary allocation EIP IDs for the NAT Gateway (zonal NAT gateways only)"
