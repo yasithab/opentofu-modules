@@ -40,8 +40,7 @@ resource "aws_efs_file_system" "this" {
   tags = merge(local.tags, { Name = var.name })
 
   lifecycle {
-    enabled         = local.enabled
-    prevent_destroy = true
+    enabled = local.enabled
   }
 }
 

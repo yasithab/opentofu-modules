@@ -1,6 +1,6 @@
 # OpenTofu Modules
 
-A collection of 73 reusable [OpenTofu](https://opentofu.org/) modules for AWS infrastructure, targeting AWS provider >= 6.34.
+A collection of 128+ reusable [OpenTofu](https://opentofu.org/) modules for AWS infrastructure, targeting AWS provider >= 6.34.
 
 ## Table of Contents
 
@@ -49,6 +49,7 @@ Each module folder includes the following files:
 - `outputs.tf` - Specifies the module's outputs.
 - `providers.tf` - Specifies the required OpenTofu and provider version constraints.
 - `README.md` - Documentation specific to the module.
+- `tests/basic.tftest.hcl` - Validation test for the module.
 
 Some modules contain additional files for organisational clarity (e.g. `iam.tf` for IAM-specific resources).
 
@@ -135,6 +136,7 @@ task --list
 | `task format` | Format all OpenTofu code recursively |
 | `task validate` | Run `tofu validate` in every module (backend-less) |
 | `task lint` | Run tflint across all modules |
+| `task test` | Run `tofu test` on all modules with test files |
 | `task security` | Run Trivy CRITICAL/HIGH misconfiguration scan |
 | `task ci` | Run all of the above |
 
@@ -182,28 +184,27 @@ task security
 
 Runs on every pull request:
 
-1. Format (`task format`)
+1. Format (`task format`) — auto-commits any formatting changes
 2. Validate all modules (`task validate`)
 3. Lint with tflint (`task lint`)
-4. Trivy security scan (fails on CRITICAL/HIGH)
-5. Auto-commits any formatting changes back to the PR branch
+4. Test changed modules (`tofu test` on modules with changed `.tf` files)
+5. Trivy security scan (fails on CRITICAL/HIGH)
 
-### Weekly Version Update (`.github/workflows/weekly-update.yml`)
+### Release Workflow (`.github/workflows/release.yml`)
 
-Runs every **Sunday at 00:00 GST** (Saturday 20:00 UTC). Also manually dispatchable.
+Runs on every push to `master`:
 
-1. Fetches the latest OpenTofu release from the GitHub API
-2. Fetches the latest AWS provider version from the Terraform Registry
-3. Applies version constraint bumps with `tfupdate`
-4. Runs `tofu fmt`
-5. Opens (or updates) a PR on branch `automated/weekly-version-update` for human review
+1. Test changed modules (`tofu test` on modules with changed `.tf` files)
+2. Auto-create semantic version tag based on commit message prefix
+3. Create GitHub release with auto-generated notes
 
-### Dependency Updates (Renovate)
+### Module Health Check (`.github/workflows/module-health.yml`)
 
-[Renovate](https://docs.renovatebot.com/) is configured via `.github/renovate.json` to:
+Runs monthly (1st of each month):
 
-- Group all GitHub Actions version bumps into a single PR
-- Group all pre-commit hook revision bumps into a single PR
+1. Validates all modules
+2. Detects modules missing test files or README
+3. Creates a GitHub issue if problems are found
 
 ## Best Practices
 
@@ -217,8 +218,7 @@ Runs every **Sunday at 00:00 GST** (Saturday 20:00 UTC). Also manually dispatcha
   - Merging a PR with a commit message that begins with `[MAJOR]` will automatically increment the major version of the tag.
   - Merging a PR with a commit message that starts with `[MINOR]` will automatically increment the minor version of the tag.
   - If neither `[MAJOR]` nor `[MINOR]` is specified at the beginning of the commit message, the patch version will be incremented by 1.
-- **Do** document every module within its corresponding `README.md` file.
-  - The process is automated, and upon submitting a PR, the `README.md` file will be generated automatically.
+- **Do** document every module within its corresponding `README.md` file with usage examples covering all patterns.
 - **Do** use descriptive variable names and output values.
 - **Do** run `pre-commit install` after cloning so local checks run before every commit.
 - **Do** run `task ci` locally before pushing to catch format, validation, lint, and security issues early.
@@ -235,7 +235,7 @@ Runs every **Sunday at 00:00 GST** (Saturday 20:00 UTC). Also manually dispatcha
 All modules ship with secure defaults:
 
 - Encryption at rest enabled by default (RDS Aurora, ElastiCache, OpenSearch)
-- `deletion_protection` / `prevent_destroy` on stateful resources (RDS, S3, KMS, DynamoDB, EFS, ElastiCache, OpenSearch, Redshift)
+- `deletion_protection` enabled by default on stateful resources (RDS, S3, KMS, DynamoDB, EFS, ElastiCache, OpenSearch, Redshift)
 - RDS Aurora uses write-only `master_password_wo` (never stored in state)
 - EKS public access CIDRs default to `[]` (no public access)
 - DynamoDB point-in-time recovery enabled by default
@@ -247,7 +247,6 @@ All modules ship with secure defaults:
 |------|---------|
 | `.tflint.hcl` | tflint rules and AWS plugin configuration |
 | `.pre-commit-config.yaml` | Pre-commit hook definitions |
-| `.github/renovate.json` | Renovate dependency update configuration |
 | `Taskfile.yml` | Task runner definitions |
 
 ## Versioning

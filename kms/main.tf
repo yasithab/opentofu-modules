@@ -38,8 +38,7 @@ resource "aws_kms_key" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled         = var.enabled && !var.create_external && !var.create_replica && !var.create_replica_external
-    prevent_destroy = true
+    enabled = var.enabled && !var.create_external && !var.create_replica && !var.create_replica_external
   }
 }
 

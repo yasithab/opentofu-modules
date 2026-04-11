@@ -5,22 +5,17 @@ on:
     types: [opened, synchronize, reopened]
 
 # Cancel any in-progress run for the same PR when a new commit is pushed.
-# This ensures we never waste minutes running checks on stale code, and
-# means only the most recent commit ever reaches validate/lint/security.
 concurrency:
   group: pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   # ── 1. Format ─────────────────────────────────────────────────────────────
-  # Runs first. If it pushes a fixup commit the concurrency group cancels this
-  # run and the new synchronize event starts a fresh one, so validate/lint/
-  # security always run on fully-formatted code.
   format:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: write   # needed to push the fixup commit
+      contents: write
 
     steps:
     - name: Check out repository code
@@ -60,7 +55,6 @@ jobs:
       contents: read
     env:
       TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
-      # Prevents lock-file conflicts when multiple `tofu init` calls share the cache
       TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE: "true"
 
     steps:
@@ -81,7 +75,6 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ${{ env.TF_PLUGIN_CACHE_DIR }}
-        # Bust the cache only when a provider version constraint changes
         key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/providers.tf', '**/versions.tf') }}
         restore-keys: |
           opentofu-providers-${{ runner.os }}-
@@ -184,7 +177,122 @@ jobs:
       if: steps.lint.outcome != 'success'
       run: exit 1
 
-  # ── 4. Security scan ──────────────────────────────────────────────────────
+  # ── 4. Test changed modules ───────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [format]
+    permissions:
+      contents: read
+    env:
+      TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
+      TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE: "true"
+
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Setup OpenTofu
+      uses: opentofu/setup-opentofu@v2
+      with:
+        tofu_version: "1.11.0"
+
+    - name: Cache OpenTofu provider plugins
+      uses: actions/cache@v5
+      with:
+        path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+        key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/providers.tf', '**/versions.tf') }}
+        restore-keys: |
+          opentofu-providers-${{ runner.os }}-
+
+    - name: Create provider plugin cache dir
+      run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
+
+    - name: Detect changed modules
+      id: changes
+      run: |
+        BASE_SHA=$(git merge-base origin/${{ github.event.pull_request.base.ref }} HEAD)
+        CHANGED_DIRS=$(git diff --name-only "$BASE_SHA" HEAD | \
+          grep '\.tf$' | \
+          xargs -I{} dirname {} | \
+          sort -u | \
+          while read dir; do
+            d="$dir"
+            while [ "$d" != "." ] && [ ! -f "$d/main.tf" ]; do
+              d=$(dirname "$d")
+            done
+            if [ -f "$d/main.tf" ] && [ -d "$d/tests" ]; then
+              echo "$d"
+            fi
+          done | sort -u)
+        echo "Changed modules with tests:"
+        echo "$CHANGED_DIRS"
+        echo "$CHANGED_DIRS" > /tmp/changed-modules.txt
+        COUNT=$(echo "$CHANGED_DIRS" | grep -c '[^[:space:]]' || echo "0")
+        echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+    - name: Run tests on changed modules
+      id: test
+      if: steps.changes.outputs.count != '0'
+      run: |
+        set -o pipefail
+        FAILED=0
+        PASSED=0
+        while IFS= read -r mod; do
+          [ -z "$mod" ] && continue
+          echo "::group::Testing module: $mod"
+          cd "$GITHUB_WORKSPACE/$mod"
+          tofu init -backend=false -upgrade -no-color > /dev/null 2>&1
+          if tofu test -no-color 2>&1 | tee -a /tmp/test-output.txt; then
+            PASSED=$((PASSED + 1))
+          else
+            FAILED=$((FAILED + 1))
+          fi
+          echo "::endgroup::"
+          cd "$GITHUB_WORKSPACE"
+        done < /tmp/changed-modules.txt
+        echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
+        echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
+        if [ $FAILED -gt 0 ]; then
+          echo "$FAILED module(s) failed tests" | tee -a /tmp/test-output.txt
+          exit 1
+        fi
+      continue-on-error: true
+
+    - name: Step Summary
+      if: always()
+      run: |
+        {
+          echo "## Tests"
+          echo ""
+          if [ "${{ steps.changes.outputs.count }}" = "0" ]; then
+            echo "⏭️ No changed modules with tests detected"
+          elif [ "${{ steps.test.outcome }}" = "success" ]; then
+            echo "✅ All changed module tests passed (${{ steps.test.outputs.passed }} modules)"
+          elif [ "${{ steps.test.outcome }}" = "failure" ]; then
+            echo "❌ ${{ steps.test.outputs.failed }} module(s) failed tests"
+          else
+            echo "⏭️ Tests were skipped"
+          fi
+          echo ""
+          if [ -f /tmp/test-output.txt ]; then
+            echo "<details><summary>Full output</summary>"
+            echo ""
+            echo '```'
+            cat /tmp/test-output.txt
+            echo '```'
+            echo ""
+            echo "</details>"
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Fail if tests errored
+      if: steps.test.outcome == 'failure'
+      run: exit 1
+
+  # ── 5. Security scan ──────────────────────────────────────────────────────
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -211,7 +319,6 @@ jobs:
         severity: CRITICAL,HIGH
         skip-dirs: ".git,.github,.terrateam"
         version: "v0.69.3"
-        # Cache the Trivy vulnerability DB between runs (~200 MB, saves ~60s)
         cache: "true"
 
     - name: Step Summary

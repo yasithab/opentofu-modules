@@ -105,8 +105,7 @@ resource "aws_redshiftserverless_namespace" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled         = local.create && local.is_serverless
-    prevent_destroy = true
+    enabled = local.create && local.is_serverless
   }
 }
 

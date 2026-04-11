@@ -1,0 +1,153 @@
+name: Module Health Check
+
+on:
+  schedule:
+    - cron: "0 8 1 * *"  # First day of each month at 08:00 UTC
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    env:
+      TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
+      TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE: "true"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_version: "1.11.0"
+
+      - name: Cache OpenTofu provider plugins
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/providers.tf', '**/versions.tf') }}
+          restore-keys: |
+            opentofu-providers-${{ runner.os }}-
+
+      - name: Create provider plugin cache dir
+        run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
+
+      - name: Check modules missing tests
+        id: missing_tests
+        run: |
+          MISSING=""
+          for main_tf in $(find . -name "main.tf" -not -path "*/.terraform/*" -not -path "*/wrappers/*" | sort); do
+            dir=$(dirname "$main_tf")
+            mod=$(echo "$dir" | sed 's|^\./||')
+            if [ ! -d "$dir/tests" ] || [ -z "$(ls "$dir/tests"/*.tftest.hcl 2>/dev/null)" ]; then
+              MISSING="$MISSING\n- \`$mod\`"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo -e "$MISSING" > /tmp/missing-tests.txt
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check modules missing README
+        id: missing_readme
+        run: |
+          MISSING=""
+          for main_tf in $(find . -name "main.tf" -not -path "*/.terraform/*" | sort); do
+            dir=$(dirname "$main_tf")
+            mod=$(echo "$dir" | sed 's|^\./||')
+            if [ ! -f "$dir/README.md" ]; then
+              MISSING="$MISSING\n- \`$mod\`"
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo -e "$MISSING" > /tmp/missing-readme.txt
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run full validation
+        id: validate
+        run: |
+          FAILED=""
+          TOTAL=0
+          PASS=0
+          for main_tf in $(find . -name "main.tf" -not -path "*/.terraform/*" | sort); do
+            dir=$(dirname "$main_tf")
+            mod=$(echo "$dir" | sed 's|^\./||')
+            TOTAL=$((TOTAL + 1))
+            cd "$GITHUB_WORKSPACE/$dir"
+            if tofu init -backend=false -upgrade -no-color > /dev/null 2>&1 && tofu validate -no-color > /dev/null 2>&1; then
+              PASS=$((PASS + 1))
+            else
+              FAILED="$FAILED\n- \`$mod\`"
+            fi
+            cd "$GITHUB_WORKSPACE"
+          done
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "passed=$PASS" >> "$GITHUB_OUTPUT"
+          if [ -n "$FAILED" ]; then
+            echo "has_failures=true" >> "$GITHUB_OUTPUT"
+            echo -e "$FAILED" > /tmp/failed-validation.txt
+          else
+            echo "has_failures=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate report
+        id: report
+        run: |
+          {
+            echo "## Monthly Module Health Report"
+            echo ""
+            echo "**Total modules:** ${{ steps.validate.outputs.total }}"
+            echo "**Validation:** ${{ steps.validate.outputs.passed }}/${{ steps.validate.outputs.total }} passed"
+            echo ""
+
+            if [ "${{ steps.validate.outputs.has_failures }}" = "true" ]; then
+              echo "### ❌ Validation Failures"
+              cat /tmp/failed-validation.txt
+              echo ""
+            fi
+
+            if [ "${{ steps.missing_tests.outputs.found }}" = "true" ]; then
+              echo "### ⚠️ Modules Missing Tests"
+              cat /tmp/missing-tests.txt
+              echo ""
+            fi
+
+            if [ "${{ steps.missing_readme.outputs.found }}" = "true" ]; then
+              echo "### ⚠️ Modules Missing README"
+              cat /tmp/missing-readme.txt
+              echo ""
+            fi
+
+            if [ "${{ steps.validate.outputs.has_failures }}" = "false" ] && \
+               [ "${{ steps.missing_tests.outputs.found }}" = "false" ] && \
+               [ "${{ steps.missing_readme.outputs.found }}" = "false" ]; then
+              echo "### ✅ All checks passed"
+              echo "All modules have valid configuration, test files, and documentation."
+            fi
+          } | tee /tmp/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create issue if problems found
+        if: steps.validate.outputs.has_failures == 'true' || steps.missing_tests.outputs.found == 'true'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('/tmp/report.md', 'utf8');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Module health check - ${new Date().toISOString().slice(0, 7)}`,
+              body: report + '\n\n_Generated by `.github/workflows/module-health.yml`_',
+              labels: ['automated', 'maintenance']
+            });

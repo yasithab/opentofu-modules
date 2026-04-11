@@ -167,7 +167,6 @@ resource "aws_rds_cluster" "this" {
       global_cluster_identifier,
       snapshot_identifier,
     ]
-    prevent_destroy = true
   }
 
   depends_on = [aws_cloudwatch_log_group.this]

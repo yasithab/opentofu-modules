@@ -148,7 +148,6 @@ resource "aws_db_instance" "this" {
     ignore_changes = [
       snapshot_identifier,
     ]
-    prevent_destroy = true
   }
 
   depends_on = [aws_cloudwatch_log_group.this]

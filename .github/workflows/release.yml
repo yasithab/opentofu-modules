@@ -8,8 +8,10 @@ on:
     paths-ignore:
       - '.github/**'
       - '.gitignore'
-      - 'README.md'
-      - 'Taskfile.yml'
+      - '*.md'
+      - 'CHANGELOG.md'
+      - 'CLAUDE.md'
+      - 'LICENSE'
 
   workflow_dispatch:
     inputs:
@@ -29,18 +31,91 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
+  # ── Test changed modules before releasing ──────────────────────────────────
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     permissions:
-      contents: write   # tag + release creation
-      issues: write     # create issue on failure
+      contents: read
+    env:
+      TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
+      TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE: "true"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0  # full history needed to read tags and merge commits
+          fetch-depth: 2
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_version: "1.11.0"
+
+      - name: Cache OpenTofu provider plugins
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/providers.tf', '**/versions.tf') }}
+          restore-keys: |
+            opentofu-providers-${{ runner.os }}-
+
+      - name: Create provider plugin cache dir
+        run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
+
+      - name: Detect changed modules
+        id: changes
+        run: |
+          CHANGED_DIRS=$(git diff --name-only HEAD~1 HEAD | \
+            grep '\.tf$' | \
+            xargs -I{} dirname {} | \
+            sort -u | \
+            while read dir; do
+              d="$dir"
+              while [ "$d" != "." ] && [ ! -f "$d/main.tf" ]; do
+                d=$(dirname "$d")
+              done
+              if [ -f "$d/main.tf" ] && [ -d "$d/tests" ]; then
+                echo "$d"
+              fi
+            done | sort -u)
+          echo "$CHANGED_DIRS" > /tmp/changed-modules.txt
+          COUNT=$(echo "$CHANGED_DIRS" | grep -c '[^[:space:]]' || echo "0")
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Run tests on changed modules
+        if: steps.changes.outputs.count != '0'
+        run: |
+          FAILED=0
+          while IFS= read -r mod; do
+            [ -z "$mod" ] && continue
+            echo "Testing module: $mod"
+            cd "$GITHUB_WORKSPACE/$mod"
+            tofu init -backend=false -upgrade -no-color > /dev/null 2>&1
+            if ! tofu test -no-color; then
+              FAILED=$((FAILED + 1))
+            fi
+            cd "$GITHUB_WORKSPACE"
+          done < /tmp/changed-modules.txt
+          if [ $FAILED -gt 0 ]; then
+            echo "$FAILED module(s) failed tests"
+            exit 1
+          fi
+
+  # ── Create tag and release ─────────────────────────────────────────────────
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [test]
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get the current tag
@@ -55,7 +130,6 @@ jobs:
         env:
           RAW_COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          # Extract version numbers
           if [[ "${{ steps.current_tag.outputs.current_tag }}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
             major=${BASH_REMATCH[1]}
             minor=${BASH_REMATCH[2]}
@@ -67,16 +141,13 @@ jobs:
             patch=0
           fi
 
-          # Default to patch increment
           UPDATED_MAJOR_VERSION=$major
           UPDATED_MINOR_VERSION=$minor
           UPDATED_PATCH_VERSION=$((patch + 1))
 
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Use the manually selected bump type
             BUMP_TYPE="${{ inputs.bump }}"
           else
-            # Parse the first line of the head commit message for [MAJOR] or [MINOR]
             BUMP_TYPE="PATCH"
             FIRST_LINE=$(echo "$RAW_COMMIT_MSG" | head -n 1)
             echo "Commit message first line: $FIRST_LINE"

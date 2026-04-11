@@ -175,8 +175,7 @@ resource "aws_dynamodb_table" "this" {
   }
 
   lifecycle {
-    enabled         = var.enabled && !var.autoscaling_enabled
-    prevent_destroy = true
+    enabled = var.enabled && !var.autoscaling_enabled
   }
 }
 

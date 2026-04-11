@@ -1,26 +1,18 @@
 repos:
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.99.4 # pinned; renovate will keep this current
+    rev: v1.99.4
     hooks:
-      # Format check - fail fast if code is not fmt'd
       - id: terraform_fmt
         args:
           - --tf-init-args=-upgrade
 
-      # Per-module validation (backend-less)
       - id: terraform_validate
         args:
           - --init-args=-backend=false -upgrade
 
-      # Lint with .tflint.hcl config
       - id: terraform_tflint
         args:
           - --args=--config=__GIT_WORKING_DIR__/.tflint.hcl
-
-      # Auto-update README.md files
-      - id: terraform_docs
-        args:
-          - --args=--config=__GIT_WORKING_DIR__/.terraform-docs.yml
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0

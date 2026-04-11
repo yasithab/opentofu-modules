@@ -32,8 +32,7 @@ resource "aws_opensearch_domain" "this" {
   advanced_options = var.advanced_options
 
   lifecycle {
-    enabled         = local.enabled
-    prevent_destroy = true
+    enabled = local.enabled
   }
 
   dynamic "encrypt_at_rest" {

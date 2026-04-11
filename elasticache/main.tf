@@ -142,8 +142,7 @@ resource "aws_elasticache_replication_group" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled         = local.create && var.create_replication_group && !local.create_global_replication_group
-    prevent_destroy = true
+    enabled = local.create && var.create_replication_group && !local.create_global_replication_group
   }
 }
 

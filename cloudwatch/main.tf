@@ -24,8 +24,7 @@ resource "aws_cloudwatch_log_group" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled         = local.enabled
-    prevent_destroy = true
+    enabled = local.enabled
   }
 }
 

@@ -182,8 +182,7 @@ resource "aws_ebs_volume" "data" {
   })
 
   lifecycle {
-    enabled         = local.create && local.use_data_volume
-    prevent_destroy = true
+    enabled = local.create && local.use_data_volume
   }
 }
 
