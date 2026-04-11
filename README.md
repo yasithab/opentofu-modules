@@ -1,4 +1,4 @@
-# terraform-modules
+# OpenTofu Modules
 
 A collection of 73 reusable [OpenTofu](https://opentofu.org/) modules for AWS infrastructure, targeting AWS provider >= 6.34.
 
@@ -30,7 +30,6 @@ This repository provides reusable OpenTofu modules that follow industry best pra
 | [OpenTofu](https://opentofu.org/docs/intro/install/) | >= 1.11.0 |
 | [AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest) | >= 6.34 |
 | [Task](https://taskfile.dev/installation/) | >= 3.0 |
-| [terraform-docs](https://terraform-docs.io/user-guide/installation/) | >= 0.19.0 |
 | [tflint](https://github.com/terraform-linters/tflint#installation) | latest |
 | [Trivy](https://aquasecurity.github.io/trivy/latest/getting-started/installation/) | latest |
 | [pre-commit](https://pre-commit.com/#install) | >= 3.0 |
@@ -49,7 +48,7 @@ Each module folder includes the following files:
 - `variables.tf` - Defines input variables for the module.
 - `outputs.tf` - Specifies the module's outputs.
 - `providers.tf` - Specifies the required OpenTofu and provider version constraints.
-- `README.md` - Documentation specific to the module (auto-generated via `terraform-docs`).
+- `README.md` - Documentation specific to the module.
 
 Some modules contain additional files for organisational clarity (e.g. `iam.tf` for IAM-specific resources).
 
@@ -134,7 +133,6 @@ task --list
 | Task | Description |
 |------|-------------|
 | `task format` | Format all OpenTofu code recursively |
-| `task generate` | Regenerate `README.md` for every module |
 | `task validate` | Run `tofu validate` in every module (backend-less) |
 | `task lint` | Run tflint across all modules |
 | `task security` | Run Trivy CRITICAL/HIGH misconfiguration scan |
@@ -153,7 +151,6 @@ On every `git commit` the following run automatically:
 - `terraform_fmt` - format check
 - `terraform_validate` - per-module validation (no backend)
 - `terraform_tflint` - lint using `.tflint.hcl`
-- `terraform_docs` - regenerate module READMEs using `.terraform-docs.yml`
 - Standard file hygiene (trailing whitespace, end-of-file, YAML syntax, merge conflicts)
 
 Run manually against all files:
@@ -186,11 +183,10 @@ task security
 Runs on every pull request:
 
 1. Format (`task format`)
-2. Generate docs (`task generate`)
-3. Validate all modules (`task validate`)
-4. Lint with tflint (`task lint`)
-5. Trivy security scan (fails on CRITICAL/HIGH)
-6. Auto-commits any formatting/doc changes back to the PR branch
+2. Validate all modules (`task validate`)
+3. Lint with tflint (`task lint`)
+4. Trivy security scan (fails on CRITICAL/HIGH)
+5. Auto-commits any formatting changes back to the PR branch
 
 ### Weekly Version Update (`.github/workflows/weekly-update.yml`)
 
@@ -249,7 +245,6 @@ All modules ship with secure defaults:
 
 | File | Purpose |
 |------|---------|
-| `.terraform-docs.yml` | terraform-docs output format and sections |
 | `.tflint.hcl` | tflint rules and AWS plugin configuration |
 | `.pre-commit-config.yaml` | Pre-commit hook definitions |
 | `.github/renovate.json` | Renovate dependency update configuration |
