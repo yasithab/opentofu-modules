@@ -158,10 +158,6 @@ data "cloudinit_config" "this" {
       content      = part.value["content"]
     }
   }
-
-  lifecycle {
-    enabled = local.create
-  }
 }
 
 ################################################################################
@@ -342,10 +338,6 @@ data "aws_iam_policy_document" "assume_role" {
       identifiers = ["ec2.amazonaws.com"]
     }
   }
-
-  lifecycle {
-    enabled = local.create
-  }
 }
 
 resource "aws_iam_role" "this" {
@@ -460,10 +452,6 @@ data "aws_iam_policy_document" "this" {
       ]
       resources = ["*"]
     }
-  }
-
-  lifecycle {
-    enabled = local.create
   }
 }
 

@@ -22,4 +22,3 @@ variable "trust_account_ids" {
   default     = null
   nullable    = true
 }
-

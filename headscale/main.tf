@@ -116,19 +116,19 @@ data "cloudinit_config" "this" {
   part {
     content_type = "text/x-shellscript"
     content = templatefile("${path.module}/templates/user_data.sh", {
-      name              = var.name
-      headscale_version = var.headscale_version
-      is_arm            = local.is_arm
-      server_url        = var.server_url
-      base_domain       = var.base_domain
-      ip_prefixes       = join(",", var.ip_prefixes)
-      data_dir          = local.data_dir
-      use_data_volume   = local.use_data_volume
-      data_volume_id    = local.use_data_volume ? aws_ebs_volume.data.id : ""
-      derp_enabled      = var.derp_enabled
-      derp_stun_port    = var.derp_stun_port
-      use_letsencrypt   = local.use_letsencrypt
-      letsencrypt_email = var.letsencrypt_email
+      name                     = var.name
+      headscale_version        = var.headscale_version
+      is_arm                   = local.is_arm
+      server_url               = var.server_url
+      base_domain              = var.base_domain
+      ip_prefixes              = join(",", var.ip_prefixes)
+      data_dir                 = local.data_dir
+      use_data_volume          = local.use_data_volume
+      data_volume_id           = local.use_data_volume ? aws_ebs_volume.data.id : ""
+      derp_enabled             = var.derp_enabled
+      derp_stun_port           = var.derp_stun_port
+      use_letsencrypt          = local.use_letsencrypt
+      letsencrypt_email        = var.letsencrypt_email
       oidc_issuer              = try(var.oidc.issuer, "")
       oidc_client_id           = try(var.oidc.client_id, "")
       oidc_client_secret       = try(var.oidc.client_secret, "")
@@ -137,17 +137,17 @@ data "cloudinit_config" "this" {
       secrets_manager_arn      = var.secrets_manager_arn
       secrets_manager_oidc_key = var.secrets_manager_oidc_key
       aws_region               = data.aws_region.current.id
-      acl_policy                 = var.acl_policy
-      eip_allocation_id          = local.has_eip ? local.eip_allocation_id : ""
-      subnet_router_enabled      = var.subnet_router_enabled
-      advertise_routes           = join(",", var.subnet_router_advertise_routes)
-      subnet_router_user         = var.subnet_router_user
-      tailscale_version          = var.tailscale_version
-      exit_node_enabled          = var.exit_node_enabled
-      cloudwatch_logs_enabled    = var.cloudwatch_logs_enabled
-      cloudwatch_log_group       = var.cloudwatch_logs_enabled ? "/headscale/${var.name}" : ""
-      metrics_port               = var.metrics_port
-      publish_auth_key           = var.publish_auth_key
+      acl_policy               = var.acl_policy
+      eip_allocation_id        = local.has_eip ? local.eip_allocation_id : ""
+      subnet_router_enabled    = var.subnet_router_enabled
+      advertise_routes         = join(",", var.subnet_router_advertise_routes)
+      subnet_router_user       = var.subnet_router_user
+      tailscale_version        = var.tailscale_version
+      exit_node_enabled        = var.exit_node_enabled
+      cloudwatch_logs_enabled  = var.cloudwatch_logs_enabled
+      cloudwatch_log_group     = var.cloudwatch_logs_enabled ? "/headscale/${var.name}" : ""
+      metrics_port             = var.metrics_port
+      publish_auth_key         = var.publish_auth_key
     })
   }
 
@@ -158,10 +158,6 @@ data "cloudinit_config" "this" {
       content_type = part.value["content_type"]
       content      = part.value["content"]
     }
-  }
-
-  lifecycle {
-    enabled = local.create
   }
 }
 
@@ -205,10 +201,6 @@ data "aws_iam_policy_document" "dlm_assume_role" {
       type        = "Service"
       identifiers = ["dlm.amazonaws.com"]
     }
-  }
-
-  lifecycle {
-    enabled = local.create && local.use_data_volume && var.snapshot_enabled
   }
 }
 
@@ -409,10 +401,6 @@ data "aws_iam_policy_document" "assume_role" {
       identifiers = ["ec2.amazonaws.com"]
     }
   }
-
-  lifecycle {
-    enabled = local.create
-  }
 }
 
 resource "aws_iam_role" "this" {
@@ -551,10 +539,6 @@ data "aws_iam_policy_document" "this" {
       ]
       resources = ["${aws_cloudwatch_log_group.this.arn}:*"]
     }
-  }
-
-  lifecycle {
-    enabled = local.create
   }
 }
 

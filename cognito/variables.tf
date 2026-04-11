@@ -101,15 +101,15 @@ variable "custom_domain_certificate_arn" {
 variable "clients" {
   description = "Map of OAuth/OIDC client applications to create. Each client gets its own client ID and secret."
   type = map(object({
-    callback_urls  = list(string)
-    logout_urls    = optional(list(string), [])
-    generate_secret = optional(bool, true)
-    allowed_oauth_flows = optional(list(string), ["code"])
+    callback_urls        = list(string)
+    logout_urls          = optional(list(string), [])
+    generate_secret      = optional(bool, true)
+    allowed_oauth_flows  = optional(list(string), ["code"])
     allowed_oauth_scopes = optional(list(string), ["openid", "email", "profile"])
     token_validity = optional(object({
-      access_token_hours  = optional(number, 1)
-      id_token_hours      = optional(number, 1)
-      refresh_token_days  = optional(number, 30)
+      access_token_hours = optional(number, 1)
+      id_token_hours     = optional(number, 1)
+      refresh_token_days = optional(number, 30)
     }), {})
   }))
   default = {}

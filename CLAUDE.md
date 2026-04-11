@@ -31,8 +31,7 @@ Every module follows this structure:
 - `variables.tf` — inputs
 - `outputs.tf` — outputs
 - `providers.tf` — version constraints (OpenTofu + AWS provider)
-- `README.md` — module documentation
-- `EXAMPLES.md` — usage examples
+- `README.md` — module documentation with usage examples
 
 ### Required patterns in every module
 
@@ -46,10 +45,10 @@ locals {
 ```
 
 **Standard variables** every module must have:
-- `enabled` (bool, default `true`) — controls resource creation via `lifecycle { enabled = local.create }`
+- `enabled` (bool, default `true`) — controls resource creation via `lifecycle { enabled = local.enabled }`
 - `tags` (map(string), default `{}`) — merged with `{ ManagedBy = "opentofu" }` in locals
 
-**Resource lifecycle** — all resources use `lifecycle { enabled = local.create }` (or equivalent local like `local.enabled`) instead of `count`/`for_each` for toggling.
+**Resource lifecycle** — resources use `lifecycle { enabled = local.enabled }` for toggling. **Important:** `lifecycle { enabled }` is mutually exclusive with `for_each`/`count`. Resources that use `for_each` must use the `if local.enabled` filter pattern instead (e.g., `for_each = { for k, v in var.items : k => v if local.enabled }`).
 
 **Outputs** use `try()` for safe extraction with empty string defaults.
 

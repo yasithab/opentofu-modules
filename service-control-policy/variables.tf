@@ -1,5 +1,3 @@
-
-
 variable "name" {
   description = "Name to use for resource naming and tagging."
   type        = string
