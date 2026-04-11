@@ -3,6 +3,7 @@ run "validate" {
 
   variables {
     enabled = false
-
+    name = "test-value"
+    s3_bucket_name = "test-value"
   }
 }

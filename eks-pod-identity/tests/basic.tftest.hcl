@@ -3,6 +3,7 @@ run "validate" {
 
   variables {
     enabled = false
-
+    name = "test-value"
+    cluster_name = "test-value"
   }
 }

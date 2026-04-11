@@ -3,6 +3,6 @@ run "validate" {
 
   variables {
     enabled = false
-
+    codebuild_subnets = []
   }
 }

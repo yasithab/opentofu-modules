@@ -3,6 +3,6 @@ run "validate" {
 
   variables {
     enabled = false
-
+    role_description = "test-value"
   }
 }

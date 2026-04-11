@@ -3,6 +3,7 @@ run "validate" {
 
   variables {
     enabled = false
-
+    dashboard_name = "test-value"
+    dashboard_body = "test-value"
   }
 }

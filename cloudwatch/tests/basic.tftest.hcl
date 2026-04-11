@@ -3,6 +3,6 @@ run "validate" {
 
   variables {
     enabled = false
-
+    log_group_name = "test-value"
   }
 }

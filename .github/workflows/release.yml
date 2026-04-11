@@ -31,10 +31,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # ── Test changed modules before releasing ──────────────────────────────────
+  # ── Test ALL modules before releasing ────────────────────────────────────
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       contents: read
     env:
@@ -45,12 +45,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 2
+          fetch-depth: 1
 
       - name: Setup OpenTofu
         uses: opentofu/setup-opentofu@v2
         with:
           tofu_version: "1.11.0"
+
+      - name: Setup Task
+        uses: arduino/setup-task@v2
 
       - name: Cache OpenTofu provider plugins
         uses: actions/cache@v5
@@ -63,44 +66,8 @@ jobs:
       - name: Create provider plugin cache dir
         run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
 
-      - name: Detect changed modules
-        id: changes
-        run: |
-          CHANGED_DIRS=$(git diff --name-only HEAD~1 HEAD | \
-            grep '\.tf$' | \
-            xargs -I{} dirname {} | \
-            sort -u | \
-            while read dir; do
-              d="$dir"
-              while [ "$d" != "." ] && [ ! -f "$d/main.tf" ]; do
-                d=$(dirname "$d")
-              done
-              if [ -f "$d/main.tf" ] && [ -d "$d/tests" ]; then
-                echo "$d"
-              fi
-            done | sort -u)
-          echo "$CHANGED_DIRS" > /tmp/changed-modules.txt
-          COUNT=$(echo "$CHANGED_DIRS" | grep -c '[^[:space:]]' || echo "0")
-          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
-
-      - name: Run tests on changed modules
-        if: steps.changes.outputs.count != '0'
-        run: |
-          FAILED=0
-          while IFS= read -r mod; do
-            [ -z "$mod" ] && continue
-            echo "Testing module: $mod"
-            cd "$GITHUB_WORKSPACE/$mod"
-            tofu init -backend=false -upgrade -no-color > /dev/null 2>&1
-            if ! tofu test -no-color; then
-              FAILED=$((FAILED + 1))
-            fi
-            cd "$GITHUB_WORKSPACE"
-          done < /tmp/changed-modules.txt
-          if [ $FAILED -gt 0 ]; then
-            echo "$FAILED module(s) failed tests"
-            exit 1
-          fi
+      - name: Run all tests
+        run: task test
 
   # ── Create tag and release ─────────────────────────────────────────────────
   release:

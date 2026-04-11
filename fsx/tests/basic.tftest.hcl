@@ -3,6 +3,7 @@ run "validate" {
 
   variables {
     enabled = false
-
+    name = "test-value"
+    storage_capacity = 1
   }
 }

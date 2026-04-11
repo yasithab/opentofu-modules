@@ -3,6 +3,8 @@ run "validate" {
 
   variables {
     enabled = false
-
+    name = "test-value"
+    bucket = "test-value"
+    key = "test-value"
   }
 }
