@@ -1,52 +1,160 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# AWS Chatbot Slack
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+Provisions AWS Chatbot channel configurations for Slack and Microsoft Teams, with a dedicated IAM role, SNS topic integration, and configurable guardrail policies.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Slack Channel Configuration** - Creates an AWS Chatbot Slack channel configuration with SNS topic subscriptions for delivering notifications (e.g., CloudWatch alarms) directly to Slack
+- **Microsoft Teams Support** - Optionally creates a Teams channel configuration alongside Slack, sharing the same IAM role for unified notification delivery across both platforms
+- **IAM Role Management** - Provisions a dedicated IAM role with the `AWSResourceExplorerReadOnlyAccess` policy for Chatbot to interact with AWS resources
+- **Guardrail Policies** - Restricts which AWS actions Chatbot users can invoke from chat channels using configurable IAM policy guardrails
+- **Configurable Logging** - Supports ERROR, INFO, or NONE logging levels, pushing log entries to Amazon CloudWatch Logs for audit and troubleshooting
+- **Feature Flag** - Toggle all resource creation on or off with the `enabled` variable for per-environment control
 
-## Inputs
+## Usage
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_chatbot_role_name"></a> [chatbot\_role\_name](#input\_chatbot\_role\_name) | Override for the Chatbot IAM role name. Defaults to <name>-chatbot or chatbot-role. | `string` | `null` | no |
-| <a name="input_create_teams_configuration"></a> [create\_teams\_configuration](#input\_create\_teams\_configuration) | Whether to create a Microsoft Teams channel configuration alongside the Slack configuration | `bool` | `false` | no |
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_guardrail_policies"></a> [guardrail\_policies](#input\_guardrail\_policies) | The list of IAM policy ARNs that are applied as channel guardrails. The AWS managed 'AdministratorAccess' policy is applied as a default if this is not set | `list(string)` | `null` | no |
-| <a name="input_logging_level"></a> [logging\_level](#input\_logging\_level) | Specifies the logging level for this configuration: ERROR, INFO or NONE. This property affects the log entries pushed to Amazon CloudWatch logs | `string` | `"NONE"` | no |
-| <a name="input_name"></a> [name](#input\_name) | Name to use for resource naming and tagging. | `string` | `null` | no |
-| <a name="input_slack_channel_configuration_name"></a> [slack\_channel\_configuration\_name](#input\_slack\_channel\_configuration\_name) | The name of the Slack channel configuration. Required when enabled = true. | `string` | `null` | no |
-| <a name="input_slack_channel_id"></a> [slack\_channel\_id](#input\_slack\_channel\_id) | The ID of the Slack channel. Required when enabled = true. | `string` | `null` | no |
-| <a name="input_slack_workspace_id"></a> [slack\_workspace\_id](#input\_slack\_workspace\_id) | The ID of the Slack workspace (team) authorized with AWS Chatbot. Maps to the slack\_team\_id argument in the AWS provider (e.g., T07EA123LEP). Required when enabled = true. | `string` | `null` | no |
-| <a name="input_sns_topic_arns"></a> [sns\_topic\_arns](#input\_sns\_topic\_arns) | ARNs of SNS topics which deliver notifications to AWS Chatbot, for example CloudWatch alarm notifications | `list(string)` | `null` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| <a name="input_teams_channel_id"></a> [teams\_channel\_id](#input\_teams\_channel\_id) | The ID of the Microsoft Teams channel | `string` | `null` | no |
-| <a name="input_teams_channel_name"></a> [teams\_channel\_name](#input\_teams\_channel\_name) | The name of the Microsoft Teams channel | `string` | `null` | no |
-| <a name="input_teams_configuration_name"></a> [teams\_configuration\_name](#input\_teams\_configuration\_name) | The name of the Microsoft Teams channel configuration | `string` | `null` | no |
-| <a name="input_teams_guardrail_policies"></a> [teams\_guardrail\_policies](#input\_teams\_guardrail\_policies) | List of IAM policy ARNs applied as guardrails for the Teams channel | `list(string)` | `null` | no |
-| <a name="input_teams_logging_level"></a> [teams\_logging\_level](#input\_teams\_logging\_level) | Logging level for the Teams channel configuration: ERROR, INFO or NONE | `string` | `"NONE"` | no |
-| <a name="input_teams_sns_topic_arns"></a> [teams\_sns\_topic\_arns](#input\_teams\_sns\_topic\_arns) | ARNs of SNS topics for the Teams channel configuration | `list(string)` | `null` | no |
-| <a name="input_teams_team_id"></a> [teams\_team\_id](#input\_teams\_team\_id) | The ID of the Microsoft Teams team | `string` | `null` | no |
-| <a name="input_teams_team_name"></a> [teams\_team\_name](#input\_teams\_team\_name) | The name of the Microsoft Teams team | `string` | `null` | no |
-| <a name="input_teams_tenant_id"></a> [teams\_tenant\_id](#input\_teams\_tenant\_id) | The ID of the Microsoft Teams tenant | `string` | `null` | no |
-| <a name="input_teams_user_role_required"></a> [teams\_user\_role\_required](#input\_teams\_user\_role\_required) | Enables use of a user role requirement in your Teams chat configuration | `bool` | `false` | no |
-| <a name="input_user_role_required"></a> [user\_role\_required](#input\_user\_role\_required) | Enables use of a user role requirement in your chat configuration | `bool` | `false` | no |
+```hcl
+module "chatbot_slack" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//chatbot-slack?depth=1&ref=master"
 
-## Outputs
+  name = "platform-alerts"
 
-| Name | Description |
-|------|-------------|
-| <a name="output_chatbot_role_arn"></a> [chatbot\_role\_arn](#output\_chatbot\_role\_arn) | ARN of the IAM role used by AWS Chatbot |
-| <a name="output_chatbot_role_name"></a> [chatbot\_role\_name](#output\_chatbot\_role\_name) | Name of the IAM role used by AWS Chatbot |
-| <a name="output_slack_configuration_arn"></a> [slack\_configuration\_arn](#output\_slack\_configuration\_arn) | Amazon Resource Name (ARN) of the Slack channel configuration |
-| <a name="output_slack_configuration_id"></a> [slack\_configuration\_id](#output\_slack\_configuration\_id) | ID of the Slack channel configuration (ARN) |
-| <a name="output_teams_configuration_arn"></a> [teams\_configuration\_arn](#output\_teams\_configuration\_arn) | Amazon Resource Name (ARN) of the Teams channel configuration |
-| <a name="output_teams_configuration_id"></a> [teams\_configuration\_id](#output\_teams\_configuration\_id) | ID of the Teams channel configuration (ARN) |
-<!-- END_TF_DOCS -->
+  slack_channel_configuration_name = "platform-alerts-slack"
+  slack_channel_id                 = "C04AB1CDEFG"
+  slack_workspace_id               = "T07EA123LEP"
+
+  sns_topic_arns = [
+    "arn:aws:sns:us-east-1:123456789012:platform-cloudwatch-alarms",
+  ]
+
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+  }
+}
+```
+
+
+## Examples
+
+## Basic Usage
+
+Sends CloudWatch alarm notifications from an SNS topic to a single Slack channel.
+
+```hcl
+module "chatbot_slack" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//chatbot-slack?depth=1&ref=master"
+
+  enabled = true
+  name    = "platform-alerts"
+
+  slack_channel_configuration_name = "platform-alerts-slack"
+  slack_channel_id                  = "C04AB1CDEFG"
+  slack_workspace_id                = "T07EA123LEP"
+
+  sns_topic_arns = [
+    "arn:aws:sns:us-east-1:123456789012:platform-cloudwatch-alarms",
+  ]
+
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+  }
+}
+```
+
+## With Guardrail Policies and Logging
+
+Restricts what AWS actions Chatbot users can invoke from Slack and enables INFO-level logging for audit purposes.
+
+```hcl
+module "chatbot_slack_restricted" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//chatbot-slack?depth=1&ref=master"
+
+  enabled = true
+  name    = "ops-channel"
+
+  slack_channel_configuration_name = "ops-channel-slack"
+  slack_channel_id                  = "C08XY9ZABCD"
+  slack_workspace_id                = "T07EA123LEP"
+
+  sns_topic_arns = [
+    "arn:aws:sns:us-east-1:123456789012:ops-alerts",
+    "arn:aws:sns:us-east-1:123456789012:security-alerts",
+  ]
+
+  guardrail_policies = [
+    "arn:aws:iam::aws:policy/ReadOnlyAccess",
+  ]
+
+  logging_level      = "INFO"
+  user_role_required = true
+
+  tags = {
+    Environment = "production"
+    Team        = "operations"
+  }
+}
+```
+
+## With Microsoft Teams Configuration
+
+Creates both a Slack channel configuration and a Microsoft Teams channel configuration sharing the same IAM role, useful when notifications must reach both collaboration platforms.
+
+```hcl
+module "chatbot_multi_channel" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//chatbot-slack?depth=1&ref=master"
+
+  enabled = true
+  name    = "incidents"
+
+  # Slack
+  slack_channel_configuration_name = "incidents-slack"
+  slack_channel_id                  = "C01INCIDENT1"
+  slack_workspace_id                = "T07EA123LEP"
+  sns_topic_arns = [
+    "arn:aws:sns:us-east-1:123456789012:incident-alerts",
+  ]
+  logging_level = "ERROR"
+
+  # Microsoft Teams
+  create_teams_configuration = true
+  teams_configuration_name   = "incidents-teams"
+  teams_tenant_id            = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  teams_team_id              = "19:abcdef1234567890abcdef1234567890@thread.skype"
+  teams_team_name            = "Incidents"
+  teams_channel_id           = "19:xyz123abc456def789@thread.skype"
+  teams_channel_name         = "incident-alerts"
+  teams_sns_topic_arns = [
+    "arn:aws:sns:us-east-1:123456789012:incident-alerts",
+  ]
+  teams_logging_level = "ERROR"
+
+  tags = {
+    Environment = "production"
+    Team        = "sre"
+  }
+}
+```
+
+## Disabled (Feature Flag)
+
+Declares the module without creating any resources, useful for toggling notifications per environment.
+
+```hcl
+module "chatbot_slack_dev" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//chatbot-slack?depth=1&ref=master"
+
+  enabled = false
+  name    = "dev-alerts"
+
+  slack_channel_configuration_name = "dev-alerts-slack"
+  slack_channel_id                  = "C09DEVTEST1"
+  slack_workspace_id                = "T07EA123LEP"
+
+  tags = {
+    Environment = "development"
+    Team        = "platform"
+  }
+}
+```

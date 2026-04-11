@@ -82,7 +82,7 @@ action = {
 
 ```hcl
 module "waf" {
-  source = "git::https://github.com/yasithab/opentofu-modules.git//waf?depth=1&ref=v1.0.0"
+  source = "git::https://github.com/yasithab/opentofu-modules.git//waf?depth=1&ref=master"
 
   name  = "my-service-waf"
   scope = "REGIONAL"
@@ -395,66 +395,745 @@ field_to_match = {
 | OpenTofu | >= 1.11.0 |
 | AWS provider | ~> 6.34 |
 
-<!-- BEGIN_TF_DOCS -->
-## Requirements
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+## Examples
 
-## Providers
+## Example 1 - Basic CloudFront WAF (CLOUDFRONT scope)
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+Protect a CloudFront distribution with AWS managed rules and geo restriction.
+CloudFront-scope Web ACLs must be created in `us-east-1`.
 
-## Inputs
+```hcl
+provider "aws" {
+  alias  = "us-east-1"
+  region = "us-east-1"
+}
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_name"></a> [name](#input\_name) | Name of the Web ACL and prefix for related resources. Required. | `string` | n/a | yes |
-| <a name="input_api_keys"></a> [api\_keys](#input\_api\_keys) | Map of API keys to create for application integration (CAPTCHA/Challenge JavaScript API).<br/>Map key is a descriptive name. Each value: { token\_domains = list(string) } | <pre>map(object({<br/>    token_domains = list(string)<br/>  }))</pre> | `{}` | no |
-| <a name="input_association_config"></a> [association\_config](#input\_association\_config) | Configuration for resource type-specific request body inspection size limits.<br/>Structure:<br/>  {<br/>    request\_body = {<br/>      api\_gateway              = { default\_size\_inspection\_limit = "KB\_16" }<br/>      app\_runner\_service       = { default\_size\_inspection\_limit = "KB\_16" }<br/>      cloudfront               = { default\_size\_inspection\_limit = "KB\_16" }<br/>      cognito\_user\_pool        = { default\_size\_inspection\_limit = "KB\_16" }<br/>      verified\_access\_instance = { default\_size\_inspection\_limit = "KB\_16" }<br/>    }<br/>  }<br/>Valid values for default\_size\_inspection\_limit: KB\_16, KB\_32, KB\_48, KB\_64 | `any` | `null` | no |
-| <a name="input_associations"></a> [associations](#input\_associations) | Map of resources to associate with the Web ACL. Map key is a descriptive name,<br/>map value is the resource ARN.<br/>Supported resource types: ALB, API Gateway Stage, AppSync GraphQL API,<br/>App Runner Service, Cognito User Pool, Verified Access Instance.<br/>Note: CloudFront distributions are associated via the distribution's web\_acl\_id attribute. | `map(string)` | `{}` | no |
-| <a name="input_captcha_config"></a> [captcha\_config](#input\_captcha\_config) | Specifies how AWS WAF should handle CAPTCHA evaluations at the Web ACL level. Sets the immunity time in seconds. | <pre>object({<br/>    immunity_time = number<br/>  })</pre> | `null` | no |
-| <a name="input_challenge_config"></a> [challenge\_config](#input\_challenge\_config) | Specifies how AWS WAF should handle challenge evaluations at the Web ACL level. Sets the immunity time in seconds. | <pre>object({<br/>    immunity_time = number<br/>  })</pre> | `null` | no |
-| <a name="input_custom_response_bodies"></a> [custom\_response\_bodies](#input\_custom\_response\_bodies) | List of custom response body definitions that can be referenced by name in block rules.<br/>Each entry: { key = string, content = string, content\_type = string }<br/>content\_type: TEXT\_PLAIN, TEXT\_HTML, or APPLICATION\_JSON | <pre>list(object({<br/>    key          = string<br/>    content      = string<br/>    content_type = string<br/>  }))</pre> | `[]` | no |
-| <a name="input_data_protection_config"></a> [data\_protection\_config](#input\_data\_protection\_config) | Configuration for data protection applied before logging WAF request data.<br/>Structure:<br/>  {<br/>    data\_protection = [<br/>      {<br/>        action                     = "HASH"   # HASH or SUBSTITUTION<br/>        exclude\_rate\_based\_details = optional(bool)<br/>        exclude\_rule\_match\_details = optional(bool)<br/>        fields = [<br/>          {<br/>            field\_type = "QUERY\_STRING"  # QUERY\_STRING, SINGLE\_HEADER, URI\_PATH, etc.<br/>            field\_keys = optional(list(string))  # For SINGLE\_HEADER: list of header names<br/>          }<br/>        ]<br/>      }<br/>    ]<br/>  } | `any` | `null` | no |
-| <a name="input_default_action"></a> [default\_action](#input\_default\_action) | Action to take on requests that don't match any rules. ALLOW or BLOCK. | `string` | `"ALLOW"` | no |
-| <a name="input_default_action_config"></a> [default\_action\_config](#input\_default\_action\_config) | Optional configuration for the default action. Use when you want custom headers on<br/>ALLOW or custom response on BLOCK.<br/><br/>For ALLOW with custom headers:<br/>  { allow = { insert\_headers = [{ name = "x-allowed", value = "true" }] } }<br/><br/>For BLOCK with custom response:<br/>  { block = { response\_code = 403, custom\_response\_body\_key = "restricted" } } | `any` | `null` | no |
-| <a name="input_description"></a> [description](#input\_description) | A friendly description of the Web ACL. | `string` | `null` | no |
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_ip_sets"></a> [ip\_sets](#input\_ip\_sets) | Map of IP sets to create. Map key becomes the IP set name.<br/>Each value: {<br/>  addresses          = list(string)   # CIDR notation<br/>  ip\_address\_version = string         # IPV4 or IPV6<br/>  description        = optional(string)<br/>}<br/>Created IP sets can be referenced by name in rules using ip\_set\_reference\_statement.name. | <pre>map(object({<br/>    addresses          = list(string)<br/>    ip_address_version = string<br/>    description        = optional(string)<br/>  }))</pre> | `{}` | no |
-| <a name="input_logging_destination_arns"></a> [logging\_destination\_arns](#input\_logging\_destination\_arns) | List of ARNs of logging destinations. Supported: CloudWatch Logs log group,<br/>Kinesis Data Firehose delivery stream, S3 bucket.<br/>Names must start with aws-waf-logs-.<br/>When empty, no logging configuration is created. | `list(string)` | `[]` | no |
-| <a name="input_logging_filter"></a> [logging\_filter](#input\_logging\_filter) | Logging filter configuration to selectively log requests. When null, all requests are logged.<br/>Structure:<br/>  {<br/>    default\_behavior = "KEEP" or "DROP"<br/>    filters = [<br/>      {<br/>        behavior    = "KEEP" or "DROP"<br/>        requirement = "MEETS\_ANY" or "MEETS\_ALL"  # default MEETS\_ANY<br/>        conditions  = [<br/>          {<br/>            action\_condition     = { action = "ALLOW" \| "BLOCK" \| "COUNT" \| "CAPTCHA" \| "CHALLENGE" \| "EXCLUDED\_AS\_COUNT" }<br/>            label\_name\_condition = { label\_name = "..." }<br/>          }<br/>        ]<br/>      }<br/>    ]<br/>  } | `any` | `null` | no |
-| <a name="input_logging_redacted_fields"></a> [logging\_redacted\_fields](#input\_logging\_redacted\_fields) | List of fields to redact from logs. Each entry specifies which field to redact:<br/>  { uri\_path = {} }<br/>  { query\_string = {} }<br/>  { method = {} }<br/>  { single\_header = { name = "authorization" } } | `any` | `[]` | no |
-| <a name="input_regex_pattern_sets"></a> [regex\_pattern\_sets](#input\_regex\_pattern\_sets) | Map of regex pattern sets to create. Map key becomes the regex pattern set name.<br/>Each value: {<br/>  regular\_expressions = list(string)<br/>  description         = optional(string)<br/>}<br/>Created sets can be referenced by name in rules using regex\_pattern\_set\_reference\_statement.name. | <pre>map(object({<br/>    regular_expressions = list(string)<br/>    description         = optional(string)<br/>  }))</pre> | `{}` | no |
-| <a name="input_rule_group_associations"></a> [rule\_group\_associations](#input\_rule\_group\_associations) | Map of rule group associations to the Web ACL. Map key is a descriptive name.<br/>When this is non-empty, the rule attribute of the Web ACL is added to lifecycle<br/>ignore\_changes to avoid conflicts between inline rules and associated groups.<br/>Each value: {<br/>  priority = number<br/>  rule\_group\_reference = optional({<br/>    arn  = optional(string)   # Use ARN for external rule groups<br/>    name = optional(string)   # Use name for rule groups created by this module<br/>    rule\_action\_overrides = optional(list({ name=string, action\_to\_use=string }))<br/>  })<br/>  managed\_rule\_group = optional({<br/>    name        = string<br/>    vendor\_name = string   # Defaults to "AWS"<br/>    version     = optional(string)<br/>    rule\_action\_overrides = optional(list({ name=string, action\_to\_use=string }))<br/>  })<br/>  override\_action   = optional(string)   # "none" or "count"<br/>  visibility\_config = optional({<br/>    cloudwatch\_metrics\_enabled = bool<br/>    metric\_name                = string<br/>    sampled\_requests\_enabled   = bool<br/>  })<br/>} | `any` | `{}` | no |
-| <a name="input_rule_groups"></a> [rule\_groups](#input\_rule\_groups) | Map of rule groups to create. Map key becomes the rule group name.<br/>Each value: {<br/>  capacity    = number              # WCU capacity<br/>  description = optional(string)<br/>  rules\_json  = optional(string)    # Raw JSON; takes precedence over rules<br/>  rules       = optional(any)       # Structured rules list (common statement types)<br/>  cloudwatch\_metrics\_enabled = optional(bool)<br/>  metric\_name                = optional(string)<br/>  sampled\_requests\_enabled   = optional(bool)<br/>  custom\_response\_bodies     = optional(list({ key=string, content=string, content\_type=string }))<br/>}<br/>Created rule groups can be referenced by name in rules using rule\_group\_reference\_statement.name. | <pre>map(object({<br/>    capacity                   = number<br/>    description                = optional(string)<br/>    rules_json                 = optional(string)<br/>    rules                      = optional(any)<br/>    cloudwatch_metrics_enabled = optional(bool)<br/>    metric_name                = optional(string)<br/>    sampled_requests_enabled   = optional(bool)<br/>    custom_response_bodies = optional(list(object({<br/>      key          = string<br/>      content      = string<br/>      content_type = string<br/>    })))<br/>  }))</pre> | `{}` | no |
-| <a name="input_rule_json"></a> [rule\_json](#input\_rule\_json) | Raw JSON string of WAFv2 rules to apply to the Web ACL. When set, takes precedence<br/>over the structured rules variable and rule\_json is passed directly to the provider.<br/>Use this for complex rules that exceed the structured variable schema (e.g., deeply<br/>nested and/or/not statements). | `string` | `null` | no |
-| <a name="input_rules"></a> [rules](#input\_rules) | List of WAFv2 rule objects. Only used when rule\_json is null.<br/>Each rule requires: name, priority, statement, and either action or override\_action.<br/>See README for full rule structure reference. | `any` | `[]` | no |
-| <a name="input_scope"></a> [scope](#input\_scope) | Specifies whether the Web ACL is for an AWS CloudFront distribution (CLOUDFRONT) or for a regional application (REGIONAL). CLOUDFRONT scope must be created in us-east-1. | `string` | `"REGIONAL"` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | A map of tags to assign to all resources. | `map(string)` | `{}` | no |
-| <a name="input_token_domains"></a> [token\_domains](#input\_token\_domains) | List of domains to accept in web requests that contain a CAPTCHA or challenge token. | `list(string)` | `[]` | no |
-| <a name="input_visibility_config"></a> [visibility\_config](#input\_visibility\_config) | Visibility configuration for the Web ACL. Also used as the default for rules that<br/>do not specify their own visibility\_config.<br/>Defaults: cloudwatch\_metrics\_enabled=true, metric\_name=var.name, sampled\_requests\_enabled=true. | <pre>object({<br/>    cloudwatch_metrics_enabled = bool<br/>    metric_name                = string<br/>    sampled_requests_enabled   = bool<br/>  })</pre> | <pre>{<br/>  "cloudwatch_metrics_enabled": true,<br/>  "metric_name": null,<br/>  "sampled_requests_enabled": true<br/>}</pre> | no |
+module "waf_cloudfront" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//waf?depth=1&ref=master"
 
-## Outputs
+  providers = {
+    aws = aws.us-east-1
+  }
 
-| Name | Description |
-|------|-------------|
-| <a name="output_api_keys"></a> [api\_keys](#output\_api\_keys) | Map of API key name to api\_key value for all API keys created by this module. |
-| <a name="output_association_ids"></a> [association\_ids](#output\_association\_ids) | Map of association name to resource ID for all Web ACL associations created by this module. |
-| <a name="output_ip_set_arns"></a> [ip\_set\_arns](#output\_ip\_set\_arns) | Map of IP set name to ARN for all IP sets created by this module. |
-| <a name="output_ip_set_ids"></a> [ip\_set\_ids](#output\_ip\_set\_ids) | Map of IP set name to ID for all IP sets created by this module. |
-| <a name="output_regex_pattern_set_arns"></a> [regex\_pattern\_set\_arns](#output\_regex\_pattern\_set\_arns) | Map of regex pattern set name to ARN for all sets created by this module. |
-| <a name="output_regex_pattern_set_ids"></a> [regex\_pattern\_set\_ids](#output\_regex\_pattern\_set\_ids) | Map of regex pattern set name to ID for all sets created by this module. |
-| <a name="output_rule_group_arns"></a> [rule\_group\_arns](#output\_rule\_group\_arns) | Map of rule group name to ARN for all rule groups created by this module. |
-| <a name="output_rule_group_association_ids"></a> [rule\_group\_association\_ids](#output\_rule\_group\_association\_ids) | Map of rule group association name to resource ID for all rule group associations created by this module. |
-| <a name="output_rule_group_ids"></a> [rule\_group\_ids](#output\_rule\_group\_ids) | Map of rule group name to ID for all rule groups created by this module. |
-| <a name="output_web_acl_application_integration_url"></a> [web\_acl\_application\_integration\_url](#output\_web\_acl\_application\_integration\_url) | The URL to use in SDK integrations with managed rule groups (for CAPTCHA and challenge actions). |
-| <a name="output_web_acl_arn"></a> [web\_acl\_arn](#output\_web\_acl\_arn) | The ARN of the Web ACL. Use this ARN to associate the Web ACL with a CloudFront distribution, ALB, or API Gateway stage. |
-| <a name="output_web_acl_capacity"></a> [web\_acl\_capacity](#output\_web\_acl\_capacity) | The web ACL capacity units (WCUs) currently used by this web ACL. |
-| <a name="output_web_acl_id"></a> [web\_acl\_id](#output\_web\_acl\_id) | The unique identifier of the Web ACL. |
-| <a name="output_web_acl_name"></a> [web\_acl\_name](#output\_web\_acl\_name) | The name of the Web ACL. |
-<!-- END_TF_DOCS -->
+  name  = "my-cloudfront-waf"
+  scope = "CLOUDFRONT"
+
+  default_action = "ALLOW"
+
+  rules = [
+    # AWS Core Rule Set - block common exploits
+    {
+      name            = "AWSManagedRulesCommonRuleSet"
+      priority        = 10
+      override_action = "none"
+      statement = {
+        managed_rule_group_statement = {
+          name        = "AWSManagedRulesCommonRuleSet"
+          vendor_name = "AWS"
+        }
+      }
+      visibility_config = {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "AWSManagedRulesCommonRuleSet"
+        sampled_requests_enabled   = true
+      }
+    },
+
+    # Block traffic from sanctioned countries
+    {
+      name     = "GeoBlockRule"
+      priority = 20
+      action   = "block"
+      statement = {
+        geo_match_statement = {
+          country_codes = ["KP", "IR", "CU", "SY"]
+        }
+      }
+    },
+
+    # AWS Known Bad Inputs Rule Set
+    {
+      name            = "AWSManagedRulesKnownBadInputsRuleSet"
+      priority        = 30
+      override_action = "none"
+      statement = {
+        managed_rule_group_statement = {
+          name        = "AWSManagedRulesKnownBadInputsRuleSet"
+          vendor_name = "AWS"
+        }
+      }
+    },
+  ]
+
+  visibility_config = {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "my-cloudfront-waf"
+    sampled_requests_enabled   = true
+  }
+
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+  }
+}
+```
+
+---
+
+## Example 2 - ALB WAF (REGIONAL scope)
+
+Protect an Application Load Balancer with rate limiting, an inline IP blocklist,
+and a custom block response page.
+
+```hcl
+module "waf_alb" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//waf?depth=1&ref=master"
+
+  name  = "my-alb-waf"
+  scope = "REGIONAL"
+
+  default_action = "ALLOW"
+
+  # Inline IP set - referenced by name in rules below
+  ip_sets = {
+    blocked-ips = {
+      ip_address_version = "IPV4"
+      addresses = [
+        "192.0.2.0/24",
+        "198.51.100.44/32",
+        "203.0.113.0/25",
+      ]
+      description = "Known bad actor IPs"
+    }
+  }
+
+  custom_response_bodies = [
+    {
+      key          = "access-denied"
+      content      = "{\"error\": \"Access Denied\", \"code\": 403}"
+      content_type = "APPLICATION_JSON"
+    }
+  ]
+
+  rules = [
+    # Block IPs from inline ip_set by name
+    {
+      name     = "BlockBadIPs"
+      priority = 5
+      action = {
+        block = {
+          response_code            = 403
+          custom_response_body_key = "access-denied"
+        }
+      }
+      statement = {
+        ip_set_reference_statement = {
+          name = "blocked-ips"   # references the inline ip_set above
+        }
+      }
+    },
+
+    # Rate limit: max 1000 requests per 5 minutes per IP
+    {
+      name     = "RateLimitPerIP"
+      priority = 10
+      action   = "block"
+      statement = {
+        rate_based_statement = {
+          limit                 = 1000
+          aggregate_key_type    = "IP"
+          evaluation_window_sec = 300
+        }
+      }
+    },
+
+    # AWS Managed Rules - Amazon IP reputation list
+    {
+      name            = "AWSManagedRulesAmazonIpReputationList"
+      priority        = 20
+      override_action = "none"
+      statement = {
+        managed_rule_group_statement = {
+          name        = "AWSManagedRulesAmazonIpReputationList"
+          vendor_name = "AWS"
+        }
+      }
+    },
+  ]
+
+  # Associate with an ALB
+  associations = {
+    my-alb = "arn:aws:elasticloadbalancing:ap-southeast-1:123456789012:loadbalancer/app/my-alb/abc123"
+  }
+
+  logging_destination_arns = [
+    "arn:aws:logs:ap-southeast-1:123456789012:log-group:aws-waf-logs-alb"
+  ]
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+---
+
+## Example 3 - API Gateway WAF
+
+Protect an API Gateway stage with SQL injection protection, XSS protection,
+and body size constraints.
+
+```hcl
+module "waf_apigw" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//waf?depth=1&ref=master"
+
+  name        = "my-api-waf"
+  scope       = "REGIONAL"
+  description = "WAF for REST API Gateway"
+
+  default_action = "ALLOW"
+
+  rules = [
+    # Reject oversized request bodies (> 8 KB)
+    {
+      name     = "BlockLargeBody"
+      priority = 5
+      action   = "block"
+      statement = {
+        size_constraint_statement = {
+          comparison_operator = "GT"
+          size                = 8192
+          field_to_match = {
+            body = { oversize_handling = "MATCH" }
+          }
+          text_transformations = [{ priority = 0, type = "NONE" }]
+        }
+      }
+    },
+
+    # SQL injection protection on body and query string
+    {
+      name     = "SQLiProtection"
+      priority = 10
+      action   = "block"
+      statement = {
+        or_statement = {
+          statements = [
+            {
+              sqli_match_statement = {
+                sensitivity_level = "HIGH"
+                field_to_match    = { body = { oversize_handling = "CONTINUE" } }
+                text_transformations = [
+                  { priority = 0, type = "URL_DECODE" },
+                  { priority = 1, type = "HTML_ENTITY_DECODE" },
+                ]
+              }
+            },
+            {
+              sqli_match_statement = {
+                sensitivity_level = "HIGH"
+                field_to_match    = { query_string = {} }
+                text_transformations = [{ priority = 0, type = "URL_DECODE" }]
+              }
+            },
+          ]
+        }
+      }
+    },
+
+    # XSS protection
+    {
+      name     = "XSSProtection"
+      priority = 20
+      action   = "block"
+      statement = {
+        xss_match_statement = {
+          field_to_match = { body = { oversize_handling = "CONTINUE" } }
+          text_transformations = [
+            { priority = 0, type = "URL_DECODE" },
+            { priority = 1, type = "HTML_ENTITY_DECODE" },
+          ]
+        }
+      }
+    },
+
+    # AWS Core Rule Set (count mode for visibility)
+    {
+      name            = "AWSManagedRulesCommonRuleSet"
+      priority        = 50
+      override_action = "count"
+      statement = {
+        managed_rule_group_statement = {
+          name        = "AWSManagedRulesCommonRuleSet"
+          vendor_name = "AWS"
+          rule_action_overrides = [
+            { name = "SizeRestrictions_BODY", action_to_use = "count" },
+          ]
+        }
+      }
+    },
+  ]
+
+  # Increase body inspection limit for API payloads
+  association_config = {
+    request_body = {
+      api_gateway = {
+        default_size_inspection_limit = "KB_64"
+      }
+    }
+  }
+
+  associations = {
+    my-api-stage = "arn:aws:apigateway:ap-southeast-1::/restapis/abc123xyz/stages/prod"
+  }
+
+  tags = {
+    Environment = "production"
+    Service     = "api"
+  }
+}
+```
+
+---
+
+## Example 4 - Advanced WAF with Bot Control, ATP, Labels, and Logical Statements
+
+Full-featured WAF demonstrating inline IP sets, regex pattern sets, Bot Control managed
+rule group with machine learning, Account Takeover Protection (ATP), label matching,
+and/or/not logical statements, and logging to Kinesis Firehose with filtering.
+
+```hcl
+module "waf_advanced" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//waf?depth=1&ref=master"
+
+  name        = "my-advanced-waf"
+  scope       = "REGIONAL"
+  description = "Advanced WAF with bot control and ATP"
+
+  default_action = "ALLOW"
+
+  # Inline IP sets
+  ip_sets = {
+    office-allowlist = {
+      ip_address_version = "IPV4"
+      addresses          = ["203.0.113.0/24"]
+      description        = "Office egress IPs - always allowed"
+    }
+    scraper-blocklist = {
+      ip_address_version = "IPV4"
+      addresses          = ["198.51.100.0/28"]
+      description        = "Known scraper subnets"
+    }
+  }
+
+  # Inline regex pattern sets
+  regex_pattern_sets = {
+    bad-user-agents = {
+      regular_expressions = [
+        "(?i)curl/",
+        "(?i)python-requests/",
+        "(?i)go-http-client/",
+      ]
+      description = "Non-browser user agents to challenge"
+    }
+  }
+
+  custom_response_bodies = [
+    {
+      key          = "bot-blocked"
+      content      = "Automated request detected."
+      content_type = "TEXT_PLAIN"
+    }
+  ]
+
+  captcha_config = {
+    immunity_time = 300
+  }
+
+  rules = [
+    # Always allow office IPs - highest priority
+    {
+      name     = "AllowOfficeIPs"
+      priority = 1
+      action   = "allow"
+      statement = {
+        ip_set_reference_statement = {
+          name = "office-allowlist"
+        }
+      }
+    },
+
+    # Block known scrapers
+    {
+      name     = "BlockScrapers"
+      priority = 5
+      action   = "block"
+      statement = {
+        ip_set_reference_statement = {
+          name = "scraper-blocklist"
+        }
+      }
+    },
+
+    # Challenge suspicious user agents using an inline regex pattern set
+    {
+      name     = "ChallengeSuspiciousUA"
+      priority = 10
+      action   = "captcha"
+      statement = {
+        and_statement = {
+          statements = [
+            {
+              regex_pattern_set_reference_statement = {
+                name           = "bad-user-agents"
+                field_to_match = { single_header = { name = "user-agent" } }
+                text_transformations = [{ priority = 0, type = "LOWERCASE" }]
+              }
+            },
+            {
+              not_statement = {
+                statement = {
+                  ip_set_reference_statement = {
+                    name = "office-allowlist"
+                  }
+                }
+              }
+            },
+          ]
+        }
+      }
+    },
+
+    # Bot Control - targeted inspection with machine learning
+    {
+      name            = "AWSManagedRulesBotControlRuleSet"
+      priority        = 20
+      override_action = "none"
+      statement = {
+        managed_rule_group_statement = {
+          name        = "AWSManagedRulesBotControlRuleSet"
+          vendor_name = "AWS"
+          managed_rule_group_configs = {
+            aws_managed_rules_bot_control_rule_set = {
+              inspection_level        = "TARGETED"
+              enable_machine_learning = true
+            }
+          }
+          rule_action_overrides = [
+            { name = "TGT_VolumetricIpTokenAbsent", action_to_use = "captcha" },
+          ]
+        }
+      }
+    },
+
+    # Account Takeover Prevention on /auth/login endpoint
+    {
+      name            = "AWSManagedRulesATPRuleSet"
+      priority        = 30
+      override_action = "none"
+      statement = {
+        managed_rule_group_statement = {
+          name        = "AWSManagedRulesATPRuleSet"
+          vendor_name = "AWS"
+          managed_rule_group_configs = {
+            aws_managed_rules_atp_rule_set = {
+              login_path = "/auth/login"
+              request_inspection = {
+                payload_type   = "JSON"
+                username_field = { identifier = "/email" }
+                password_field = { identifier = "/password" }
+              }
+              response_inspection = {
+                status_code = {
+                  success_codes = [200]
+                  failure_codes = [401, 403]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    # Block requests with a bot label set by Bot Control
+    {
+      name     = "BlockDetectedBots"
+      priority = 40
+      action   = "block"
+      statement = {
+        label_match_statement = {
+          scope = "LABEL"
+          key   = "awswaf:managed:aws:bot-control:bot:category:scraper"
+        }
+      }
+    },
+
+    # Rate limit login endpoint by IP + URI path
+    {
+      name     = "RateLimitLogin"
+      priority = 50
+      action   = "block"
+      statement = {
+        rate_based_statement = {
+          limit                 = 100
+          aggregate_key_type    = "CUSTOM_KEYS"
+          evaluation_window_sec = 300
+          custom_keys = [
+            { ip = {} },
+            {
+              uri_path = {
+                text_transformations = [{ priority = 0, type = "LOWERCASE" }]
+              }
+            },
+          ]
+          scope_down_statement = {
+            byte_match_statement = {
+              positional_constraint = "STARTS_WITH"
+              search_string         = "/auth/"
+              field_to_match        = { uri_path = {} }
+              text_transformations  = [{ priority = 0, type = "LOWERCASE" }]
+            }
+          }
+        }
+      }
+    },
+
+    # Core Rule Set - always on, block mode
+    {
+      name            = "AWSManagedRulesCommonRuleSet"
+      priority        = 60
+      override_action = "none"
+      statement = {
+        managed_rule_group_statement = {
+          name        = "AWSManagedRulesCommonRuleSet"
+          vendor_name = "AWS"
+        }
+      }
+    },
+  ]
+
+  # Logging to Kinesis Firehose - drop ALLOW, keep BLOCK/CAPTCHA/CHALLENGE/COUNT
+  logging_destination_arns = [
+    "arn:aws:firehose:ap-southeast-1:123456789012:deliverystream/aws-waf-logs-advanced"
+  ]
+
+  logging_filter = {
+    default_behavior = "DROP"
+    filters = [
+      {
+        behavior    = "KEEP"
+        requirement = "MEETS_ANY"
+        conditions = [
+          { action_condition = { action = "BLOCK" } },
+          { action_condition = { action = "CAPTCHA" } },
+          { action_condition = { action = "CHALLENGE" } },
+          { action_condition = { action = "COUNT" } },
+        ]
+      }
+    ]
+  }
+
+  logging_redacted_fields = [
+    { single_header = { name = "authorization" } },
+    { single_header = { name = "cookie" } },
+  ]
+
+  tags = {
+    Environment = "production"
+    Compliance  = "PCI-DSS"
+  }
+}
+```
+
+---
+
+## Example 5 - Rule JSON Escape Hatch
+
+Use `rule_json` for rules that require more than 1 level of AND/OR/NOT nesting, which
+exceeds what the structured `rules` variable can express. The JSON is passed directly
+to the AWS provider.
+
+```hcl
+module "waf_json_rules" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//waf?depth=1&ref=master"
+
+  name  = "my-complex-waf"
+  scope = "REGIONAL"
+
+  default_action = "ALLOW"
+
+  # When rule_json is set, the structured rules variable is ignored entirely.
+  rule_json = jsonencode([
+    {
+      Name     = "ComplexNestedRule"
+      Priority = 10
+      Action = {
+        Block = {}
+      }
+      Statement = {
+        AndStatement = {
+          Statements = [
+            {
+              GeoMatchStatement = {
+                CountryCodes = ["CN", "RU"]
+              }
+            },
+            {
+              NotStatement = {
+                Statement = {
+                  IPSetReferenceStatement = {
+                    ARN = "arn:aws:wafv2:ap-southeast-1:123456789012:regional/ipset/allowlist/abc123"
+                  }
+                }
+              }
+            },
+            {
+              OrStatement = {
+                Statements = [
+                  {
+                    ByteMatchStatement = {
+                      SearchString         = "/api/v1/sensitive"
+                      PositionalConstraint = "STARTS_WITH"
+                      FieldToMatch         = { UriPath = {} }
+                      TextTransformations  = [{ Priority = 0, Type = "LOWERCASE" }]
+                    }
+                  },
+                  {
+                    SizeConstraintStatement = {
+                      ComparisonOperator = "GT"
+                      Size               = 65536
+                      FieldToMatch       = { Body = { OversizeHandling = "MATCH" } }
+                      TextTransformations = [{ Priority = 0, Type = "NONE" }]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+      VisibilityConfig = {
+        CloudWatchMetricsEnabled = true
+        MetricName               = "ComplexNestedRule"
+        SampledRequestsEnabled   = true
+      }
+    }
+  ])
+
+  visibility_config = {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "my-complex-waf"
+    sampled_requests_enabled   = true
+  }
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+---
+
+## Example 6 - Continuous Deployment / Staging with Rule Group Associations
+
+Use `rule_group_associations` to attach pre-built managed rule groups and inline rule
+groups to the Web ACL independently of the inline `rules`. When `rule_group_associations`
+is non-empty, the Web ACL's `rule` attribute is automatically added to `lifecycle
+ignore_changes` to avoid conflicts.
+
+```hcl
+module "waf_app" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//waf?depth=1&ref=master"
+
+  name  = "my-app-waf"
+  scope = "REGIONAL"
+
+  # Core inline rules that are always active
+  rules = [
+    {
+      name     = "AllowHealthCheck"
+      priority = 1
+      action   = "allow"
+      statement = {
+        byte_match_statement = {
+          positional_constraint = "EXACTLY"
+          search_string         = "/health"
+          field_to_match        = { uri_path = {} }
+          text_transformations  = [{ priority = 0, type = "NONE" }]
+        }
+      }
+    },
+  ]
+
+  # Inline rule group created by this module invocation
+  rule_groups = {
+    custom-rules = {
+      capacity    = 100
+      description = "Custom business logic rules"
+      rules = [
+        {
+          name     = "BlockAdminPath"
+          priority = 1
+          action   = "block"
+          statement = {
+            byte_match_statement = {
+              positional_constraint = "STARTS_WITH"
+              search_string         = "/wp-admin"
+              field_to_match        = { uri_path = {} }
+              text_transformations  = [{ priority = 0, type = "LOWERCASE" }]
+            }
+          }
+        },
+      ]
+    }
+  }
+
+  # Attach managed rule groups and the inline rule group via associations.
+  # The Web ACL's rule attribute is added to lifecycle ignore_changes automatically.
+  rule_group_associations = {
+    core-managed = {
+      priority = 100
+      managed_rule_group = {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+        rule_action_overrides = [
+          { name = "SizeRestrictions_BODY", action_to_use = "count" },
+        ]
+      }
+      override_action = "none"
+    }
+
+    ip-reputation = {
+      priority = 110
+      managed_rule_group = {
+        name        = "AWSManagedRulesAmazonIpReputationList"
+        vendor_name = "AWS"
+      }
+      override_action = "none"
+    }
+
+    custom-inline = {
+      priority = 200
+      rule_group_reference = {
+        # Reference the inline rule group created above by name
+        name = "custom-rules"
+      }
+      override_action = "none"
+    }
+  }
+
+  associations = {
+    production-alb = "arn:aws:elasticloadbalancing:ap-southeast-1:123456789012:loadbalancer/app/prod-alb/def456"
+  }
+
+  logging_destination_arns = [
+    "arn:aws:logs:ap-southeast-1:123456789012:log-group:aws-waf-logs-app"
+  ]
+
+  tags = {
+    Environment = "production"
+    ManagedBy   = "terraform"
+  }
+}
+```

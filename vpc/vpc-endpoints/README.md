@@ -1,40 +1,190 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# VPC Endpoints
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+Creates AWS VPC Interface and Gateway endpoints with support for custom security groups, DNS options, subnet configurations, and endpoint policies.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Interface and Gateway Endpoints** - Supports both Interface and Gateway VPC endpoint types, as well as Resource and ServiceNetwork types
+- **Security Group Management** - Optionally creates a dedicated security group with configurable ingress and egress rules for Interface endpoints
+- **Private DNS** - Configure private DNS settings including DNS record IP type and inbound resolver endpoint preferences
+- **Flexible Endpoint Map** - Define multiple endpoints in a single map with per-endpoint overrides for subnets, security groups, and policies
+- **Subnet Configuration** - Assign specific IPv4/IPv6 addresses to endpoint network interfaces via subnet configuration blocks
 
-## Inputs
+## Usage
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_create_security_group"></a> [create\_security\_group](#input\_create\_security\_group) | Determines if a security group is created | `bool` | `false` | no |
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_endpoints"></a> [endpoints](#input\_endpoints) | A map of interface and/or gateway endpoints containing their properties and configurations | `any` | `{}` | no |
-| <a name="input_security_group_description"></a> [security\_group\_description](#input\_security\_group\_description) | Description of the security group created | `string` | `null` | no |
-| <a name="input_security_group_ids"></a> [security\_group\_ids](#input\_security\_group\_ids) | Default security group IDs to associate with the VPC endpoints | `list(string)` | `[]` | no |
-| <a name="input_security_group_name"></a> [security\_group\_name](#input\_security\_group\_name) | Name to use on security group created. Conflicts with `security_group_name_prefix` | `string` | `null` | no |
-| <a name="input_security_group_name_prefix"></a> [security\_group\_name\_prefix](#input\_security\_group\_name\_prefix) | Name prefix to use on security group created. Conflicts with `security_group_name` | `string` | `null` | no |
-| <a name="input_security_group_rules"></a> [security\_group\_rules](#input\_security\_group\_rules) | Security group rules to add to the security group created | `any` | `{}` | no |
-| <a name="input_security_group_tags"></a> [security\_group\_tags](#input\_security\_group\_tags) | A map of additional tags to add to the security group created | `map(string)` | `{}` | no |
-| <a name="input_subnet_ids"></a> [subnet\_ids](#input\_subnet\_ids) | Default subnets IDs to associate with the VPC endpoints | `list(string)` | `[]` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| <a name="input_timeouts"></a> [timeouts](#input\_timeouts) | Define maximum timeout for creating, updating, and deleting VPC endpoint resources | `map(string)` | `{}` | no |
-| <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | The ID of the VPC in which the endpoint will be used | `string` | `null` | no |
+```hcl
+module "vpc_endpoints" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//vpc/vpc-endpoints?depth=1&ref=master"
 
-## Outputs
+  vpc_id     = "vpc-0123456789abcdef0"
+  subnet_ids = ["subnet-aaa", "subnet-bbb"]
 
-| Name | Description |
-|------|-------------|
-| <a name="output_endpoints"></a> [endpoints](#output\_endpoints) | Array containing the full resource object and attributes for all endpoints created |
-| <a name="output_security_group_arn"></a> [security\_group\_arn](#output\_security\_group\_arn) | Amazon Resource Name (ARN) of the security group |
-| <a name="output_security_group_id"></a> [security\_group\_id](#output\_security\_group\_id) | ID of the security group |
-<!-- END_TF_DOCS -->
+  endpoints = {
+    s3 = {
+      service      = "s3"
+      service_type = "Gateway"
+      route_table_ids = ["rtb-aaa"]
+    }
+    ssm = {
+      service             = "ssm"
+      private_dns_enabled = true
+    }
+  }
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+
+## Examples
+
+## Basic Usage
+
+Create gateway endpoints for S3 and DynamoDB.
+
+```hcl
+module "vpc_endpoints" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//vpc/vpc-endpoints?depth=1&ref=master"
+
+  enabled = true
+
+  vpc_id = "vpc-0a1b2c3d4e5f67890"
+
+  endpoints = {
+    s3 = {
+      service      = "s3"
+      service_type = "Gateway"
+      route_table_ids = [
+        "rtb-0a1b2c3d4e5f67891",
+        "rtb-0a1b2c3d4e5f67892",
+      ]
+    }
+    dynamodb = {
+      service      = "dynamodb"
+      service_type = "Gateway"
+      route_table_ids = [
+        "rtb-0a1b2c3d4e5f67891",
+        "rtb-0a1b2c3d4e5f67892",
+      ]
+    }
+  }
+
+  tags = {
+    Team        = "platform"
+    Environment = "production"
+    ManagedBy   = "terraform"
+  }
+}
+```
+
+## Interface Endpoints with Shared Security Group
+
+Create interface endpoints for ECR, Secrets Manager, and SSM with a shared security group.
+
+```hcl
+module "vpc_endpoints" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//vpc/vpc-endpoints?depth=1&ref=master"
+
+  enabled = true
+
+  vpc_id     = "vpc-0a1b2c3d4e5f67890"
+  subnet_ids = ["subnet-0a1b2c3d4e5f67891", "subnet-0a1b2c3d4e5f67892", "subnet-0a1b2c3d4e5f67893"]
+
+  create_security_group              = true
+  security_group_name_prefix         = "vpc-endpoints"
+  security_group_description         = "Security group for VPC interface endpoints"
+  security_group_rules = {
+    https-from-vpc = {
+      type        = "ingress"
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = "10.10.0.0/16"
+      description = "Allow HTTPS from VPC CIDR"
+    }
+  }
+
+  endpoints = {
+    ecr_api = {
+      service             = "ecr.api"
+      private_dns_enabled = true
+    }
+    ecr_dkr = {
+      service             = "ecr.dkr"
+      private_dns_enabled = true
+    }
+    secretsmanager = {
+      service             = "secretsmanager"
+      private_dns_enabled = true
+    }
+    ssm = {
+      service             = "ssm"
+      private_dns_enabled = true
+    }
+    ssmmessages = {
+      service             = "ssmmessages"
+      private_dns_enabled = true
+    }
+  }
+
+  tags = {
+    Team        = "platform"
+    Environment = "production"
+    ManagedBy   = "terraform"
+  }
+}
+```
+
+## Mixed Gateway and Interface Endpoints
+
+Combine gateway endpoints with interface endpoints for a comprehensive private connectivity setup.
+
+```hcl
+module "vpc_endpoints" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//vpc/vpc-endpoints?depth=1&ref=master"
+
+  enabled = true
+
+  vpc_id     = "vpc-0b2c3d4e5f6789abc"
+  subnet_ids = ["subnet-0b2c3d4e5f6789abd", "subnet-0b2c3d4e5f6789abe"]
+
+  security_group_ids = ["sg-0a1b2c3d4e5f67890"]
+
+  endpoints = {
+    s3 = {
+      service      = "s3"
+      service_type = "Gateway"
+      route_table_ids = ["rtb-0b2c3d4e5f6789abf"]
+    }
+    dynamodb = {
+      service      = "dynamodb"
+      service_type = "Gateway"
+      route_table_ids = ["rtb-0b2c3d4e5f6789abf"]
+    }
+    kms = {
+      service             = "kms"
+      private_dns_enabled = true
+    }
+    logs = {
+      service             = "logs"
+      private_dns_enabled = true
+    }
+    monitoring = {
+      service             = "monitoring"
+      private_dns_enabled = true
+    }
+    sts = {
+      service             = "sts"
+      private_dns_enabled = true
+    }
+  }
+
+  tags = {
+    Team        = "platform"
+    Environment = "production"
+    ManagedBy   = "terraform"
+  }
+}
+```

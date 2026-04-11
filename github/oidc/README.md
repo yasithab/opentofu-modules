@@ -1,28 +1,105 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# GitHub OIDC
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+Registers OpenID Connect (OIDC) identity providers in your AWS account, enabling federated authentication from external identity providers such as GitHub Actions without long-lived credentials.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Multiple Providers** - Register one or more OIDC providers in a single module call
+- **Automatic Thumbprint Handling** - For GitHub Actions OIDC, AWS validates tokens via its trusted CA library, so thumbprints are handled automatically
+- **Per-Provider Tags** - Apply custom tags to individual OIDC provider resources
 
-## Inputs
+## Usage
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_openid_providers"></a> [openid\_providers](#input\_openid\_providers) | Map of OpenID Connect Providers | <pre>map(object({<br/>    url             = string<br/>    client_id_list  = list(string)<br/>    thumbprint_list = optional(list(string), [])<br/>    tags            = optional(map(string), {})<br/>  }))</pre> | `{}` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+```hcl
+module "github_oidc" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//github/oidc?depth=1&ref=master"
 
-## Outputs
+  openid_providers = {
+    github = {
+      url            = "https://token.actions.githubusercontent.com"
+      client_id_list = ["sts.amazonaws.com"]
+    }
+  }
+}
+```
 
-| Name | Description |
-|------|-------------|
-| <a name="output_openid_provider_arns"></a> [openid\_provider\_arns](#output\_openid\_provider\_arns) | Map of OpenID Connect Provider ARNs |
-<!-- END_TF_DOCS -->
+
+## Examples
+
+## Basic Usage
+
+Register the GitHub Actions OIDC provider so that GitHub Actions workflows can authenticate with AWS.
+
+```hcl
+module "github_oidc" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//github/oidc?depth=1&ref=master"
+
+  enabled = true
+
+  openid_providers = {
+    github = {
+      url            = "https://token.actions.githubusercontent.com"
+      client_id_list = ["sts.amazonaws.com"]
+    }
+  }
+
+  tags = {
+    Environment = "global"
+    ManagedBy   = "terraform"
+  }
+}
+```
+
+## With Explicit Thumbprint
+
+Supply an explicit thumbprint list instead of relying on automatic CA detection.
+
+```hcl
+module "github_oidc_with_thumbprint" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//github/oidc?depth=1&ref=master"
+
+  enabled = true
+
+  openid_providers = {
+    github = {
+      url             = "https://token.actions.githubusercontent.com"
+      client_id_list  = ["sts.amazonaws.com"]
+      thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+    }
+  }
+
+  tags = {
+    Environment = "global"
+  }
+}
+```
+
+## Multiple OIDC Providers
+
+Register both GitHub and an internal provider in one module call.
+
+```hcl
+module "oidc_providers" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//github/oidc?depth=1&ref=master"
+
+  enabled = true
+
+  openid_providers = {
+    github = {
+      url            = "https://token.actions.githubusercontent.com"
+      client_id_list = ["sts.amazonaws.com"]
+      tags           = { Provider = "github" }
+    }
+    gitlab = {
+      url            = "https://gitlab.example.com"
+      client_id_list = ["sts.amazonaws.com"]
+      thumbprint_list = ["a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"]
+      tags           = { Provider = "gitlab" }
+    }
+  }
+
+  tags = {
+    ManagedBy = "terraform"
+  }
+}
+```

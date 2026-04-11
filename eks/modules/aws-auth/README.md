@@ -1,30 +1,142 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# EKS aws-auth ConfigMap
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
-| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~> 2.0 |
+Submodule for managing the `aws-auth` ConfigMap in an EKS cluster. This ConfigMap controls IAM-to-Kubernetes RBAC mappings, allowing IAM roles, users, and accounts to authenticate with the cluster.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | ~> 2.0 |
+- **ConfigMap creation** - Optionally creates the `aws-auth` ConfigMap for scenarios where it does not yet exist (e.g., self-managed node groups only)
+- **ConfigMap management** - Manages the data within an existing `aws-auth` ConfigMap without recreating it
+- **IAM role mapping** - Maps IAM roles to Kubernetes RBAC groups via `mapRoles`
+- **IAM user mapping** - Maps IAM users to Kubernetes RBAC groups via `mapUsers`
+- **Account mapping** - Maps AWS account IDs to Kubernetes RBAC groups via `mapAccounts`
+
+## Usage
+
+```hcl
+module "aws_auth" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//eks/modules/aws-auth?depth=1&ref=master"
+
+  manage_aws_auth_configmap = true
+
+  aws_auth_roles = [
+    {
+      rolearn  = "arn:aws:iam::123456789012:role/my-node-role"
+      username = "system:node:{{EC2PrivateDNSName}}"
+      groups   = ["system:bootstrappers", "system:nodes"]
+    },
+  ]
+
+  aws_auth_users = [
+    {
+      userarn  = "arn:aws:iam::123456789012:user/admin"
+      username = "admin"
+      groups   = ["system:masters"]
+    },
+  ]
+}
+```
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_aws_auth_accounts"></a> [aws\_auth\_accounts](#input\_aws\_auth\_accounts) | List of account maps to add to the aws-auth configmap | `list(any)` | `[]` | no |
-| <a name="input_aws_auth_roles"></a> [aws\_auth\_roles](#input\_aws\_auth\_roles) | List of role maps to add to the aws-auth configmap | `list(any)` | `[]` | no |
-| <a name="input_aws_auth_users"></a> [aws\_auth\_users](#input\_aws\_auth\_users) | List of user maps to add to the aws-auth configmap | `list(any)` | `[]` | no |
-| <a name="input_create_aws_auth_configmap"></a> [create\_aws\_auth\_configmap](#input\_create\_aws\_auth\_configmap) | Determines whether to create the aws-auth configmap. NOTE - this is only intended for scenarios where the configmap does not exist (i.e. - when using only self-managed node groups). Most users should use `manage_aws_auth_configmap` | `bool` | `false` | no |
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Controls if resources should be created (affects all resources) | `bool` | `true` | no |
-| <a name="input_manage_aws_auth_configmap"></a> [manage\_aws\_auth\_configmap](#input\_manage\_aws\_auth\_configmap) | Determines whether to manage the aws-auth configmap | `bool` | `true` | no |
+| enabled | Controls if resources should be created | `bool` | `true` | no |
+| create_aws_auth_configmap | Determines whether to create the aws-auth ConfigMap. Only intended for scenarios where it does not exist | `bool` | `false` | no |
+| manage_aws_auth_configmap | Determines whether to manage the aws-auth ConfigMap | `bool` | `true` | no |
+| aws_auth_roles | List of role maps to add to the aws-auth ConfigMap | `list(any)` | `[]` | no |
+| aws_auth_users | List of user maps to add to the aws-auth ConfigMap | `list(any)` | `[]` | no |
+| aws_auth_accounts | List of account maps to add to the aws-auth ConfigMap | `list(any)` | `[]` | no |
 
-## Outputs
 
-No outputs.
-<!-- END_TF_DOCS -->
+## Examples
+
+## Basic Usage
+
+Manage the `aws-auth` ConfigMap to grant IAM roles access to an EKS cluster.
+
+```hcl
+module "aws_auth" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//eks/modules/aws-auth?depth=1&ref=master"
+
+  enabled                 = true
+  manage_aws_auth_configmap = true
+
+  aws_auth_roles = [
+    {
+      rolearn  = "arn:aws:iam::123456789012:role/NodeGroupRole"
+      username = "system:node:{{EC2PrivateDNSName}}"
+      groups   = ["system:bootstrappers", "system:nodes"]
+    }
+  ]
+}
+```
+
+## With Admin IAM Roles and Users
+
+Grant cluster-admin access to multiple IAM roles and individual IAM users.
+
+```hcl
+module "aws_auth" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//eks/modules/aws-auth?depth=1&ref=master"
+
+  enabled                   = true
+  manage_aws_auth_configmap = true
+
+  aws_auth_roles = [
+    {
+      rolearn  = "arn:aws:iam::123456789012:role/NodeGroupRole"
+      username = "system:node:{{EC2PrivateDNSName}}"
+      groups   = ["system:bootstrappers", "system:nodes"]
+    },
+    {
+      rolearn  = "arn:aws:iam::123456789012:role/PlatformAdminRole"
+      username = "platform-admin"
+      groups   = ["system:masters"]
+    },
+    {
+      rolearn  = "arn:aws:iam::123456789012:role/ReadOnlyRole"
+      username = "readonly"
+      groups   = ["eks-readonly"]
+    }
+  ]
+
+  aws_auth_users = [
+    {
+      userarn  = "arn:aws:iam::123456789012:user/jsmith"
+      username = "jsmith"
+      groups   = ["system:masters"]
+    }
+  ]
+}
+```
+
+## Creating the ConfigMap for Self-Managed Node Groups
+
+Create the `aws-auth` ConfigMap from scratch when it does not yet exist (self-managed node groups only scenario).
+
+```hcl
+module "aws_auth" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//eks/modules/aws-auth?depth=1&ref=master"
+
+  enabled                    = true
+  create_aws_auth_configmap  = true
+  manage_aws_auth_configmap  = true
+
+  aws_auth_roles = [
+    {
+      rolearn  = "arn:aws:iam::123456789012:role/SelfManagedNodeRole"
+      username = "system:node:{{EC2PrivateDNSName}}"
+      groups   = ["system:bootstrappers", "system:nodes"]
+    },
+    {
+      rolearn  = "arn:aws:iam::123456789012:role/PlatformAdminRole"
+      username = "platform-admin"
+      groups   = ["system:masters"]
+    }
+  ]
+
+  aws_auth_accounts = [
+    "987654321098"
+  ]
+}
+```

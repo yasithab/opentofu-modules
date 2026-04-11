@@ -1,30 +1,61 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# CloudWatch Query Definition
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+OpenTofu module to create an AWS CloudWatch Logs Insights query definition. Saves reusable queries that can be executed against log groups from the CloudWatch Logs Insights console or API.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Saved Queries** - Store frequently used CloudWatch Logs Insights queries for reuse
+- **Log Group Scoping** - Optionally scope queries to specific log groups, or leave unscoped to apply to all log groups
+- **Lifecycle Management** - Toggle resource creation with the `enabled` variable
+
+## Usage
+
+```hcl
+module "error_query" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch/modules/query-definition?depth=1&ref=master"
+
+  name         = "ErrorsByService"
+  query_string = <<-EOT
+    fields @timestamp, @message
+    | filter @message like /ERROR/
+    | stats count(*) as errorCount by bin(5m)
+    | sort errorCount desc
+  EOT
+
+  log_group_names = [
+    "/aws/ecs/my-service",
+    "/aws/lambda/my-function"
+  ]
+}
+```
+
+### Global Query (All Log Groups)
+
+```hcl
+module "global_query" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch/modules/query-definition?depth=1&ref=master"
+
+  name         = "RecentLogs"
+  query_string = <<-EOT
+    fields @timestamp, @message
+    | sort @timestamp desc
+    | limit 100
+  EOT
+}
+```
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_name"></a> [name](#input\_name) | The name of the CloudWatch Logs Insights query definition. | `string` | n/a | yes |
-| <a name="input_query_string"></a> [query\_string](#input\_query\_string) | The query to save as a CloudWatch Logs Insights query definition. | `string` | n/a | yes |
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_log_group_names"></a> [log\_group\_names](#input\_log\_group\_names) | Specific log groups to use with the query. If not provided, the query applies to all log groups. | `list(string)` | `null` | no |
+|------|-------------|------|---------|----------|
+| `name` | The name of the CloudWatch Logs Insights query definition | `string` | n/a | yes |
+| `query_string` | The query to save as a CloudWatch Logs Insights query definition | `string` | n/a | yes |
+| `log_group_names` | Specific log groups to use with the query (null applies to all log groups) | `list(string)` | `null` | no |
+| `enabled` | Set to false to prevent the module from creating any resources | `bool` | `true` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| <a name="output_query_definition_id"></a> [query\_definition\_id](#output\_query\_definition\_id) | The ID of the CloudWatch Logs Insights query definition. |
-| <a name="output_query_definition_name"></a> [query\_definition\_name](#output\_query\_definition\_name) | The name of the CloudWatch Logs Insights query definition. |
-<!-- END_TF_DOCS -->
+| `query_definition_id` | The ID of the CloudWatch Logs Insights query definition |
+| `query_definition_name` | The name of the CloudWatch Logs Insights query definition |

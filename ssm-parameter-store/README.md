@@ -1,49 +1,141 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# SSM Parameter Store
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+OpenTofu module to create a single AWS SSM Parameter Store parameter with automatic type detection, write-only secret support, and lifecycle management.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Single Parameter Management** - Creates one SSM parameter with support for String, StringList, and SecureString types
+- **Automatic Type Detection** - Infers the parameter type from the input: uses SecureString when `secure_type` is true, StringList when `parameter_values` is provided, and String otherwise
+- **Write-Only Values** - Supports `value_wo` and `value_wo_version` to store secrets that are never persisted to state, keeping sensitive data out of OpenTofu state files
+- **StringList Support** - Accepts a list of string values via `parameter_values`, which are automatically JSON-encoded for native SSM StringList storage
+- **KMS Encryption** - Optional KMS key for encrypting SecureString parameters
+- **Ignore Value Changes** - Optionally ignore future external changes to parameter values after initial creation, useful for secrets rotated outside of OpenTofu
+- **Validation** - Supports allowed pattern regex validation and data type constraints (text, aws:ssm:integration, aws:ec2:image)
+- **Lifecycle Management** - Toggle resource creation on or off with the `enabled` variable
 
-## Inputs
+## Usage
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_allowed_pattern"></a> [allowed\_pattern](#input\_allowed\_pattern) | Regular expression used to validate the parameter value. | `string` | `null` | no |
-| <a name="input_data_type"></a> [data\_type](#input\_data\_type) | Data type of the parameter. Valid values: text, aws:ssm:integration and aws:ec2:image for AMI format. | `string` | `null` | no |
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_ignore_value_changes"></a> [ignore\_value\_changes](#input\_ignore\_value\_changes) | Whether to create SSM Parameter and ignore changes in value | `bool` | `false` | no |
-| <a name="input_key_id"></a> [key\_id](#input\_key\_id) | KMS key ID or ARN for encrypting a parameter (when type is SecureString) | `string` | `null` | no |
-| <a name="input_parameter_description"></a> [parameter\_description](#input\_parameter\_description) | Description of the parameter | `string` | `null` | no |
-| <a name="input_parameter_name"></a> [parameter\_name](#input\_parameter\_name) | Name of SSM parameter | `string` | `null` | no |
-| <a name="input_parameter_value"></a> [parameter\_value](#input\_parameter\_value) | Value of the parameter | `string` | `null` | no |
-| <a name="input_parameter_values"></a> [parameter\_values](#input\_parameter\_values) | List of values of the parameter (will be jsonencoded to store as string natively in SSM) | `list(string)` | `[]` | no |
-| <a name="input_secure_type"></a> [secure\_type](#input\_secure\_type) | Whether the type of the value should be considered as secure or not? | `bool` | `false` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| <a name="input_tier"></a> [tier](#input\_tier) | Parameter tier to assign to the parameter. If not specified, will use the default parameter tier for the region. Valid tiers are Standard, Advanced, and Intelligent-Tiering. Downgrading an Advanced tier parameter to Standard will recreate the resource. | `string` | `null` | no |
-| <a name="input_type"></a> [type](#input\_type) | Type of the parameter. Valid types are String, StringList and SecureString. | `string` | `null` | no |
-| <a name="input_value_wo"></a> [value\_wo](#input\_value\_wo) | Write-only value of the parameter. Never stored to state. Requires value\_wo\_version to trigger updates. Use instead of parameter\_value for SecureString parameters to keep values out of state. | `string` | `null` | no |
-| <a name="input_value_wo_version"></a> [value\_wo\_version](#input\_value\_wo\_version) | Increment this number to trigger an update when using value\_wo. Required when value\_wo is set. | `number` | `null` | no |
+```hcl
+module "ssm_parameter" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ssm-parameter-store?depth=1&ref=master"
 
-## Outputs
+  parameter_name        = "/app/config/api-key"
+  parameter_value       = "my-secret-key"
+  parameter_description = "API key for external service"
+  secure_type           = true
+  key_id                = "arn:aws:kms:us-east-1:123456789012:key/abcd-1234"
 
-| Name | Description |
-|------|-------------|
-| <a name="output_insecure_value"></a> [insecure\_value](#output\_insecure\_value) | Insecure value of the parameter |
-| <a name="output_raw_value"></a> [raw\_value](#output\_raw\_value) | Raw value of the parameter (as it is stored in SSM). Use 'value' output to get jsondecode'd value |
-| <a name="output_secure_type"></a> [secure\_type](#output\_secure\_type) | Whether SSM parameter is a SecureString or not? |
-| <a name="output_secure_value"></a> [secure\_value](#output\_secure\_value) | Secure value of the parameter |
-| <a name="output_ssm_parameter_arn"></a> [ssm\_parameter\_arn](#output\_ssm\_parameter\_arn) | The ARN of the parameter |
-| <a name="output_ssm_parameter_name"></a> [ssm\_parameter\_name](#output\_ssm\_parameter\_name) | Name of the parameter |
-| <a name="output_ssm_parameter_tags_all"></a> [ssm\_parameter\_tags\_all](#output\_ssm\_parameter\_tags\_all) | All tags used for the parameter |
-| <a name="output_ssm_parameter_type"></a> [ssm\_parameter\_type](#output\_ssm\_parameter\_type) | Type of the parameter |
-| <a name="output_ssm_parameter_version"></a> [ssm\_parameter\_version](#output\_ssm\_parameter\_version) | Version of the parameter |
-| <a name="output_value"></a> [value](#output\_value) | Parameter value after jsondecode(). Probably this is what you are looking for |
-<!-- END_TF_DOCS -->
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+
+## Examples
+
+## Basic String Parameter
+
+Store a plain configuration value as a `String` type SSM parameter.
+
+```hcl
+module "ssm_param_region" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ssm-parameter-store?depth=1&ref=master"
+
+  enabled = true
+
+  parameter_name        = "/production/myapp/aws_region"
+  parameter_value       = "eu-west-1"
+  parameter_description = "AWS region for MyApp"
+  type                  = "String"
+
+  tags = {
+    Environment = "production"
+    Application = "myapp"
+    Team        = "platform"
+  }
+}
+```
+
+## Secure String Parameter with KMS
+
+Store a sensitive value encrypted with a customer-managed KMS key, keeping the value out of Terraform state using `value_wo`.
+
+```hcl
+module "ssm_param_db_password" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ssm-parameter-store?depth=1&ref=master"
+
+  enabled = true
+
+  parameter_name        = "/production/myapp/db_password"
+  parameter_description = "Database master password for MyApp"
+  type                  = "SecureString"
+  secure_type           = true
+
+  value_wo         = var.db_master_password
+  value_wo_version = 1
+
+  key_id = "arn:aws:kms:eu-west-1:123456789012:key/mrk-00000000000000000000000000000000"
+
+  tags = {
+    Environment = "production"
+    DataClass   = "confidential"
+    Team        = "platform"
+  }
+}
+```
+
+## String List Parameter
+
+Store a comma-separated list of subnet IDs as a `StringList` parameter for consumption by EC2 Auto Scaling groups.
+
+```hcl
+module "ssm_param_subnets" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ssm-parameter-store?depth=1&ref=master"
+
+  enabled = true
+
+  parameter_name        = "/production/infra/private_subnet_ids"
+  parameter_description = "Private subnet IDs for production VPC"
+  type                  = "StringList"
+
+  parameter_values = [
+    "subnet-0aaaa111111111111",
+    "subnet-0bbbb222222222222",
+    "subnet-0cccc333333333333",
+  ]
+
+  tags = {
+    Environment = "production"
+    Team        = "networking"
+  }
+}
+```
+
+## Advanced Tier Parameter with Ignore Value Changes
+
+Create an Advanced tier parameter for values larger than 4KB, and ignore future external changes so the application can update the value without Terraform reverting it.
+
+```hcl
+module "ssm_param_config_blob" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ssm-parameter-store?depth=1&ref=master"
+
+  enabled = true
+
+  parameter_name        = "/production/myapp/service_config"
+  parameter_description = "Full service configuration blob managed by the application"
+  type                  = "String"
+  tier                  = "Advanced"
+
+  parameter_value      = jsonencode({ version = "1.0", features = {} })
+  ignore_value_changes = true
+
+  allowed_pattern = ".*"
+
+  tags = {
+    Environment = "production"
+    ManagedBy   = "application"
+    Team        = "platform"
+  }
+}
+```

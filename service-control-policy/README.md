@@ -1,60 +1,168 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# Service Control Policy
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+OpenTofu module to create and attach AWS Organizations Service Control Policies (SCPs) with a library of pre-built security guardrails.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Pre-Built Security Guardrails** - Toggle-based boolean variables to enable common SCP rules without writing any policy JSON
+- **Deny Leaving Organization** - Prevents member accounts from leaving the AWS Organization
+- **Deny Creating IAM Users** - Blocks creation of IAM users and access keys to enforce federated access
+- **Deny Deleting KMS Keys** - Protects KMS keys from deletion or scheduled deletion
+- **Deny Deleting Route53 Zones** - Prevents accidental deletion of Route53 hosted zones
+- **Deny Deleting CloudWatch Logs** - Protects VPC flow logs, log groups, and log streams from deletion
+- **Deny Root Account** - Blocks all actions by the root user
+- **Protect S3 Buckets** - Prevents deletion of specified S3 buckets and objects
+- **Deny S3 Public Access** - Blocks changes to S3 bucket public access settings
+- **Protect IAM Roles** - Prevents modification or deletion of specified IAM roles
+- **Limit EC2 Instance Types** - Restricts EC2 usage to an approved list of instance types
+- **Limit Regions** - Restricts operations to approved AWS regions while exempting global services
+- **Require S3 Encryption** - Denies unencrypted S3 object uploads and enforces encryption headers
+- **Deny Network Modifications** - Blocks changes to network ACLs and security groups
+- **Deny VPC Modifications** - Prevents creation, deletion, or modification of VPCs and peering connections
+- **Require MFA** - Enforces multi-factor authentication for sensitive IAM actions
+- **Enforce CloudTrail Logging** - Prevents stopping or deleting CloudTrail trails
+- **Enforce Resource Tagging** - Denies resource creation without required tags on specified actions
+- **Deny All Access** - Option to create a full deny-all SCP for quarantine scenarios
+- **Flexible Attachment** - Attach the policy to specific OUs via `attach_ous`, or to the entire organization root by setting `attach_to_org = true`
+- **Skip Destroy** - Option to protect the policy from accidental deletion during destroy operations
 
-## Inputs
+## Usage
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_allowed_ec2_instance_types"></a> [allowed\_ec2\_instance\_types](#input\_allowed\_ec2\_instance\_types) | EC2 instance types allowed for use | `list(string)` | `[]` | no |
-| <a name="input_allowed_regions"></a> [allowed\_regions](#input\_allowed\_regions) | AWS Regions allowed for use | `list(string)` | `[]` | no |
-| <a name="input_attach_ous"></a> [attach\_ous](#input\_attach\_ous) | List of OU IDs to attach the tag policies to | `list(string)` | `[]` | no |
-| <a name="input_attach_to_org"></a> [attach\_to\_org](#input\_attach\_to\_org) | Whether to attach the tag policy to the organization (set to false if you want to attach to OUs) | `bool` | `false` | no |
-| <a name="input_deny_all"></a> [deny\_all](#input\_deny\_all) | If false, create a combined policy. If true, deny all access | `bool` | `false` | no |
-| <a name="input_deny_creating_iam_users"></a> [deny\_creating\_iam\_users](#input\_deny\_creating\_iam\_users) | Deny creating IAM users | `bool` | `false` | no |
-| <a name="input_deny_deleting_cloudwatch_logs"></a> [deny\_deleting\_cloudwatch\_logs](#input\_deny\_deleting\_cloudwatch\_logs) | Deny deleting CloudWatch logs | `bool` | `false` | no |
-| <a name="input_deny_deleting_kms_keys"></a> [deny\_deleting\_kms\_keys](#input\_deny\_deleting\_kms\_keys) | Deny deleting KMS keys | `bool` | `false` | no |
-| <a name="input_deny_deleting_route53_zones"></a> [deny\_deleting\_route53\_zones](#input\_deny\_deleting\_route53\_zones) | Deny deleting Route53 zones | `bool` | `false` | no |
-| <a name="input_deny_leaving_orgs"></a> [deny\_leaving\_orgs](#input\_deny\_leaving\_orgs) | Deny leaving AWS Organizations | `bool` | `false` | no |
-| <a name="input_deny_network_modifications"></a> [deny\_network\_modifications](#input\_deny\_network\_modifications) | Deny modifications to network ACLs and security groups | `bool` | `false` | no |
-| <a name="input_deny_root_account"></a> [deny\_root\_account](#input\_deny\_root\_account) | Deny root account access | `bool` | `false` | no |
-| <a name="input_deny_s3_bucket_public_access_resources"></a> [deny\_s3\_bucket\_public\_access\_resources](#input\_deny\_s3\_bucket\_public\_access\_resources) | S3 bucket resource ARNs to block public access | `list(string)` | `[]` | no |
-| <a name="input_deny_s3_buckets_public_access"></a> [deny\_s3\_buckets\_public\_access](#input\_deny\_s3\_buckets\_public\_access) | Deny S3 buckets public access | `bool` | `false` | no |
-| <a name="input_deny_vpc_modifications"></a> [deny\_vpc\_modifications](#input\_deny\_vpc\_modifications) | Deny modifications to VPC configurations | `bool` | `false` | no |
-| <a name="input_description"></a> [description](#input\_description) | Description of the tag policy | `string` | `null` | no |
-| <a name="input_enforce_cloudtrail_logging"></a> [enforce\_cloudtrail\_logging](#input\_enforce\_cloudtrail\_logging) | Enforce continuous CloudTrail logging | `bool` | `false` | no |
-| <a name="input_enforce_resource_tagging"></a> [enforce\_resource\_tagging](#input\_enforce\_resource\_tagging) | Enforce tagging on resource creation | `bool` | `false` | no |
-| <a name="input_limit_ec2_instance_types"></a> [limit\_ec2\_instance\_types](#input\_limit\_ec2\_instance\_types) | Limit allowed EC2 instance types | `bool` | `false` | no |
-| <a name="input_limit_regions"></a> [limit\_regions](#input\_limit\_regions) | Limit allowed AWS regions | `bool` | `false` | no |
-| <a name="input_name"></a> [name](#input\_name) | Name to use for resource naming and tagging. | `string` | `null` | no |
-| <a name="input_protect_iam_role_resources"></a> [protect\_iam\_role\_resources](#input\_protect\_iam\_role\_resources) | IAM role resource ARNs to protect | `list(string)` | `[]` | no |
-| <a name="input_protect_iam_roles"></a> [protect\_iam\_roles](#input\_protect\_iam\_roles) | Protect IAM roles from modification | `bool` | `false` | no |
-| <a name="input_protect_s3_bucket_resources"></a> [protect\_s3\_bucket\_resources](#input\_protect\_s3\_bucket\_resources) | S3 bucket resource ARNs to protect | `list(string)` | `[]` | no |
-| <a name="input_protect_s3_buckets"></a> [protect\_s3\_buckets](#input\_protect\_s3\_buckets) | Protect S3 buckets from deletion | `bool` | `false` | no |
-| <a name="input_require_mfa"></a> [require\_mfa](#input\_require\_mfa) | Require Multi-Factor Authentication for sensitive actions | `bool` | `false` | no |
-| <a name="input_require_s3_encryption"></a> [require\_s3\_encryption](#input\_require\_s3\_encryption) | Require S3 bucket encryption | `bool` | `false` | no |
-| <a name="input_required_tag_keys"></a> [required\_tag\_keys](#input\_required\_tag\_keys) | List of tags to enforce on resources | `list(string)` | `[]` | no |
-| <a name="input_skip_destroy"></a> [skip\_destroy](#input\_skip\_destroy) | If set to true, the policy will not be deleted when the resource is destroyed. This is useful to prevent accidental deletion of SCPs that are attached to the organization. | `bool` | `false` | no |
-| <a name="input_tag_enforcement_actions"></a> [tag\_enforcement\_actions](#input\_tag\_enforcement\_actions) | List of actions to enforce tagging on | `list(string)` | `[]` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+```hcl
+module "scp" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//service-control-policy?depth=1&ref=master"
 
-## Outputs
+  name        = "security-guardrails"
+  description = "Baseline security guardrails for all accounts"
 
-| Name | Description |
-|------|-------------|
-| <a name="output_attached_org_root_id"></a> [attached\_org\_root\_id](#output\_attached\_org\_root\_id) | Organization root ID the policy is attached to if the policy is attached to the root |
-| <a name="output_attached_ou_ids"></a> [attached\_ou\_ids](#output\_attached\_ou\_ids) | List of OU IDs the policy is attached to |
-| <a name="output_policy_arn"></a> [policy\_arn](#output\_policy\_arn) | The ARN of the created SCP |
-| <a name="output_policy_id"></a> [policy\_id](#output\_policy\_id) | ID of the created tag policy |
-| <a name="output_policy_type"></a> [policy\_type](#output\_policy\_type) | The type of the policy |
-<!-- END_TF_DOCS -->
+  deny_leaving_orgs          = true
+  deny_creating_iam_users    = true
+  deny_root_account          = true
+  enforce_cloudtrail_logging = true
+  require_s3_encryption      = true
+
+  limit_regions   = true
+  allowed_regions = ["us-east-1", "us-west-2"]
+
+  attach_ous = ["ou-abc1-12345678"]
+
+  tags = {
+    Environment = "organization"
+  }
+}
+```
+
+
+## Examples
+
+## Basic Policy: Deny Root Account and Leaving the Organisation
+
+Create a foundational SCP that prevents the use of root credentials and stops member accounts from leaving the AWS Organisation, attached to specific OUs.
+
+```hcl
+module "scp_baseline" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//service-control-policy?depth=1&ref=master"
+
+  name        = "scp-baseline-guardrails"
+  description = "Baseline guardrails applied to all workload OUs"
+
+  deny_root_account  = true
+  deny_leaving_orgs  = true
+
+  attach_ous = [
+    "ou-abcd-12345678",
+    "ou-efgh-87654321",
+  ]
+
+  tags = {
+    Environment = "all"
+    Team        = "security"
+  }
+}
+```
+
+## Security Hardening Policy
+
+Enforce CloudTrail logging, require MFA for sensitive IAM actions, deny KMS key deletion, and protect critical S3 buckets from accidental removal.
+
+```hcl
+module "scp_security" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//service-control-policy?depth=1&ref=master"
+
+  name        = "scp-security-hardening"
+  description = "Security hardening controls for production OU"
+
+  enforce_cloudtrail_logging = true
+  require_mfa                = true
+  deny_deleting_kms_keys     = true
+  deny_deleting_route53_zones = true
+  deny_deleting_cloudwatch_logs = true
+
+  protect_s3_buckets = true
+  protect_s3_bucket_resources = [
+    "arn:aws:s3:::my-cloudtrail-logs-prod",
+    "arn:aws:s3:::my-cloudtrail-logs-prod/*",
+    "arn:aws:s3:::my-compliance-archive-prod",
+    "arn:aws:s3:::my-compliance-archive-prod/*",
+  ]
+
+  skip_destroy = true
+
+  attach_ous = ["ou-abcd-11111111"]
+
+  tags = {
+    Environment = "production"
+    Team        = "security"
+    Sensitivity = "critical"
+  }
+}
+```
+
+## Region Restriction Policy
+
+Limit all account activity to approved AWS regions, preventing accidental or unauthorised resource creation in other regions.
+
+```hcl
+module "scp_region_lock" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//service-control-policy?depth=1&ref=master"
+
+  name        = "scp-region-restriction"
+  description = "Restrict workloads to approved AWS regions only"
+
+  limit_regions   = true
+  allowed_regions = ["eu-west-1", "eu-central-1", "us-east-1"]
+
+  attach_ous = [
+    "ou-abcd-12345678",
+    "ou-efgh-87654321",
+  ]
+
+  tags = {
+    Environment = "all"
+    Team        = "platform"
+  }
+}
+```
+
+## Deny All - Emergency Lockout Policy
+
+Create a deny-all SCP used as an emergency lockout for a compromised or decommissioned OU.
+
+```hcl
+module "scp_deny_all" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//service-control-policy?depth=1&ref=master"
+
+  name        = "scp-emergency-lockout"
+  description = "Deny all actions - used for emergency account isolation"
+
+  deny_all = true
+
+  attach_ous = ["ou-abcd-99999999"]
+
+  tags = {
+    Environment = "quarantine"
+    Team        = "security"
+    Reason      = "incident-response"
+  }
+}
+```

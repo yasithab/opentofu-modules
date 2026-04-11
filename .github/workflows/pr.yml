@@ -12,11 +12,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ── 1. Format + generate docs ─────────────────────────────────────────────
+  # ── 1. Format ─────────────────────────────────────────────────────────────
   # Runs first. If it pushes a fixup commit the concurrency group cancels this
   # run and the new synchronize event starts a fresh one, so validate/lint/
   # security always run on fully-formatted code.
-  format-generate:
+  format:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -38,28 +38,8 @@ jobs:
     - name: Setup Task
       uses: arduino/setup-task@v2
 
-    - name: Cache terraform-docs binary
-      id: cache-tfdocs
-      uses: actions/cache@v5
-      with:
-        path: /usr/local/bin/terraform-docs
-        key: terraform-docs-v0.19.0-linux-amd64
-
-    - name: Install terraform-docs
-      if: steps.cache-tfdocs.outputs.cache-hit != 'true'
-      run: |
-        version="v0.19.0"
-        curl -sSLo /tmp/terraform-docs.tar.gz \
-          "https://github.com/terraform-docs/terraform-docs/releases/download/${version}/terraform-docs-${version}-linux-amd64.tar.gz"
-        tar -xzf /tmp/terraform-docs.tar.gz -C /tmp terraform-docs
-        sudo mv /tmp/terraform-docs /usr/local/bin/
-        sudo chmod +x /usr/local/bin/terraform-docs
-
     - name: Format Code
       run: task format
-
-    - name: Generate Docs
-      run: task generate
 
     - name: Commit changes
       run: |
@@ -67,7 +47,7 @@ jobs:
         git config --global user.email 'action@github.com'
         git add .
         if [ -n "$(git status --porcelain)" ]; then
-          git commit -m "chore: apply tofu fmt and terraform-docs"
+          git commit -m "chore: apply tofu fmt"
           git push
         fi
 
@@ -75,7 +55,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [format-generate]
+    needs: [format]
     permissions:
       contents: read
     env:
@@ -145,7 +125,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [format-generate]
+    needs: [format]
     permissions:
       contents: read
 
@@ -208,7 +188,7 @@ jobs:
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [format-generate]
+    needs: [format]
     permissions:
       contents: read
 

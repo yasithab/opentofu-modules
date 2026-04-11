@@ -26,5 +26,7 @@ module "wrapper" {
   secret_binary                    = try(each.value.secret_binary, var.defaults.secret_binary, null)
   secret_string                    = try(each.value.secret_string, var.defaults.secret_string, null)
   source_policy_documents          = try(each.value.source_policy_documents, var.defaults.source_policy_documents, [])
+  secret_string_wo                 = try(each.value.secret_string_wo, var.defaults.secret_string_wo, null)
+  secret_string_wo_version         = try(each.value.secret_string_wo_version, var.defaults.secret_string_wo_version, null)
   version_stages                   = try(each.value.version_stages, var.defaults.version_stages, null)
 }

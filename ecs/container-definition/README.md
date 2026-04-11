@@ -1,81 +1,247 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# ECS Container Definition
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+OpenTofu module to create an ECS container definition with an optional CloudWatch log group. Generates the container definition JSON object used by ECS task definitions, with sensible defaults for common settings.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Full Container Definition** - Supports all ECS container definition parameters including image, CPU, memory, port mappings, environment variables, secrets, health checks, and more
+- **CloudWatch Logging** - Automatically configures the `awslogs` log driver with a managed CloudWatch log group
+- **ECS Exec Support** - When `enable_execute_command` is enabled, automatically sets `initProcessEnabled` in Linux parameters
+- **Environment Variables and Secrets** - Pass plaintext environment variables and reference SSM Parameter Store or Secrets Manager values
+- **Health Check Defaults** - Provides sensible defaults for container health checks (30s interval, 3 retries, 5s timeout)
+- **Read-Only Root Filesystem** - Enabled by default for improved security on Linux containers
+- **Windows Support** - Automatically excludes Linux-only parameters when `operating_system_family` is not LINUX
+- **Log Group Security** - Optional KMS encryption for CloudWatch log groups via `cloudwatch_log_group_kms_key_id` and deletion protection via `cloudwatch_log_group_deletion_protection_enabled`
+
+## Usage
+
+```hcl
+module "container_definition" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ecs/container-definition?depth=1&ref=master"
+
+  name    = "my-app"
+  image   = "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app:latest"
+  service = "my-service"
+
+  cpu    = 512
+  memory = 1024
+
+  port_mappings = [
+    {
+      name          = "http"
+      containerPort = 8080
+      protocol      = "tcp"
+    }
+  ]
+
+  environment = [
+    {
+      name  = "APP_ENV"
+      value = "production"
+    }
+  ]
+
+  secrets = [
+    {
+      name      = "DB_PASSWORD"
+      valueFrom = "arn:aws:secretsmanager:us-east-1:123456789012:secret:db-password"
+    }
+  ]
+
+  health_check = {
+    command = ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+  }
+
+  enable_execute_command = true
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+### Sidecar Container
+
+```hcl
+module "sidecar" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ecs/container-definition?depth=1&ref=master"
+
+  name      = "datadog-agent"
+  image     = "public.ecr.aws/datadog/agent:latest"
+  service   = "my-service"
+  essential = false
+
+  port_mappings = [
+    {
+      containerPort = 8126
+      protocol      = "tcp"
+    }
+  ]
+
+  environment = [
+    {
+      name  = "DD_APM_ENABLED"
+      value = "true"
+    }
+  ]
+}
+```
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_cloudwatch_log_group_class"></a> [cloudwatch\_log\_group\_class](#input\_cloudwatch\_log\_group\_class) | Specified the log class of the log group. Possible values are: STANDARD or INFREQUENT\_ACCESS | `string` | `null` | no |
-| <a name="input_cloudwatch_log_group_deletion_protection_enabled"></a> [cloudwatch\_log\_group\_deletion\_protection\_enabled](#input\_cloudwatch\_log\_group\_deletion\_protection\_enabled) | Whether to enable deletion protection on the CloudWatch log group. If enabled, the log group cannot be deleted. | `bool` | `null` | no |
-| <a name="input_cloudwatch_log_group_kms_key_id"></a> [cloudwatch\_log\_group\_kms\_key\_id](#input\_cloudwatch\_log\_group\_kms\_key\_id) | If a KMS Key ARN is set, this key will be used to encrypt the corresponding log group. Please be sure that the KMS Key has an appropriate key policy (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/encrypt-log-data-kms.html) | `string` | `null` | no |
-| <a name="input_cloudwatch_log_group_name"></a> [cloudwatch\_log\_group\_name](#input\_cloudwatch\_log\_group\_name) | Custom name of CloudWatch log group for a service associated with the container definition | `string` | `null` | no |
-| <a name="input_cloudwatch_log_group_retention_in_days"></a> [cloudwatch\_log\_group\_retention\_in\_days](#input\_cloudwatch\_log\_group\_retention\_in\_days) | Number of days to retain log events. Default is 30 days | `number` | `30` | no |
-| <a name="input_cloudwatch_log_group_skip_destroy"></a> [cloudwatch\_log\_group\_skip\_destroy](#input\_cloudwatch\_log\_group\_skip\_destroy) | Set to true to prevent the log group from being deleted on module destroy. Preserves container logs. | `bool` | `false` | no |
-| <a name="input_cloudwatch_log_group_use_name_prefix"></a> [cloudwatch\_log\_group\_use\_name\_prefix](#input\_cloudwatch\_log\_group\_use\_name\_prefix) | Determines whether the log group name should be used as a prefix | `bool` | `false` | no |
-| <a name="input_command"></a> [command](#input\_command) | The command that's passed to the container | `list(string)` | `[]` | no |
-| <a name="input_cpu"></a> [cpu](#input\_cpu) | The number of cpu units to reserve for the container. This is optional for tasks using Fargate launch type and the total amount of `cpu` of all containers in a task will need to be lower than the task-level cpu value | `number` | `null` | no |
-| <a name="input_create_cloudwatch_log_group"></a> [create\_cloudwatch\_log\_group](#input\_create\_cloudwatch\_log\_group) | Determines whether a log group is created by this module. If not, AWS will automatically create one if logging is enabled | `bool` | `true` | no |
-| <a name="input_credential_specs"></a> [credential\_specs](#input\_credential\_specs) | A list of ARNs in SSM or Amazon S3 to a credential spec (CredSpec) file that configures the container for Active Directory authentication. Only valid for Windows containers | `list(string)` | `[]` | no |
-| <a name="input_dependencies"></a> [dependencies](#input\_dependencies) | The dependencies defined for container startup and shutdown. A container can contain multiple dependencies. When a dependency is defined for container startup, for container shutdown it is reversed. The condition can be one of START, COMPLETE, SUCCESS or HEALTHY | <pre>list(object({<br/>    condition     = string<br/>    containerName = string<br/>  }))</pre> | `[]` | no |
-| <a name="input_disable_networking"></a> [disable\_networking](#input\_disable\_networking) | When this parameter is true, networking is disabled within the container | `bool` | `null` | no |
-| <a name="input_dns_search_domains"></a> [dns\_search\_domains](#input\_dns\_search\_domains) | Container DNS search domains. A list of DNS search domains that are presented to the container | `list(string)` | `[]` | no |
-| <a name="input_dns_servers"></a> [dns\_servers](#input\_dns\_servers) | Container DNS servers. This is a list of strings specifying the IP addresses of the DNS servers | `list(string)` | `[]` | no |
-| <a name="input_docker_labels"></a> [docker\_labels](#input\_docker\_labels) | A key/value map of labels to add to the container | `map(string)` | `{}` | no |
-| <a name="input_docker_security_options"></a> [docker\_security\_options](#input\_docker\_security\_options) | A list of strings to provide custom labels for SELinux and AppArmor multi-level security systems. This field isn't valid for containers in tasks using the Fargate launch type | `list(string)` | `[]` | no |
-| <a name="input_enable_cloudwatch_logging"></a> [enable\_cloudwatch\_logging](#input\_enable\_cloudwatch\_logging) | Determines whether CloudWatch logging is configured for this container definition. Set to `false` to use other logging drivers | `bool` | `true` | no |
-| <a name="input_enable_execute_command"></a> [enable\_execute\_command](#input\_enable\_execute\_command) | Specifies whether to enable Amazon ECS Exec for the tasks within the service | `bool` | `false` | no |
-| <a name="input_entrypoint"></a> [entrypoint](#input\_entrypoint) | The entry point that is passed to the container | `list(string)` | `[]` | no |
-| <a name="input_env_files"></a> [env\_files](#input\_env\_files) | A list of files containing the environment variables to pass to a container | <pre>list(object({<br/>    value = string<br/>    type  = string<br/>  }))</pre> | `[]` | no |
-| <a name="input_environment"></a> [environment](#input\_environment) | The environment variables to pass to the container | <pre>list(object({<br/>    name  = string<br/>    value = string<br/>  }))</pre> | `[]` | no |
-| <a name="input_essential"></a> [essential](#input\_essential) | If the `essential` parameter of a container is marked as `true`, and that container fails or stops for any reason, all other containers that are part of the task are stopped | `bool` | `null` | no |
-| <a name="input_extra_hosts"></a> [extra\_hosts](#input\_extra\_hosts) | A list of hostnames and IP address mappings to append to the `/etc/hosts` file on the container | <pre>list(object({<br/>    hostname  = string<br/>    ipAddress = string<br/>  }))</pre> | `[]` | no |
-| <a name="input_firelens_configuration"></a> [firelens\_configuration](#input\_firelens\_configuration) | The FireLens configuration for the container. This is used to specify and configure a log router for container logs. For more information, see [Custom Log Routing](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_firelens.html) in the Amazon Elastic Container Service Developer Guide | `any` | `{}` | no |
-| <a name="input_health_check"></a> [health\_check](#input\_health\_check) | The container health check command and associated configuration parameters for the container. See [HealthCheck](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_HealthCheck.html) | `any` | `{}` | no |
-| <a name="input_hostname"></a> [hostname](#input\_hostname) | The hostname to use for your container | `string` | `null` | no |
-| <a name="input_image"></a> [image](#input\_image) | The image used to start a container. This string is passed directly to the Docker daemon. By default, images in the Docker Hub registry are available. Other repositories are specified with either `repository-url/image:tag` or `repository-url/image@digest` | `string` | `null` | no |
-| <a name="input_interactive"></a> [interactive](#input\_interactive) | When this parameter is `true`, you can deploy containerized applications that require `stdin` or a `tty` to be allocated | `bool` | `false` | no |
-| <a name="input_links"></a> [links](#input\_links) | The links parameter allows containers to communicate with each other without the need for port mappings. This parameter is only supported if the network mode of a task definition is `bridge` | `list(string)` | `[]` | no |
-| <a name="input_linux_parameters"></a> [linux\_parameters](#input\_linux\_parameters) | Linux-specific modifications that are applied to the container, such as Linux kernel capabilities. For more information see [KernelCapabilities](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_KernelCapabilities.html) | `any` | `{}` | no |
-| <a name="input_log_configuration"></a> [log\_configuration](#input\_log\_configuration) | The log configuration for the container. For more information see [LogConfiguration](https://docs.aws.amazon.com/AmazonECS/latest/APIReference/API_LogConfiguration.html) | `any` | `{}` | no |
-| <a name="input_memory"></a> [memory](#input\_memory) | The amount (in MiB) of memory to present to the container. If your container attempts to exceed the memory specified here, the container is killed. The total amount of memory reserved for all containers within a task must be lower than the task `memory` value, if one is specified | `number` | `null` | no |
-| <a name="input_memory_reservation"></a> [memory\_reservation](#input\_memory\_reservation) | The soft limit (in MiB) of memory to reserve for the container. When system memory is under heavy contention, Docker attempts to keep the container memory to this soft limit. However, your container can consume more memory when it needs to, up to either the hard limit specified with the `memory` parameter (if applicable), or all of the available memory on the container instance | `number` | `null` | no |
-| <a name="input_mount_points"></a> [mount\_points](#input\_mount\_points) | The mount points for data volumes in your container | `list(any)` | `[]` | no |
-| <a name="input_name"></a> [name](#input\_name) | The name of a container. If you're linking multiple containers together in a task definition, the name of one container can be entered in the links of another container to connect the containers. Up to 255 letters (uppercase and lowercase), numbers, underscores, and hyphens are allowed | `string` | `null` | no |
-| <a name="input_operating_system_family"></a> [operating\_system\_family](#input\_operating\_system\_family) | The OS family for task | `string` | `"LINUX"` | no |
-| <a name="input_port_mappings"></a> [port\_mappings](#input\_port\_mappings) | The list of port mappings for the container. Port mappings allow containers to access ports on the host container instance to send or receive traffic. For task definitions that use the awsvpc network mode, only specify the containerPort. The hostPort can be left blank or it must be the same value as the containerPort | `list(any)` | `[]` | no |
-| <a name="input_privileged"></a> [privileged](#input\_privileged) | When this parameter is true, the container is given elevated privileges on the host container instance (similar to the root user) | `bool` | `false` | no |
-| <a name="input_pseudo_terminal"></a> [pseudo\_terminal](#input\_pseudo\_terminal) | When this parameter is true, a `TTY` is allocated | `bool` | `false` | no |
-| <a name="input_readonly_root_filesystem"></a> [readonly\_root\_filesystem](#input\_readonly\_root\_filesystem) | When this parameter is true, the container is given read-only access to its root file system | `bool` | `true` | no |
-| <a name="input_repository_credentials"></a> [repository\_credentials](#input\_repository\_credentials) | Container repository credentials; required when using a private repo.  This map currently supports a single key; "credentialsParameter", which should be the ARN of a Secrets Manager's secret holding the credentials | `map(string)` | `{}` | no |
-| <a name="input_resource_requirements"></a> [resource\_requirements](#input\_resource\_requirements) | The type and amount of a resource to assign to a container. The only supported resource is a GPU | <pre>list(object({<br/>    type  = string<br/>    value = string<br/>  }))</pre> | `[]` | no |
-| <a name="input_secrets"></a> [secrets](#input\_secrets) | The secrets to pass to the container. For more information, see [Specifying Sensitive Data](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/specifying-sensitive-data.html) in the Amazon Elastic Container Service Developer Guide | <pre>list(object({<br/>    name      = string<br/>    valueFrom = string<br/>  }))</pre> | `[]` | no |
-| <a name="input_service"></a> [service](#input\_service) | The name of the service that the container definition is associated with | `string` | `null` | no |
-| <a name="input_start_timeout"></a> [start\_timeout](#input\_start\_timeout) | Time duration (in seconds) to wait before giving up on resolving dependencies for a container | `number` | `30` | no |
-| <a name="input_stop_timeout"></a> [stop\_timeout](#input\_stop\_timeout) | Time duration (in seconds) to wait before the container is forcefully killed if it doesn't exit normally on its own | `number` | `120` | no |
-| <a name="input_system_controls"></a> [system\_controls](#input\_system\_controls) | A list of namespaced kernel parameters to set in the container | `list(map(string))` | `[]` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | A map of tags to add to all resources | `map(string)` | `{}` | no |
-| <a name="input_ulimits"></a> [ulimits](#input\_ulimits) | A list of ulimits to set in the container. If a ulimit value is specified in a task definition, it overrides the default values set by Docker | <pre>list(object({<br/>    hardLimit = number<br/>    name      = string<br/>    softLimit = number<br/>  }))</pre> | `[]` | no |
-| <a name="input_user"></a> [user](#input\_user) | The user to run as inside the container. Can be any of these formats: user, user:group, uid, uid:gid, user:gid, uid:group. The default (null) will use the container's configured `USER` directive or root if not set | `string` | `null` | no |
-| <a name="input_version_consistency"></a> [version\_consistency](#input\_version\_consistency) | Whether image tag-to-digest resolution should be enabled for the container image. Valid values are `enabled` or `disabled` | `string` | `null` | no |
-| <a name="input_volumes_from"></a> [volumes\_from](#input\_volumes\_from) | Data volumes to mount from another container | `list(any)` | `[]` | no |
-| <a name="input_working_directory"></a> [working\_directory](#input\_working\_directory) | The working directory to run commands inside the container | `string` | `null` | no |
+|------|-------------|------|---------|----------|
+| `name` | The name of the container | `string` | `null` | no |
+| `image` | The Docker image to use | `string` | `null` | no |
+| `service` | The name of the service associated with this container definition | `string` | `null` | no |
+| `cpu` | The number of CPU units to reserve | `number` | `null` | no |
+| `memory` | The hard limit (in MiB) of memory for the container | `number` | `null` | no |
+| `memory_reservation` | The soft limit (in MiB) of memory to reserve | `number` | `null` | no |
+| `essential` | Whether this container is essential to the task | `bool` | `null` | no |
+| `port_mappings` | List of port mappings for the container | `list(any)` | `[]` | no |
+| `environment` | Environment variables to pass to the container | `list(object)` | `[]` | no |
+| `secrets` | Secrets to pass to the container from SSM or Secrets Manager | `list(object)` | `[]` | no |
+| `health_check` | Container health check configuration | `any` | `{}` | no |
+| `command` | The command passed to the container | `list(string)` | `[]` | no |
+| `entrypoint` | The entry point passed to the container | `list(string)` | `[]` | no |
+| `working_directory` | The working directory to run commands inside the container | `string` | `null` | no |
+| `readonly_root_filesystem` | Whether the root filesystem is read-only | `bool` | `true` | no |
+| `enable_execute_command` | Whether to enable ECS Exec | `bool` | `false` | no |
+| `enable_cloudwatch_logging` | Whether to configure CloudWatch logging | `bool` | `true` | no |
+| `create_cloudwatch_log_group` | Whether to create a CloudWatch log group | `bool` | `true` | no |
+| `cloudwatch_log_group_retention_in_days` | Number of days to retain log events | `number` | `30` | no |
+| `operating_system_family` | The OS family for the task (LINUX by default) | `string` | `"LINUX"` | no |
+| `tags` | A map of tags to add to all resources | `map(string)` | `{}` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| <a name="output_cloudwatch_log_group_arn"></a> [cloudwatch\_log\_group\_arn](#output\_cloudwatch\_log\_group\_arn) | ARN of CloudWatch log group created |
-| <a name="output_cloudwatch_log_group_name"></a> [cloudwatch\_log\_group\_name](#output\_cloudwatch\_log\_group\_name) | Name of CloudWatch log group created |
-| <a name="output_container_definition"></a> [container\_definition](#output\_container\_definition) | Container definition |
-<!-- END_TF_DOCS -->
+| `container_definition` | The container definition object |
+| `cloudwatch_log_group_name` | Name of CloudWatch log group created |
+| `cloudwatch_log_group_arn` | ARN of CloudWatch log group created |
+
+
+## Examples
+
+The container-definition module produces a JSON-encoded container definition map (via its `container_definition` output) for use as input to the `ecs/service` module's `container_definitions` variable. It does not create any AWS resources except for an optional CloudWatch log group.
+
+## Basic Web Container
+
+A simple application container sending logs to CloudWatch.
+
+```hcl
+module "container_api" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ecs/container-definition?depth=1&ref=master"
+
+  name    = "api"
+  service = "myapp"
+  image   = "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/myapp/api:v1.2.3"
+
+  cpu    = 512
+  memory = 1024
+
+  port_mappings = [
+    {
+      containerPort = 8080
+      protocol      = "tcp"
+    }
+  ]
+
+  environment = [
+    { name = "APP_ENV",  value = "production" },
+    { name = "LOG_LEVEL", value = "info" }
+  ]
+
+  cloudwatch_log_group_retention_in_days = 30
+
+  tags = {
+    Environment = "production"
+    Team        = "backend"
+  }
+}
+```
+
+## With Secrets and Health Check
+
+A container that pulls credentials from Secrets Manager and has a health check configured.
+
+```hcl
+module "container_worker" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ecs/container-definition?depth=1&ref=master"
+
+  name    = "worker"
+  service = "myapp"
+  image   = "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/myapp/worker:v2.0.0"
+
+  cpu    = 1024
+  memory = 2048
+
+  environment = [
+    { name = "APP_ENV", value = "production" }
+  ]
+
+  secrets = [
+    {
+      name      = "DB_PASSWORD"
+      valueFrom = "arn:aws:secretsmanager:ap-southeast-1:123456789012:secret:myapp/production/db-password-abc123"
+    },
+    {
+      name      = "API_KEY"
+      valueFrom = "arn:aws:ssm:ap-southeast-1:123456789012:parameter/myapp/production/api-key"
+    }
+  ]
+
+  health_check = {
+    command     = ["CMD-SHELL", "curl -f http://localhost:8080/healthz || exit 1"]
+    interval    = 30
+    timeout     = 5
+    retries     = 3
+    startPeriod = 60
+  }
+
+  readonly_root_filesystem = true
+
+  cloudwatch_log_group_retention_in_days = 14
+
+  tags = {
+    Environment = "production"
+    Team        = "backend"
+  }
+}
+```
+
+## Sidecar with FireLens Log Routing
+
+A FluentBit sidecar container using FireLens configuration to route logs to an external destination.
+
+```hcl
+module "container_fluentbit" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ecs/container-definition?depth=1&ref=master"
+
+  name    = "log-router"
+  service = "myapp"
+  image   = "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable"
+
+  cpu              = 64
+  memory_reservation = 128
+
+  essential = true
+
+  firelens_configuration = {
+    type = "fluentbit"
+    options = {
+      enable-ecs-log-metadata = "true"
+    }
+  }
+
+  enable_cloudwatch_logging = false
+
+  readonly_root_filesystem = false
+
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+  }
+}
+```

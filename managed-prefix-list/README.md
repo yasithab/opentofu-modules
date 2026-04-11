@@ -1,35 +1,169 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# Managed Prefix List
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+OpenTofu module for creating and managing AWS EC2 Managed Prefix Lists with optional cross-account sharing via Resource Access Manager (RAM).
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Multiple prefix lists** - define several prefix lists in a single module call using a map-based configuration
+- **IPv4 and IPv6** - supports both address families via the `address_family` attribute
+- **Automatic max entries** - calculates `max_entries` from the provided CIDR list length
+- **RAM sharing** - optionally share prefix lists across AWS accounts or an entire AWS Organization using RAM
+- **Per-list tags** - apply tags globally and per prefix list for fine-grained resource organization
 
-## Inputs
+## Usage
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_enable_ram_share"></a> [enable\_ram\_share](#input\_enable\_ram\_share) | Whether to enable RAM sharing for prefix lists | `bool` | `false` | no |
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_prefix_lists"></a> [prefix\_lists](#input\_prefix\_lists) | Map of prefix list configurations. Each entry in cidr\_list must be an object with a 'cidr' key (required) and optional 'description' key. | <pre>map(object({<br/>    name           = string<br/>    cidr_list      = list(object({ cidr = string, description = optional(string) }))<br/>    address_family = optional(string, "IPv4")<br/>    tags           = optional(map(string), {})<br/>  }))</pre> | `null` | no |
-| <a name="input_ram_allow_external_principals"></a> [ram\_allow\_external\_principals](#input\_ram\_allow\_external\_principals) | Indicates whether principals outside your organization can be associated with a resource share | `bool` | `false` | no |
-| <a name="input_ram_permission_arns"></a> [ram\_permission\_arns](#input\_ram\_permission\_arns) | Specifies the ARNs of the RAM permissions to associate with the resource share. If not specified, RAM automatically attaches the default version of the permission for each resource type. | `list(string)` | `null` | no |
-| <a name="input_ram_principals"></a> [ram\_principals](#input\_ram\_principals) | A list of principals to share prefix lists with | `set(string)` | `[]` | no |
-| <a name="input_ram_tags"></a> [ram\_tags](#input\_ram\_tags) | Additional tags for the RAM resource share | `map(string)` | `{}` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+```hcl
+module "prefix_list" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//managed-prefix-list?depth=1&ref=master"
 
-## Outputs
+  prefix_lists = {
+    office_ips = {
+      name = "office-egress-cidrs"
+      cidr_list = [
+        { cidr = "203.0.113.0/24", description = "HQ egress" },
+        { cidr = "198.51.100.0/24", description = "Branch office" },
+      ]
+    }
+  }
 
-| Name | Description |
-|------|-------------|
-| <a name="output_prefix_list_arns"></a> [prefix\_list\_arns](#output\_prefix\_list\_arns) | Map of prefix list names to their ARNs |
-| <a name="output_prefix_list_ids"></a> [prefix\_list\_ids](#output\_prefix\_list\_ids) | Map of prefix list names to their IDs |
-| <a name="output_ram_resource_share_arns"></a> [ram\_resource\_share\_arns](#output\_ram\_resource\_share\_arns) | Map of prefix list names to their RAM resource share ARNs |
-<!-- END_TF_DOCS -->
+  tags = {
+    Environment = "shared"
+  }
+}
+```
+
+
+## Examples
+
+## Basic Usage
+
+A single managed prefix list grouping office CIDR ranges.
+
+```hcl
+module "office_prefix_list" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//managed-prefix-list?depth=1&ref=master"
+
+  enabled = true
+
+  prefix_lists = {
+    office_ips = {
+      name           = "office-egress-cidrs"
+      address_family = "IPv4"
+      cidr_list = [
+        { cidr = "203.0.113.0/24", description = "Dubai HQ" },
+        { cidr = "198.51.100.0/24", description = "London Office" },
+      ]
+    }
+  }
+
+  tags = {
+    Environment = "shared"
+    Team        = "network"
+  }
+}
+```
+
+## Multiple Prefix Lists
+
+Multiple prefix lists for different environments defined in a single module call.
+
+```hcl
+module "env_prefix_lists" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//managed-prefix-list?depth=1&ref=master"
+
+  enabled = true
+
+  prefix_lists = {
+    production_ingress = {
+      name           = "prod-allowed-ingress"
+      address_family = "IPv4"
+      cidr_list = [
+        { cidr = "10.0.0.0/8",     description = "Internal VPC ranges" },
+        { cidr = "172.16.0.0/12",  description = "Peered VPC ranges" },
+      ]
+    }
+    staging_ingress = {
+      name           = "staging-allowed-ingress"
+      address_family = "IPv4"
+      cidr_list = [
+        { cidr = "10.10.0.0/16", description = "Staging VPC" },
+        { cidr = "10.20.0.0/16", description = "Dev VPC" },
+      ]
+    }
+  }
+
+  tags = {
+    Environment = "shared"
+    Team        = "network"
+  }
+}
+```
+
+## With RAM Sharing Across Organisation
+
+Prefix list shared with all accounts in the AWS Organisation via Resource Access Manager.
+
+```hcl
+module "shared_prefix_lists" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//managed-prefix-list?depth=1&ref=master"
+
+  enabled = true
+
+  prefix_lists = {
+    corporate_networks = {
+      name           = "corporate-network-cidrs"
+      address_family = "IPv4"
+      cidr_list = [
+        { cidr = "203.0.113.0/24", description = "HQ egress" },
+        { cidr = "198.51.100.0/26", description = "VPN exit" },
+      ]
+    }
+  }
+
+  enable_ram_share              = true
+  ram_allow_external_principals = false
+  # NOTE: ram_principals must be provided explicitly. Unlike the ram module,
+  # this module does NOT automatically fall back to the Organization ARN.
+  ram_principals = ["arn:aws:organizations::123456789012:organization/o-aa111bbb22"]
+
+  ram_tags = {
+    Purpose = "cross-account-network-sharing"
+  }
+
+  tags = {
+    Environment = "shared"
+    Team        = "network"
+  }
+}
+```
+
+## With RAM Sharing to Specific Accounts
+
+Prefix list shared only with selected AWS account IDs or OUs.
+
+```hcl
+module "partner_prefix_list" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//managed-prefix-list?depth=1&ref=master"
+
+  enabled = true
+
+  prefix_lists = {
+    partner_cidrs = {
+      name           = "partner-api-cidrs"
+      address_family = "IPv4"
+      cidr_list = [
+        { cidr = "192.0.2.0/24",  description = "Partner A egress" },
+        { cidr = "192.0.3.0/24",  description = "Partner B egress" },
+      ]
+    }
+  }
+
+  enable_ram_share = true
+  ram_principals   = ["111122223333", "444455556666"]
+
+  tags = {
+    Environment = "production"
+    Team        = "integrations"
+  }
+}
+```

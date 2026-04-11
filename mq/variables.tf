@@ -123,7 +123,7 @@ variable "ldap_server_metadata" {
     user_search_matching     = optional(string)
     user_search_subtree      = optional(bool)
   })
-  description = "LDAP server metadata for authentication (RabbitMQ only)"
+  description = "LDAP server metadata for authentication (ActiveMQ only)"
   default     = null
   sensitive   = true
 }

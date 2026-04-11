@@ -1,52 +1,163 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# IAM Role
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+General-purpose IAM role module that creates a role with a flexible trust policy, optional inline and managed policies, and an optional EC2 instance profile. Supports multiple principal types and assume-role conditions.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Flexible Trust Policy** - Define principals by type (Service, AWS, Federated) with optional conditions for fine-grained access control
+- **Inline Policy** - Merge multiple JSON policy documents into a single inline policy attached to the role
+- **Managed Policy Attachments** - Attach any number of AWS or customer managed policy ARNs
+- **EC2 Instance Profile** - Optionally create an instance profile bound to the role for EC2 workloads
+- **Name or Name Prefix** - Use either a fixed name or an auto-generated name with a prefix for uniqueness
+- **Permissions Boundary** - Optional permissions boundary for organizational guardrails
+- **Session Duration** - Configurable maximum session duration from 1 to 12 hours
 
-## Inputs
+## Usage
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_role_description"></a> [role\_description](#input\_role\_description) | The description of the IAM role that is visible in the IAM role manager | `string` | n/a | yes |
-| <a name="input_assume_role_actions"></a> [assume\_role\_actions](#input\_assume\_role\_actions) | The IAM action to be granted by the AssumeRole policy | `list(string)` | <pre>[<br/>  "sts:AssumeRole",<br/>  "sts:TagSession"<br/>]</pre> | no |
-| <a name="input_assume_role_conditions"></a> [assume\_role\_conditions](#input\_assume\_role\_conditions) | List of conditions for the assume role policy | <pre>list(object({<br/>    test     = string<br/>    variable = string<br/>    values   = list(string)<br/>  }))</pre> | `[]` | no |
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_force_detach_policies"></a> [force\_detach\_policies](#input\_force\_detach\_policies) | Whether to force detaching any policies the role has before destroying it | `bool` | `false` | no |
-| <a name="input_instance_profile_enabled"></a> [instance\_profile\_enabled](#input\_instance\_profile\_enabled) | Create EC2 Instance Profile for the role | `bool` | `false` | no |
-| <a name="input_instance_profile_name"></a> [instance\_profile\_name](#input\_instance\_profile\_name) | EC2 Instance Profile name | `string` | `null` | no |
-| <a name="input_instance_profile_name_prefix"></a> [instance\_profile\_name\_prefix](#input\_instance\_profile\_name\_prefix) | EC2 Instance Profile name prefix | `string` | `null` | no |
-| <a name="input_managed_policy_arns"></a> [managed\_policy\_arns](#input\_managed\_policy\_arns) | List of managed policies to attach to created role | `set(string)` | `[]` | no |
-| <a name="input_max_session_duration"></a> [max\_session\_duration](#input\_max\_session\_duration) | The maximum session duration (in seconds) for the role. Can have a value from 1 hour to 12 hours | `number` | `3600` | no |
-| <a name="input_path"></a> [path](#input\_path) | Path to the role and policy. See [IAM Identifiers](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html) for more information. | `string` | `"/"` | no |
-| <a name="input_permissions_boundary"></a> [permissions\_boundary](#input\_permissions\_boundary) | ARN of the policy that is used to set the permissions boundary for the role | `string` | `null` | no |
-| <a name="input_policy_delay_after_creation_in_ms"></a> [policy\_delay\_after\_creation\_in\_ms](#input\_policy\_delay\_after\_creation\_in\_ms) | Number of milliseconds to wait between creating the policy and setting its version as default. Only applies when policy\_document\_count > 0. | `number` | `null` | no |
-| <a name="input_policy_description"></a> [policy\_description](#input\_policy\_description) | The description of the IAM policy that is visible in the IAM policy manager | `string` | `null` | no |
-| <a name="input_policy_document_count"></a> [policy\_document\_count](#input\_policy\_document\_count) | Number of policy documents (length of policy\_documents list) | `number` | `1` | no |
-| <a name="input_policy_documents"></a> [policy\_documents](#input\_policy\_documents) | List of JSON IAM policy documents | `list(string)` | `[]` | no |
-| <a name="input_policy_name"></a> [policy\_name](#input\_policy\_name) | The name of the IAM policy that is visible in the IAM policy manager | `string` | `null` | no |
-| <a name="input_policy_name_prefix"></a> [policy\_name\_prefix](#input\_policy\_name\_prefix) | The name prefix of the IAM policy that is visible in the IAM policy manager | `string` | `null` | no |
-| <a name="input_principals"></a> [principals](#input\_principals) | Map of service name as key and a list of ARNs to allow assuming the role as value (e.g. map(`AWS`, list(`arn:aws:iam:::role/admin`))) | `map(list(string))` | `{}` | no |
-| <a name="input_role_name"></a> [role\_name](#input\_role\_name) | IAM role name | `string` | `null` | no |
-| <a name="input_role_name_prefix"></a> [role\_name\_prefix](#input\_role\_name\_prefix) | IAM role name prefix | `string` | `null` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| <a name="input_tags_enabled"></a> [tags\_enabled](#input\_tags\_enabled) | Enable/disable tags on IAM roles and policies | `bool` | `true` | no |
+```hcl
+module "role" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//iam/role?depth=1&ref=master"
 
-## Outputs
+  role_name        = "my-service-role"
+  role_description = "Role for the backend service"
 
-| Name | Description |
-|------|-------------|
-| <a name="output_arn"></a> [arn](#output\_arn) | The Amazon Resource Name (ARN) specifying the role |
-| <a name="output_id"></a> [id](#output\_id) | The stable and unique string identifying the role |
-| <a name="output_instance_profile"></a> [instance\_profile](#output\_instance\_profile) | Name of the ec2 profile (if enabled) |
-| <a name="output_name"></a> [name](#output\_name) | The name of the IAM role created |
-| <a name="output_policy"></a> [policy](#output\_policy) | Role policy document in json format. Outputs always, independent of `enabled` variable |
-<!-- END_TF_DOCS -->
+  principals = {
+    Service = ["ecs-tasks.amazonaws.com"]
+  }
+
+  policy_documents = [data.aws_iam_policy_document.backend.json]
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+
+## Examples
+
+## Basic Usage
+
+Create a role assumable by a Lambda service principal with a single inline policy.
+
+```hcl
+module "lambda_role" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//iam/role?depth=1&ref=master"
+
+  enabled = true
+
+  role_name        = "my-lambda-execution-role"
+  role_description = "Execution role for my Lambda function"
+
+  principals = {
+    Service = ["lambda.amazonaws.com"]
+  }
+
+  policy_documents = [
+    data.aws_iam_policy_document.lambda_policy.json
+  ]
+
+  tags = {
+    Environment = "production"
+    ManagedBy   = "terraform"
+  }
+}
+```
+
+## With Managed Policies Attached
+
+Attach AWS-managed policies to an ECS task role.
+
+```hcl
+module "ecs_task_role" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//iam/role?depth=1&ref=master"
+
+  enabled = true
+
+  role_name        = "my-ecs-task-role"
+  role_description = "ECS task execution role"
+
+  principals = {
+    Service = ["ecs-tasks.amazonaws.com"]
+  }
+
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
+    "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+  ]
+
+  tags = {
+    Environment = "production"
+    Team        = "backend"
+  }
+}
+```
+
+## With Assume Role Conditions and Instance Profile
+
+Create a role for EC2 instances with an IMDS condition and an attached instance profile.
+
+```hcl
+module "ec2_instance_role" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//iam/role?depth=1&ref=master"
+
+  enabled = true
+
+  role_name                = "my-ec2-app-role"
+  role_description         = "Role for application EC2 instances"
+  instance_profile_enabled = true
+  instance_profile_name    = "my-ec2-app-profile"
+
+  principals = {
+    Service = ["ec2.amazonaws.com"]
+  }
+
+  assume_role_conditions = [
+    {
+      test     = "StringEquals"
+      variable = "aws:RequestedRegion"
+      values   = ["us-east-1"]
+    }
+  ]
+
+  policy_documents = [
+    data.aws_iam_policy_document.app_policy.json
+  ]
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+## Cross-Account Assume Role
+
+Allow an IAM role in another account to assume this role with a permissions boundary.
+
+```hcl
+module "cross_account_role" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//iam/role?depth=1&ref=master"
+
+  enabled = true
+
+  role_name             = "cross-account-readonly"
+  role_description      = "Cross-account read-only role for auditing"
+  max_session_duration  = 7200
+  permissions_boundary  = "arn:aws:iam::123456789012:policy/ReadOnlyBoundary"
+
+  principals = {
+    AWS = ["arn:aws:iam::987654321098:role/AuditRole"]
+  }
+
+  assume_role_actions = ["sts:AssumeRole"]
+
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/ReadOnlyAccess"
+  ]
+
+  tags = {
+    Environment = "production"
+    Purpose     = "cross-account-audit"
+  }
+}
+```

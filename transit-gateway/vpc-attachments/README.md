@@ -1,30 +1,140 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# Transit Gateway VPC Attachments
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+Attaches one or more VPCs to an existing AWS Transit Gateway. Use this standalone submodule when the Transit Gateway is managed separately or in another account.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Multiple VPC Attachments** - Attach multiple VPCs to a Transit Gateway using a single map-based configuration
+- **Per-Attachment Settings** - Configure DNS support, IPv6 support, appliance mode, and security group referencing independently for each attachment
+- **Default Route Table Control** - Toggle automatic association and propagation with the Transit Gateway default route table per attachment
 
-## Inputs
+## Usage
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_name"></a> [name](#input\_name) | Name to use for resource naming and tagging. | `string` | `null` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| <a name="input_vpc_attachments"></a> [vpc\_attachments](#input\_vpc\_attachments) | Map of VPC attachment configurations. Each entry requires tgw\_id, vpc\_id, and subnet\_ids. | <pre>map(object({<br/>    tgw_id                                          = string<br/>    vpc_id                                          = string<br/>    subnet_ids                                      = list(string)<br/>    dns_support                                     = optional(bool, true)<br/>    ipv6_support                                    = optional(bool, false)<br/>    appliance_mode_support                          = optional(bool, false)<br/>    security_group_referencing_support              = optional(bool, false)<br/>    transit_gateway_default_route_table_association = optional(bool, true)<br/>    transit_gateway_default_route_table_propagation = optional(bool, true)<br/>    tags                                            = optional(map(string), {})<br/>  }))</pre> | `{}` | no |
+```hcl
+module "tgw_vpc_attachments" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//transit-gateway/vpc-attachments?depth=1&ref=master"
 
-## Outputs
+  name = "my-tgw"
 
-| Name | Description |
-|------|-------------|
-| <a name="output_ec2_transit_gateway_vpc_attachment"></a> [ec2\_transit\_gateway\_vpc\_attachment](#output\_ec2\_transit\_gateway\_vpc\_attachment) | Map of EC2 Transit Gateway VPC Attachment attributes |
-| <a name="output_ec2_transit_gateway_vpc_attachment_ids"></a> [ec2\_transit\_gateway\_vpc\_attachment\_ids](#output\_ec2\_transit\_gateway\_vpc\_attachment\_ids) | List of EC2 Transit Gateway VPC Attachment identifiers |
-<!-- END_TF_DOCS -->
+  vpc_attachments = {
+    vpc-shared = {
+      tgw_id     = "tgw-0123456789abcdef0"
+      vpc_id     = "vpc-aaa"
+      subnet_ids = ["subnet-aaa", "subnet-bbb"]
+    }
+  }
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+
+## Examples
+
+## Basic Usage
+
+Attach a single VPC to an existing Transit Gateway.
+
+```hcl
+module "tgw_vpc_attachments" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//transit-gateway/vpc-attachments?depth=1&ref=master"
+
+  enabled = true
+  name    = "app-tgw-attachments"
+
+  vpc_attachments = {
+    app-vpc = {
+      tgw_id     = "tgw-0a1b2c3d4e5f67890"
+      vpc_id     = "vpc-0a1b2c3d4e5f67891"
+      subnet_ids = ["subnet-0a1b2c3d4e5f67892", "subnet-0a1b2c3d4e5f67893"]
+    }
+  }
+
+  tags = {
+    Team        = "platform"
+    Environment = "production"
+    ManagedBy   = "terraform"
+  }
+}
+```
+
+## Multiple VPC Attachments with Custom Options
+
+Attach multiple VPCs with DNS support and custom route table association settings.
+
+```hcl
+module "tgw_vpc_attachments" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//transit-gateway/vpc-attachments?depth=1&ref=master"
+
+  enabled = true
+  name    = "platform-tgw-attachments"
+
+  vpc_attachments = {
+    shared-services = {
+      tgw_id     = "tgw-0a1b2c3d4e5f67890"
+      vpc_id     = "vpc-0b2c3d4e5f6789abc"
+      subnet_ids = [
+        "subnet-0b2c3d4e5f6789abd",
+        "subnet-0b2c3d4e5f6789abe",
+        "subnet-0b2c3d4e5f6789abf",
+      ]
+      dns_support                                     = true
+      transit_gateway_default_route_table_association = false
+      transit_gateway_default_route_table_propagation = false
+      tags = { Purpose = "shared-services" }
+    }
+    data-vpc = {
+      tgw_id     = "tgw-0a1b2c3d4e5f67890"
+      vpc_id     = "vpc-0c3d4e5f6789abcd"
+      subnet_ids = [
+        "subnet-0c3d4e5f6789abce",
+        "subnet-0c3d4e5f6789abcf",
+      ]
+      dns_support                                     = true
+      transit_gateway_default_route_table_association = false
+      transit_gateway_default_route_table_propagation = false
+      tags = { Purpose = "data" }
+    }
+  }
+
+  tags = {
+    Team        = "platform"
+    Environment = "production"
+    ManagedBy   = "terraform"
+  }
+}
+```
+
+## With Appliance Mode for Network Inspection
+
+Enable appliance mode for a VPC hosting a network inspection appliance (e.g., a firewall).
+
+```hcl
+module "tgw_inspection_attachment" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//transit-gateway/vpc-attachments?depth=1&ref=master"
+
+  enabled = true
+  name    = "inspection-tgw-attachments"
+
+  vpc_attachments = {
+    inspection-vpc = {
+      tgw_id                = "tgw-0a1b2c3d4e5f67890"
+      vpc_id                = "vpc-0d4e5f6789abcdef0"
+      subnet_ids            = ["subnet-0d4e5f6789abcdef1", "subnet-0d4e5f6789abcdef2"]
+      appliance_mode_support = true
+      dns_support           = true
+      transit_gateway_default_route_table_association = false
+      transit_gateway_default_route_table_propagation = false
+      tags = { Purpose = "network-inspection" }
+    }
+  }
+
+  tags = {
+    Team        = "security"
+    Environment = "production"
+    ManagedBy   = "terraform"
+  }
+}
+```

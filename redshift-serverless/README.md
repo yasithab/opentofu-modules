@@ -1,110 +1,264 @@
+# Redshift Serverless
+
+Amazon Redshift Serverless module for on-demand analytics without cluster management. Automatically scales compute capacity based on workload.
+
+## Features
+
+- **Namespace and workgroup** - creates both the namespace (database, users, schemas) and workgroup (compute resources)
+- **Auto-scaling capacity** - configurable base and max RPU capacity with optional price-performance targeting
+- **Admin password management** - AWS Secrets Manager managed passwords, random generation, or write-only passwords (never in state)
+- **KMS encryption** - optional customer-managed key for namespace encryption
+- **Security group** - built-in security group with configurable ingress/egress rules
+- **Usage limits** - RPU consumption caps with configurable breach actions (log, emit-metric, deactivate)
+- **VPC endpoint access** - managed VPC endpoints for cross-account or private connectivity
+- **Snapshots** - on-demand snapshots with configurable retention and resource policies
+- **Custom domain** - associate a custom domain with ACM certificate
+- **IAM role** - optional dedicated IAM role with inline or managed policies for S3/data access
+- **CloudWatch logging** - export connection, user, and user activity logs
+- **Random password generation** - automatically generates a random admin password when `create_random_password` is enabled (default: true)
+- **Internal KMS key creation** - optionally create a module-managed KMS key for namespace encryption via `kms_enabled`
+- **VPC endpoint by default** - a managed VPC endpoint is created by default (`endpoint_enabled` defaults to true) for private connectivity
+- **Private by default** - `publicly_accessible` defaults to false, ensuring the workgroup is not reachable from public networks
+
+## Usage
+
+```hcl
+module "redshift_serverless" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//redshift-serverless?depth=1&ref=master"
+
+  name           = "analytics"
+  namespace_name = "analytics-ns"
+  workgroup_name = "analytics-wg"
+  db_name        = "analyticsdb"
+  admin_username = "awsadmin"
+
+  manage_admin_password   = true
+  workgroup_base_capacity = 32
+  workgroup_max_capacity  = 128
+
+  subnet_ids = module.vpc.private_subnets
+  vpc_id     = module.vpc.vpc_id
+}
+```
 
 
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+## Examples
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
-| <a name="requirement_random"></a> [random](#requirement\_random) | ~> 3.0 |
-| <a name="requirement_time"></a> [time](#requirement\_time) | ~> 0.12 |
+## Basic Usage
 
-## Providers
+Minimal Redshift Serverless namespace and workgroup using Secrets Manager for the admin password.
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
-| <a name="provider_random"></a> [random](#provider\_random) | ~> 3.0 |
-| <a name="provider_time"></a> [time](#provider\_time) | ~> 0.12 |
+```hcl
+module "redshift_serverless" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//redshift-serverless?depth=1&ref=master"
 
-## Inputs
+  enabled          = true
+  name             = "analytics"
+  iam_role_enabled = false
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_admin_password"></a> [admin\_password](#input\_admin\_password) | The password of the administrator for the first database created in the namespace | `string` | `null` | no |
-| <a name="input_admin_password_secret_kms_key_id"></a> [admin\_password\_secret\_kms\_key\_id](#input\_admin\_password\_secret\_kms\_key\_id) | ID of the KMS key used to encrypt the namespace admin credentials secret when `manage_admin_password` is true | `string` | `null` | no |
-| <a name="input_admin_user_password_wo_version"></a> [admin\_user\_password\_wo\_version](#input\_admin\_user\_password\_wo\_version) | Version counter for admin\_user\_password\_wo. Increment to trigger a password rotation when use\_admin\_password\_wo is true | `number` | `1` | no |
-| <a name="input_admin_username"></a> [admin\_username](#input\_admin\_username) | The username of the administrator for the first database created in the namespace | `string` | `null` | no |
-| <a name="input_assume_role_policy"></a> [assume\_role\_policy](#input\_assume\_role\_policy) | Policy that grants an entity permission to assume the role | `any` | `null` | no |
-| <a name="input_create_random_password"></a> [create\_random\_password](#input\_create\_random\_password) | Determines whether to create random password for cluster `master_password` | `bool` | `true` | no |
-| <a name="input_create_security_group"></a> [create\_security\_group](#input\_create\_security\_group) | Determines if a security group is created | `bool` | `true` | no |
-| <a name="input_custom_domain_certificate_arn"></a> [custom\_domain\_certificate\_arn](#input\_custom\_domain\_certificate\_arn) | ARN of the certificate for the custom domain association | `string` | `null` | no |
-| <a name="input_custom_domain_enabled"></a> [custom\_domain\_enabled](#input\_custom\_domain\_enabled) | If `true`, custom domain is enabled | `bool` | `false` | no |
-| <a name="input_custom_domain_name"></a> [custom\_domain\_name](#input\_custom\_domain\_name) | Custom domain to associate with the workgroup | `string` | `null` | no |
-| <a name="input_db_name"></a> [db\_name](#input\_db\_name) | The name of the first database created in the namespace | `string` | `null` | no |
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_endpoint_enabled"></a> [endpoint\_enabled](#input\_endpoint\_enabled) | If `true`, VPC endpoint is enabled | `bool` | `true` | no |
-| <a name="input_endpoint_name"></a> [endpoint\_name](#input\_endpoint\_name) | The Redshift-managed VPC endpoint name | `string` | `null` | no |
-| <a name="input_endpoint_owner_account"></a> [endpoint\_owner\_account](#input\_endpoint\_owner\_account) | The AWS account ID of the owner of the workgroup. This is only required if the workgroup is in another AWS account | `string` | `null` | no |
-| <a name="input_endpoint_security_group_ids"></a> [endpoint\_security\_group\_ids](#input\_endpoint\_security\_group\_ids) | The security group IDs to use for the endpoint access (managed VPC endpoint) | `list(string)` | `[]` | no |
-| <a name="input_engine_mode"></a> [engine\_mode](#input\_engine\_mode) | The RedShift cluster engine mode. Valid values: `serverless` | `string` | `"serverless"` | no |
-| <a name="input_iam_role_enabled"></a> [iam\_role\_enabled](#input\_iam\_role\_enabled) | If `true`, iam role resource is enabled | `bool` | `true` | no |
-| <a name="input_iam_role_name"></a> [iam\_role\_name](#input\_iam\_role\_name) | The name of the iam role | `string` | `null` | no |
-| <a name="input_kms_alias"></a> [kms\_alias](#input\_kms\_alias) | The display name of the alias. The name must start with the word 'alias' followed by a forward slash (alias/) | `string` | `"alias/redshift-serverless"` | no |
-| <a name="input_kms_enabled"></a> [kms\_enabled](#input\_kms\_enabled) | If `true`, kms key is enabled | `bool` | `false` | no |
-| <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | The ARN for the KMS encryption key. When specifying `kms_key_arn`, `encrypted` needs to be set to `true` | `string` | `null` | no |
-| <a name="input_log_exports"></a> [log\_exports](#input\_log\_exports) | The types of logs the namespace can export. Available export types are userlog, connectionlog, and useractivitylog. | `list(string)` | `[]` | no |
-| <a name="input_manage_admin_password"></a> [manage\_admin\_password](#input\_manage\_admin\_password) | Whether to use AWS SecretsManager to manage the cluster admin credentials. Conflicts with `admin_password`. One of `admin_password` or `manage_admin_password` is required unless `snapshot_identifier` is provided | `bool` | `true` | no |
-| <a name="input_managed_policy_arns"></a> [managed\_policy\_arns](#input\_managed\_policy\_arns) | n/a | `set(string)` | `[]` | no |
-| <a name="input_name"></a> [name](#input\_name) | Name to use for resource naming and tagging. | `string` | `null` | no |
-| <a name="input_namespace_name"></a> [namespace\_name](#input\_namespace\_name) | The name of the namespace | `string` | `null` | no |
-| <a name="input_policy"></a> [policy](#input\_policy) | If `true`, iam policy is enabled | `any` | `null` | no |
-| <a name="input_policy_arn"></a> [policy\_arn](#input\_policy\_arn) | The ARN of the policy you want to apply | `string` | `null` | no |
-| <a name="input_policy_enabled"></a> [policy\_enabled](#input\_policy\_enabled) | Whether to Attach Iam policy with role | `bool` | `true` | no |
-| <a name="input_policy_name"></a> [policy\_name](#input\_policy\_name) | The name of the iam policy name | `string` | `null` | no |
-| <a name="input_port"></a> [port](#input\_port) | RedShift cluster port, default is `5439` | `number` | `5439` | no |
-| <a name="input_publicly_accessible"></a> [publicly\_accessible](#input\_publicly\_accessible) | If true, the cluster can be accessed from a public network | `bool` | `false` | no |
-| <a name="input_random_password_length"></a> [random\_password\_length](#input\_random\_password\_length) | Length of random password to create. Defaults to `16` | `number` | `16` | no |
-| <a name="input_security_group_description"></a> [security\_group\_description](#input\_security\_group\_description) | Description of the security group created | `string` | `null` | no |
-| <a name="input_security_group_name"></a> [security\_group\_name](#input\_security\_group\_name) | Name to use on security group created | `string` | `null` | no |
-| <a name="input_security_group_rules"></a> [security\_group\_rules](#input\_security\_group\_rules) | Security group ingress and egress rules to add to the security group created | `any` | `{}` | no |
-| <a name="input_security_group_tags"></a> [security\_group\_tags](#input\_security\_group\_tags) | A map of additional tags to add to the security group created | `map(string)` | `{}` | no |
-| <a name="input_security_group_use_name_prefix"></a> [security\_group\_use\_name\_prefix](#input\_security\_group\_use\_name\_prefix) | Determines whether the security group name (`security_group_name`) is used as a prefix | `bool` | `true` | no |
-| <a name="input_snapshot_enabled"></a> [snapshot\_enabled](#input\_snapshot\_enabled) | If `true`, snapshot is enabled | `bool` | `false` | no |
-| <a name="input_snapshot_name"></a> [snapshot\_name](#input\_snapshot\_name) | The name of the snapshot. | `string` | `null` | no |
-| <a name="input_snapshot_policy"></a> [snapshot\_policy](#input\_snapshot\_policy) | If `true`, serverless snapshot policy is enabled | `any` | `null` | no |
-| <a name="input_snapshot_policy_enabled"></a> [snapshot\_policy\_enabled](#input\_snapshot\_policy\_enabled) | If `true`, snapshot policy is enabled | `bool` | `false` | no |
-| <a name="input_snapshot_retention_period"></a> [snapshot\_retention\_period](#input\_snapshot\_retention\_period) | How long to retain the created snapshot. Default value is -1. | `string` | `"-1"` | no |
-| <a name="input_subnet_ids"></a> [subnet\_ids](#input\_subnet\_ids) | An array of VPC subnet IDs to use in the subnet group | `list(string)` | `null` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| <a name="input_usage_amount"></a> [usage\_amount](#input\_usage\_amount) | The limit amount. If time-based, this amount is in Redshift Processing Units (RPU) consumed per hour. If data-based, this amount is in terabytes (TB) of data transferred between Regions in cross-account sharing. The value must be a positive number. | `number` | `60` | no |
-| <a name="input_usage_breach_action"></a> [usage\_breach\_action](#input\_usage\_breach\_action) | The action that Amazon Redshift Serverless takes when the limit is reached. Valid values are log, emit-metric, and deactivate. The default is log. | `string` | `"log"` | no |
-| <a name="input_usage_limit_enabled"></a> [usage\_limit\_enabled](#input\_usage\_limit\_enabled) | If `true`, it creates a new amazon redshift serverless usage limit. | `bool` | `false` | no |
-| <a name="input_usage_period"></a> [usage\_period](#input\_usage\_period) | The time period that the amount applies to. A weekly period begins on Sunday. Valid values are daily, weekly, and monthly. The default is monthly. | `string` | `"monthly"` | no |
-| <a name="input_usage_type"></a> [usage\_type](#input\_usage\_type) | The type of Amazon Redshift Serverless usage to create a usage limit for. Valid values are serverless-compute or cross-region-datasharing. | `string` | `"serverless-compute"` | no |
-| <a name="input_use_admin_password_wo"></a> [use\_admin\_password\_wo](#input\_use\_admin\_password\_wo) | Whether to use the write-only admin\_user\_password\_wo attribute instead of admin\_user\_password. When true, the password is never stored in state | `bool` | `false` | no |
-| <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | Identifier of the VPC where the security group will be created | `string` | `null` | no |
-| <a name="input_workgroup_base_capacity"></a> [workgroup\_base\_capacity](#input\_workgroup\_base\_capacity) | The base data warehouse capacity of the workgroup in Redshift Processing Units (RPUs). | `number` | `16` | no |
-| <a name="input_workgroup_config_parameter"></a> [workgroup\_config\_parameter](#input\_workgroup\_config\_parameter) | An array of parameters to set for more control over a serverless database. | `list(any)` | `[]` | no |
-| <a name="input_workgroup_enhanced_vpc_routing"></a> [workgroup\_enhanced\_vpc\_routing](#input\_workgroup\_enhanced\_vpc\_routing) | If `true`, enhanced VPC routing is enabled | `bool` | `null` | no |
-| <a name="input_workgroup_max_capacity"></a> [workgroup\_max\_capacity](#input\_workgroup\_max\_capacity) | The maximum data-warehouse capacity Amazon Redshift Serverless uses to serve queries, specified in Redshift Processing Units (RPUs) | `number` | `64` | no |
-| <a name="input_workgroup_name"></a> [workgroup\_name](#input\_workgroup\_name) | The name of the workgroup | `string` | `null` | no |
-| <a name="input_workgroup_port"></a> [workgroup\_port](#input\_workgroup\_port) | The custom port to use when connecting to a workgroup. Valid port ranges are 5431-5455 and 8191-8215. The default is 5439 | `number` | `null` | no |
-| <a name="input_workgroup_price_performance_target"></a> [workgroup\_price\_performance\_target](#input\_workgroup\_price\_performance\_target) | The price performance target configuration for the workgroup. Set `enabled = true` and provide a `level` (1-100) to enable price performance targeting | <pre>object({<br/>    enabled = optional(bool, false)<br/>    level   = optional(number, null)<br/>  })</pre> | `null` | no |
-| <a name="input_workgroup_track_name"></a> [workgroup\_track\_name](#input\_workgroup\_track\_name) | The release track for the workgroup. Valid values are `current` or `trailing` | `string` | `null` | no |
+  namespace_name  = "analytics-ns"
+  workgroup_name  = "analytics-wg"
+  db_name         = "analyticsdb"
+  admin_username  = "awsadmin"
 
-## Outputs
+  manage_admin_password = true
 
-| Name | Description |
-|------|-------------|
-| <a name="output_endpoint_access_arn"></a> [endpoint\_access\_arn](#output\_endpoint\_access\_arn) | Amazon Resource Name (ARN) of the Redshift Serverless Endpoint Access. |
-| <a name="output_endpoint_access_name"></a> [endpoint\_access\_name](#output\_endpoint\_access\_name) | Amazon Resource Name (ARN) of the Redshift Serverless Endpoint Access. |
-| <a name="output_endpoint_address"></a> [endpoint\_address](#output\_endpoint\_address) | The DNS address of the workgroup endpoint |
-| <a name="output_limit_arn"></a> [limit\_arn](#output\_limit\_arn) | Amazon Resource Name (ARN) of the Redshift Serverless Usage Limit. |
-| <a name="output_limit_id"></a> [limit\_id](#output\_limit\_id) | The Redshift Usage Limit id. |
-| <a name="output_namespace_arn"></a> [namespace\_arn](#output\_namespace\_arn) | The Redshift Namespace ID. |
-| <a name="output_namespace_id"></a> [namespace\_id](#output\_namespace\_id) | The Redshift Namespace ID. |
-| <a name="output_namespace_name"></a> [namespace\_name](#output\_namespace\_name) | The Redshift Namespace Name. |
-| <a name="output_snapshot_accounts_with_restore_access"></a> [snapshot\_accounts\_with\_restore\_access](#output\_snapshot\_accounts\_with\_restore\_access) | All of the Amazon Web Services accounts that have access to restore a snapshot to a namespace. |
-| <a name="output_snapshot_admin_username"></a> [snapshot\_admin\_username](#output\_snapshot\_admin\_username) | The username of the database within a snapshot. |
-| <a name="output_snapshot_arn"></a> [snapshot\_arn](#output\_snapshot\_arn) | The Amazon Resource Name (ARN) of the namespace the snapshot was created from. |
-| <a name="output_snapshot_name"></a> [snapshot\_name](#output\_snapshot\_name) | The name of the snapshot. |
-| <a name="output_snapshot_namespace_arn"></a> [snapshot\_namespace\_arn](#output\_snapshot\_namespace\_arn) | The Amazon Resource Name (ARN) of the namespace the snapshot was created from. |
-| <a name="output_snapshot_owner_account"></a> [snapshot\_owner\_account](#output\_snapshot\_owner\_account) | The owner Amazon Web Services; account of the snapshot. |
-| <a name="output_vpc_endpoint"></a> [vpc\_endpoint](#output\_vpc\_endpoint) | The VPC endpoint or the Redshift Serverless workgroup |
-| <a name="output_vpc_endpoint_address"></a> [vpc\_endpoint\_address](#output\_vpc\_endpoint\_address) | The DNS address of the VPC endpoint |
-| <a name="output_workgroup_arn"></a> [workgroup\_arn](#output\_workgroup\_arn) | Amazon Resource Name (ARN) of the Redshift Serverless Workgroup. |
-| <a name="output_workgroup_id"></a> [workgroup\_id](#output\_workgroup\_id) | The Redshift Workgroup ID. |
-| <a name="output_workgroup_name"></a> [workgroup\_name](#output\_workgroup\_name) | The Redshift Workgroup Name. |
-<!-- END_TF_DOCS -->
+  workgroup_base_capacity = 32
+  workgroup_max_capacity  = 128
+
+  subnet_ids = ["subnet-0aa111bbb222", "subnet-0cc333ddd444", "subnet-0ee555fff666"]
+  vpc_id     = "vpc-0abc123def456789"
+
+  security_group_rules = {
+    bi_tools = {
+      from_port   = 5439
+      to_port     = 5439
+      ip_protocol = "tcp"
+      cidr_ipv4   = "10.0.0.0/8"
+      description = "Allow BI tools from internal network"
+    }
+  }
+
+  tags = {
+    Environment = "production"
+    Team        = "analytics"
+  }
+}
+```
+
+## With KMS Encryption and IAM Role
+
+Redshift Serverless with a CMK, a dedicated IAM role for S3 access, and CloudWatch audit logs.
+
+```hcl
+module "redshift_serverless_encrypted" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//redshift-serverless?depth=1&ref=master"
+
+  enabled = true
+  name    = "dw"
+
+  namespace_name  = "dw-ns"
+  workgroup_name  = "dw-wg"
+  db_name         = "warehouse"
+  admin_username  = "dwadmin"
+
+  manage_admin_password = true
+  admin_password_secret_kms_key_id = "arn:aws:kms:us-east-1:123456789012:key/mrk-abc123def456789012345678901234ab"
+
+  kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/mrk-abc123def456789012345678901234ab"
+
+  iam_role_enabled = true
+  iam_role_name    = "redshift-serverless-s3-access"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "redshift-serverless.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+
+  log_exports = ["connectionlog", "userlog", "useractivitylog"]
+
+  workgroup_base_capacity = 64
+  workgroup_max_capacity  = 256
+
+  subnet_ids = ["subnet-0aa111bbb222", "subnet-0cc333ddd444", "subnet-0ee555fff666"]
+  vpc_id     = "vpc-0abc123def456789"
+
+  security_group_rules = {
+    internal = {
+      from_port   = 5439
+      to_port     = 5439
+      ip_protocol = "tcp"
+      cidr_ipv4   = "10.0.0.0/8"
+    }
+  }
+
+  tags = {
+    Environment = "production"
+    Team        = "data"
+    DataClass   = "confidential"
+  }
+}
+```
+
+## With Usage Limit and Write-Only Password
+
+Redshift Serverless with a monthly RPU usage cap and a write-only admin password (never stored in state).
+
+```hcl
+module "redshift_serverless_limited" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//redshift-serverless?depth=1&ref=master"
+
+  enabled          = true
+  name             = "reporting"
+  iam_role_enabled = false
+
+  namespace_name  = "reporting-ns"
+  workgroup_name  = "reporting-wg"
+  db_name         = "reportingdb"
+  admin_username  = "repadmin"
+
+  manage_admin_password   = false
+  use_admin_password_wo   = true
+  # Provide the actual password via a variable marked sensitive=true:
+  # admin_password = var.reporting_admin_password
+  admin_user_password_wo_version = 1
+
+  workgroup_base_capacity = 16
+  workgroup_max_capacity  = 64
+
+  usage_limit_enabled  = true
+  usage_type           = "serverless-compute"
+  usage_amount         = 100
+  usage_period         = "monthly"
+  usage_breach_action  = "emit-metric"
+
+  subnet_ids = ["subnet-0aa111bbb222", "subnet-0cc333ddd444"]
+  vpc_id     = "vpc-0abc123def456789"
+
+  security_group_rules = {
+    app = {
+      from_port                    = 5439
+      to_port                      = 5439
+      ip_protocol                  = "tcp"
+      referenced_security_group_id = "sg-0abc123def456789a"
+    }
+  }
+
+  tags = {
+    Environment = "production"
+    Team        = "reporting"
+  }
+}
+```
+
+## Advanced - Price Performance Targeting with Custom Domain
+
+Redshift Serverless with price-performance targeting, a custom domain, and snapshot management.
+
+```hcl
+module "redshift_serverless_advanced" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//redshift-serverless?depth=1&ref=master"
+
+  enabled          = true
+  name             = "platform-dw"
+  iam_role_enabled = false
+
+  namespace_name  = "platform-ns"
+  workgroup_name  = "platform-wg"
+  db_name         = "platformdb"
+  admin_username  = "platformadmin"
+
+  manage_admin_password            = true
+  admin_password_secret_kms_key_id = "arn:aws:kms:us-east-1:123456789012:key/mrk-abc123def456789012345678901234ab"
+
+  kms_key_arn = "arn:aws:kms:us-east-1:123456789012:key/mrk-abc123def456789012345678901234ab"
+
+  workgroup_base_capacity = 128
+  workgroup_max_capacity  = 512
+
+  workgroup_price_performance_target = {
+    enabled = true
+    level   = 75
+  }
+
+  workgroup_config_parameter = [
+    {
+      parameter_key   = "max_query_execution_time"
+      parameter_value = "14400"
+    }
+  ]
+
+  custom_domain_enabled        = true
+  custom_domain_name           = "redshift.example.com"
+  custom_domain_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/abc12345-1234-1234-1234-abc123456789"
+
+  snapshot_enabled          = true
+  snapshot_name             = "platform-dw-daily"
+  snapshot_retention_period = "7"
+
+  endpoint_enabled = true
+  endpoint_name    = "platform-dw-endpoint"
+
+  subnet_ids = ["subnet-0aa111bbb222", "subnet-0cc333ddd444", "subnet-0ee555fff666"]
+  vpc_id     = "vpc-0abc123def456789"
+
+  security_group_rules = {
+    internal = {
+      from_port   = 5439
+      to_port     = 5439
+      ip_protocol = "tcp"
+      cidr_ipv4   = "10.0.0.0/8"
+    }
+  }
+
+  tags = {
+    Environment = "production"
+    Team        = "data-platform"
+    CostCenter  = "data"
+  }
+}
+```

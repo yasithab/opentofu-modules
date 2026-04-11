@@ -1,37 +1,68 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# CloudWatch Log Metric Filter
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+OpenTofu module to create an AWS CloudWatch Log Metric Filter. Extracts metric data from log events using filter patterns and publishes the results as CloudWatch metrics.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Pattern-Based Filtering** - Define filter patterns to extract metric data from ingested log events
+- **Metric Transformation** - Publish matched log events as CloudWatch metrics with configurable namespace, value, and unit
+- **Dimensions Support** - Attach custom dimensions to emitted metrics for granular filtering
+- **Default Value** - Optionally emit a default value when no log events match the filter pattern
+- **Lifecycle Management** - Toggle resource creation with the `enabled` variable
+
+## Usage
+
+```hcl
+module "error_metric_filter" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch/modules/log-metric-filter?depth=1&ref=master"
+
+  name           = "error-count"
+  pattern        = "ERROR"
+  log_group_name = "/aws/lambda/my-function"
+
+  metric_transformation_name      = "ErrorCount"
+  metric_transformation_namespace = "Custom/MyApp"
+  metric_transformation_value     = "1"
+}
+```
+
+### With Default Value
+
+```hcl
+module "error_metric_filter" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch/modules/log-metric-filter?depth=1&ref=master"
+
+  name           = "error-count"
+  pattern        = "[level = ERROR]"
+  log_group_name = "/aws/ecs/my-service"
+
+  metric_transformation_name          = "ErrorCount"
+  metric_transformation_namespace     = "Custom/MyApp"
+  metric_transformation_value         = "1"
+  metric_transformation_default_value = "0"
+  metric_transformation_unit          = "Count"
+}
+```
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_log_group_name"></a> [log\_group\_name](#input\_log\_group\_name) | The name of the log group to associate the metric filter with. | `string` | n/a | yes |
-| <a name="input_metric_transformation_name"></a> [metric\_transformation\_name](#input\_metric\_transformation\_name) | The name of the CloudWatch metric to which the monitored log information should be published. | `string` | n/a | yes |
-| <a name="input_metric_transformation_namespace"></a> [metric\_transformation\_namespace](#input\_metric\_transformation\_namespace) | The destination namespace of the CloudWatch metric. | `string` | n/a | yes |
-| <a name="input_name"></a> [name](#input\_name) | The name of the CloudWatch Log Metric Filter. | `string` | n/a | yes |
-| <a name="input_pattern"></a> [pattern](#input\_pattern) | A valid CloudWatch Logs filter pattern for extracting metric data out of ingested log events. | `string` | n/a | yes |
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_metric_transformation_default_value"></a> [metric\_transformation\_default\_value](#input\_metric\_transformation\_default\_value) | The value to emit when a filter pattern does not match a log event. Conflicts with `metric_transformation_dimensions`. | `string` | `null` | no |
-| <a name="input_metric_transformation_dimensions"></a> [metric\_transformation\_dimensions](#input\_metric\_transformation\_dimensions) | Map of fields to use as dimensions for the metric. Conflicts with `metric_transformation_default_value`. | `map(string)` | `null` | no |
-| <a name="input_metric_transformation_unit"></a> [metric\_transformation\_unit](#input\_metric\_transformation\_unit) | The unit to assign to the metric. | `string` | `null` | no |
-| <a name="input_metric_transformation_value"></a> [metric\_transformation\_value](#input\_metric\_transformation\_value) | The value to publish to the CloudWatch metric. Each log event is assigned this value. | `string` | `"1"` | no |
+|------|-------------|------|---------|----------|
+| `name` | The name of the CloudWatch Log Metric Filter | `string` | n/a | yes |
+| `pattern` | A valid CloudWatch Logs filter pattern for extracting metric data | `string` | n/a | yes |
+| `log_group_name` | The name of the log group to associate the metric filter with | `string` | n/a | yes |
+| `metric_transformation_name` | The name of the CloudWatch metric to publish | `string` | n/a | yes |
+| `metric_transformation_namespace` | The destination namespace of the CloudWatch metric | `string` | n/a | yes |
+| `metric_transformation_value` | The value to publish to the CloudWatch metric | `string` | `"1"` | no |
+| `metric_transformation_default_value` | The value to emit when no log events match (conflicts with dimensions) | `string` | `null` | no |
+| `metric_transformation_unit` | The unit to assign to the metric | `string` | `null` | no |
+| `metric_transformation_dimensions` | Map of fields to use as dimensions (conflicts with default_value) | `map(string)` | `null` | no |
+| `enabled` | Set to false to prevent the module from creating any resources | `bool` | `true` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| <a name="output_metric_filter_id"></a> [metric\_filter\_id](#output\_metric\_filter\_id) | The ID of the CloudWatch Log Metric Filter. |
-| <a name="output_metric_filter_log_group_name"></a> [metric\_filter\_log\_group\_name](#output\_metric\_filter\_log\_group\_name) | The name of the log group associated with the metric filter. |
-| <a name="output_metric_filter_name"></a> [metric\_filter\_name](#output\_metric\_filter\_name) | The name of the CloudWatch Log Metric Filter. |
-<!-- END_TF_DOCS -->
+| `metric_filter_id` | The ID of the CloudWatch Log Metric Filter |
+| `metric_filter_name` | The name of the CloudWatch Log Metric Filter |
+| `metric_filter_log_group_name` | The name of the log group associated with the metric filter |

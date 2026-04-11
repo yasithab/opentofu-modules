@@ -1,35 +1,139 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# Route 53 Resolver Rule Associations
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+Creates AWS Route 53 Resolver rules and associates them with VPCs to forward DNS queries for specific domains to target IP addresses.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Forward Rules** - Create FORWARD rules that route DNS queries for specific domains to target IP addresses via an outbound resolver endpoint
+- **System Rules** - Create SYSTEM rules to override forwarding behavior and resolve domains locally within AWS
+- **Rule Associations** - Associate resolver rules with one or more VPCs, supporting both rules created by this module and pre-existing shared rules
+- **Multi-Target IPs** - Specify multiple target DNS servers per rule with configurable ports and protocols (Do53, DoH, DoH-FIPS)
+- **Cross-Team Sharing** - Reference externally managed resolver rules by ID for association in your VPCs
 
-## Inputs
+## Usage
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_resolver_rule_associations"></a> [resolver\_rule\_associations](#input\_resolver\_rule\_associations) | Map of Route53 Resolver rule associations parameters. Use resolver\_rule\_id to reference an existing rule, or the key must match a resolver\_rules key to use a rule created by this module. | <pre>map(object({<br/>    name             = optional(string)<br/>    vpc_id           = optional(string)<br/>    resolver_rule_id = optional(string)<br/>  }))</pre> | `{}` | no |
-| <a name="input_resolver_rules"></a> [resolver\_rules](#input\_resolver\_rules) | Map of Route53 Resolver rules to create | <pre>map(object({<br/>    domain_name          = string<br/>    rule_type            = string<br/>    name                 = optional(string)<br/>    resolver_endpoint_id = optional(string)<br/>    target_ips = optional(list(object({<br/>      ip       = optional(string)<br/>      ipv6     = optional(string)<br/>      port     = optional(number, 53)<br/>      protocol = optional(string, "Do53")<br/>    })), [])<br/>  }))</pre> | `{}` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | Default VPC ID for all the Route53 Resolver rule associations | `string` | `null` | no |
+```hcl
+module "resolver_rules" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//route53/resolver-rule-associations?depth=1&ref=master"
 
-## Outputs
+  vpc_id = "vpc-0abc123456def7890"
 
-| Name | Description |
-|------|-------------|
-| <a name="output_resolver_rule_arns"></a> [resolver\_rule\_arns](#output\_resolver\_rule\_arns) | Map of Route53 Resolver rule ARNs |
-| <a name="output_resolver_rule_association_id"></a> [resolver\_rule\_association\_id](#output\_resolver\_rule\_association\_id) | ID of Route53 Resolver rule associations |
-| <a name="output_resolver_rule_association_name"></a> [resolver\_rule\_association\_name](#output\_resolver\_rule\_association\_name) | Name of Route53 Resolver rule associations |
-| <a name="output_resolver_rule_association_resolver_rule_id"></a> [resolver\_rule\_association\_resolver\_rule\_id](#output\_resolver\_rule\_association\_resolver\_rule\_id) | ID of Route53 Resolver rule associations resolver rule |
-| <a name="output_resolver_rule_ids"></a> [resolver\_rule\_ids](#output\_resolver\_rule\_ids) | Map of Route53 Resolver rule IDs |
-| <a name="output_resolver_rules"></a> [resolver\_rules](#output\_resolver\_rules) | Map of Route53 Resolver rules created |
-<!-- END_TF_DOCS -->
+  resolver_rules = {
+    corp_internal = {
+      domain_name          = "corp.internal"
+      rule_type            = "FORWARD"
+      name                 = "corp-internal"
+      resolver_endpoint_id = "rslvr-out-0123456789abcdef0"
+      target_ips = [
+        { ip = "10.100.0.2", port = 53 },
+        { ip = "10.100.0.3", port = 53 },
+      ]
+    }
+  }
+
+  resolver_rule_associations = {
+    corp_internal = {}
+  }
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+
+## Examples
+
+## Basic Forward Rule
+
+Create a FORWARD resolver rule that routes queries for an on-premises domain to a specific DNS server, and associate it with a VPC.
+
+```hcl
+module "resolver_rules" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//route53/resolver-rule-associations?depth=1&ref=master"
+
+  enabled = true
+  vpc_id  = "vpc-0abc123456def7890"
+
+  resolver_rules = {
+    corp_internal = {
+      domain_name          = "corp.internal"
+      rule_type            = "FORWARD"
+      name                 = "corp-internal"
+      resolver_endpoint_id = "rslvr-out-0123456789abcdef0"
+      target_ips = [
+        { ip = "10.100.0.2", port = 53 },
+        { ip = "10.100.0.3", port = 53 },
+      ]
+    }
+  }
+
+  resolver_rule_associations = {
+    corp_internal = {}
+  }
+
+  tags = {
+    Environment = "production"
+    Team        = "networking"
+  }
+}
+```
+
+## System Rule - Prevent DNS Leak for Private Domain
+
+Use a SYSTEM rule to ensure a domain resolves locally within AWS rather than being forwarded externally.
+
+```hcl
+module "resolver_system_rule" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//route53/resolver-rule-associations?depth=1&ref=master"
+
+  enabled = true
+  vpc_id  = "vpc-0abc123456def7890"
+
+  resolver_rules = {
+    internal_override = {
+      domain_name = "aws.internal"
+      rule_type   = "SYSTEM"
+      name        = "aws-internal-override"
+    }
+  }
+
+  resolver_rule_associations = {
+    internal_override = {}
+  }
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+## Associating an Existing Resolver Rule with Multiple VPCs
+
+Associate a pre-existing shared resolver rule (managed by another team) with multiple VPCs across environments.
+
+```hcl
+module "resolver_associations_only" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//route53/resolver-rule-associations?depth=1&ref=master"
+
+  enabled = true
+
+  resolver_rule_associations = {
+    shared_rule_prod = {
+      name             = "shared-corp-prod"
+      vpc_id           = "vpc-0abc123456def7890"
+      resolver_rule_id = "rslvr-rr-0123456789abcdef0"
+    }
+    shared_rule_staging = {
+      name             = "shared-corp-staging"
+      vpc_id           = "vpc-0def987654321fedcb"
+      resolver_rule_id = "rslvr-rr-0123456789abcdef0"
+    }
+  }
+
+  tags = {
+    Environment = "multi"
+    Team        = "networking"
+  }
+}
+```

@@ -1,42 +1,135 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# AWS CodeConnections
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+Provisions AWS CodeConnections connections and hosts for integrating AWS services (CodeBuild, CodePipeline) with third-party source control providers such as GitHub, GitLab, and self-hosted GitHub Enterprise Server.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Multi-Provider Support** - Creates connections to GitHub, GitLab, Bitbucket, and other supported providers via the `provider_type` parameter
+- **Self-Hosted VCS Hosts** - Optionally provisions a CodeConnections host for GitHub Enterprise Server or GitLab Self-Managed instances running in a VPC
+- **VPC Configuration** - Connects to private VCS endpoints through VPC subnets and security groups, with optional TLS certificate validation
+- **Existing Host Attachment** - Attaches a new connection to a pre-existing host ARN managed by a separate configuration
+- **Configurable Timeouts** - Independent timeout settings for connection and host create/delete operations
+- **Feature Flag** - Toggle all resource creation on or off with the `enabled` variable
 
-## Inputs
+## Usage
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_connection_timeouts"></a> [connection\_timeouts](#input\_connection\_timeouts) | Timeout configuration for the codeconnections connection resource. | <pre>object({<br/>    create = optional(string, "30m")<br/>    delete = optional(string, "30m")<br/>  })</pre> | `{}` | no |
-| <a name="input_create_host"></a> [create\_host](#input\_create\_host) | Whether to create a codeconnections host (for self-hosted VCS like GitHub Enterprise Server). | `bool` | `false` | no |
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_github_organization_name"></a> [github\_organization\_name](#input\_github\_organization\_name) | The GitHub organization name | `string` | `null` | no |
-| <a name="input_host_arn"></a> [host\_arn](#input\_host\_arn) | ARN of the codeconnections host to use for GitHubEnterpriseServer/GitLabSelfManaged connections. When set, provider\_type is derived from the host. | `string` | `null` | no |
-| <a name="input_host_name"></a> [host\_name](#input\_host\_name) | Name of the codeconnections host. | `string` | `null` | no |
-| <a name="input_host_provider_endpoint"></a> [host\_provider\_endpoint](#input\_host\_provider\_endpoint) | Endpoint of the infrastructure where the provider type is installed (e.g., https://my-github-enterprise.example.com). | `string` | `null` | no |
-| <a name="input_host_provider_type"></a> [host\_provider\_type](#input\_host\_provider\_type) | Provider type for the host. Valid values: GitHubEnterpriseServer, GitLabSelfManaged. | `string` | `null` | no |
-| <a name="input_host_timeouts"></a> [host\_timeouts](#input\_host\_timeouts) | Timeout configuration for the codeconnections host resource. | <pre>object({<br/>    create = optional(string, "30m")<br/>    delete = optional(string, "30m")<br/>  })</pre> | `{}` | no |
-| <a name="input_host_vpc_configuration"></a> [host\_vpc\_configuration](#input\_host\_vpc\_configuration) | VPC configuration for the codeconnections host (required for VPC-hosted providers). | <pre>object({<br/>    security_group_ids = list(string)<br/>    subnet_ids         = list(string)<br/>    vpc_id             = string<br/>    tls_certificate    = optional(string)<br/>  })</pre> | `null` | no |
-| <a name="input_name"></a> [name](#input\_name) | Name for the codeconnections connection. Defaults to '<github\_organization\_name>-github' when not set. | `string` | `null` | no |
-| <a name="input_provider_type"></a> [provider\_type](#input\_provider\_type) | The provider type | `string` | `"GitHub"` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+```hcl
+module "codeconnections" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//codeconnections?depth=1&ref=master"
 
-## Outputs
+  github_organization_name = "MyOrganization"
+  provider_type            = "GitHub"
 
-| Name | Description |
-|------|-------------|
-| <a name="output_connection_arn"></a> [connection\_arn](#output\_connection\_arn) | ARN of the codeconnections connection |
-| <a name="output_connection_id"></a> [connection\_id](#output\_connection\_id) | ARN of the codeconnections connection (id is deprecated; arn is the canonical identifier) |
-| <a name="output_connection_status"></a> [connection\_status](#output\_connection\_status) | Status of the codeconnections connection |
-| <a name="output_host_arn"></a> [host\_arn](#output\_host\_arn) | ARN of the codeconnections host |
-| <a name="output_host_id"></a> [host\_id](#output\_host\_id) | ARN of the codeconnections host (id is deprecated; arn is the canonical identifier) |
-<!-- END_TF_DOCS -->
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+  }
+}
+```
+
+> **Note:** After creation, the connection must be manually authorized in the AWS Console to transition from `PENDING` to `AVAILABLE`.
+
+
+## Examples
+
+## Basic Usage - GitHub Connection
+
+Creates a CodeConnections connection to GitHub.com. After creation the connection must be manually authorised in the AWS Console to transition from `PENDING` to `AVAILABLE`.
+
+```hcl
+module "codeconnections_github" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//codeconnections?depth=1&ref=master"
+
+  enabled = true
+
+  github_organization_name = "MyOrganization"
+  provider_type            = "GitHub"
+
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+  }
+}
+```
+
+## GitLab Connection
+
+Creates a connection to GitLab.com for pipelines that source code from GitLab repositories.
+
+```hcl
+module "codeconnections_gitlab" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//codeconnections?depth=1&ref=master"
+
+  enabled = true
+
+  # Works for any provider (GitHub, GitLab, Bitbucket) despite the variable name
+  github_organization_name = "my-gitlab-group"
+  provider_type            = "GitLab"
+
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+  }
+}
+```
+
+## GitHub Enterprise Server (Self-Hosted) with VPC Configuration
+
+Creates a CodeConnections host for a self-hosted GitHub Enterprise Server instance running inside a VPC, then connects to it. Use this when the GHE instance is not publicly reachable.
+
+```hcl
+module "codeconnections_ghe" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//codeconnections?depth=1&ref=master"
+
+  enabled = true
+
+  create_host           = true
+  host_name             = "ghe-internal"
+  host_provider_type    = "GitHubEnterpriseServer"
+  host_provider_endpoint = "https://ghe.internal.example.com"
+
+  host_vpc_configuration = {
+    vpc_id             = "vpc-0abc1234def567890"
+    subnet_ids         = ["subnet-0aaa111122223333", "subnet-0bbb444455556666"]
+    security_group_ids = ["sg-0cc77788899900001"]
+    tls_certificate    = "arn:aws:acm:us-east-1:123456789012:certificate/abc12345-1234-1234-1234-abcdef123456"
+  }
+
+  github_organization_name = "my-internal-org"
+
+  host_timeouts = {
+    create = "30m"
+    delete = "30m"
+  }
+
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+  }
+}
+```
+
+## Existing Host - Attach Connection to Pre-Created Host
+
+Attaches a new connection to an existing CodeConnections host ARN, for example when the host is managed by a separate Terraform configuration.
+
+```hcl
+module "codeconnections_existing_host" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//codeconnections?depth=1&ref=master"
+
+  enabled = true
+
+  github_organization_name = "MyOrganization"
+  host_arn                 = "arn:aws:codeconnections:us-east-1:123456789012:host/ghe-internal-abc12345"
+
+  connection_timeouts = {
+    create = "30m"
+    delete = "30m"
+  }
+
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+  }
+}
+```

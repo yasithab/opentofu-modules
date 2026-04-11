@@ -10,8 +10,8 @@ locals {
         # tag key handling
         {
           tag_key = merge(
-            tag.enforced_for_operators_allowed_for_child_policies != null ? {
-              "@@operators_allowed_for_child_policies" = tag.enforced_for_operators_allowed_for_child_policies
+            tag.tag_key_operators_allowed_for_child_policies != null ? {
+              "@@operators_allowed_for_child_policies" = tag.tag_key_operators_allowed_for_child_policies
             } : {},
             {
               (coalesce(tag.tag_key_operator, "@@assign")) = tag.tag_key

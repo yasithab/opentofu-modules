@@ -1,35 +1,182 @@
-<!-- BEGIN_TF_DOCS -->
-## Requirements
+# SSM
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+OpenTofu module to read and write AWS SSM Parameter Store parameters in bulk, with support for SecureString encryption and lifecycle management.
 
-## Providers
+## Features
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+- **Bulk Parameter Write** - Create or update multiple SSM parameters at once from a list of parameter definitions with configurable defaults
+- **Bulk Parameter Read** - Read existing SSM parameters by name and expose their values as outputs
+- **SecureString Support** - Automatically encrypts SecureString parameters with an optional custom KMS key
+- **Configurable Defaults** - Set default type, tier, overwrite behavior, allowed pattern, and data type for all written parameters
+- **Ignore Value Changes** - Optionally ignore future external changes to parameter values after initial creation, useful for secrets managed outside of OpenTofu
+- **Combined Outputs** - Provides consolidated name lists, value lists, name-to-value maps, and name-to-ARN maps across all read and written parameters
+- **Lifecycle Management** - Toggle resource creation on or off with the `enabled` variable
 
-## Inputs
+## Usage
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_enabled"></a> [enabled](#input\_enabled) | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| <a name="input_ignore_value_changes"></a> [ignore\_value\_changes](#input\_ignore\_value\_changes) | Whether to ignore future external changes in paramater values | `bool` | `false` | no |
-| <a name="input_kms_arn"></a> [kms\_arn](#input\_kms\_arn) | The ARN of a KMS key used to encrypt and decrypt SecretString values | `string` | `null` | no |
-| <a name="input_parameter_read"></a> [parameter\_read](#input\_parameter\_read) | List of parameters to read from SSM. These must already exist otherwise an error is returned. Can be used with `parameter_write` as long as the parameters are different. | `list(string)` | `[]` | no |
-| <a name="input_parameter_write"></a> [parameter\_write](#input\_parameter\_write) | List of maps with the parameter values to write to SSM Parameter Store | `list(map(string))` | `[]` | no |
-| <a name="input_parameter_write_defaults"></a> [parameter\_write\_defaults](#input\_parameter\_write\_defaults) | Parameter write default settings | `map(any)` | <pre>{<br/>  "allowed_pattern": null,<br/>  "data_type": "text",<br/>  "description": null,<br/>  "overwrite": null,<br/>  "tier": "Standard",<br/>  "type": "SecureString"<br/>}</pre> | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+```hcl
+module "ssm" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ssm?depth=1&ref=master"
 
-## Outputs
+  parameter_write = [
+    {
+      name        = "/app/database/host"
+      value       = "db.example.com"
+      type        = "String"
+      description = "Database hostname"
+    },
+    {
+      name        = "/app/database/password"
+      value       = "supersecret"
+      type        = "SecureString"
+      description = "Database password"
+    }
+  ]
 
-| Name | Description |
-|------|-------------|
-| <a name="output_arn_map"></a> [arn\_map](#output\_arn\_map) | A map of the names and ARNs created |
-| <a name="output_map"></a> [map](#output\_map) | A map of the names and values created |
-| <a name="output_names"></a> [names](#output\_names) | A list of all of the parameter names |
-| <a name="output_values"></a> [values](#output\_values) | A list of all of the parameter values |
-<!-- END_TF_DOCS -->
+  parameter_read = [
+    "/shared/config/region"
+  ]
+
+  kms_arn = "arn:aws:kms:us-east-1:123456789012:key/abcd-1234"
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+
+## Examples
+
+## Write Plain String Parameters
+
+Write application configuration values as plain `String` type parameters.
+
+```hcl
+module "ssm_config" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ssm?depth=1&ref=master"
+
+  enabled = true
+
+  parameter_write = [
+    {
+      name        = "/production/myapp/database_host"
+      value       = "myapp.cluster-abcdefgh.eu-west-1.rds.amazonaws.com"
+      type        = "String"
+      description = "RDS cluster endpoint for MyApp"
+    },
+    {
+      name        = "/production/myapp/database_port"
+      value       = "5432"
+      type        = "String"
+      description = "RDS port for MyApp"
+    },
+    {
+      name        = "/production/myapp/region"
+      value       = "eu-west-1"
+      type        = "String"
+      description = "AWS region for MyApp"
+    },
+  ]
+
+  tags = {
+    Environment = "production"
+    Application = "myapp"
+    Team        = "platform"
+  }
+}
+```
+
+## Write Secure String Parameters with KMS Encryption
+
+Store sensitive credentials as `SecureString` parameters, encrypted with a customer-managed KMS key.
+
+```hcl
+module "ssm_secrets" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ssm?depth=1&ref=master"
+
+  enabled = true
+
+  kms_arn = "arn:aws:kms:eu-west-1:123456789012:key/mrk-00000000000000000000000000000000"
+
+  parameter_write = [
+    {
+      name        = "/production/myapp/db_password"
+      value       = var.db_password
+      type        = "SecureString"
+      description = "Database password for MyApp"
+    },
+    {
+      name        = "/production/myapp/jwt_secret"
+      value       = var.jwt_secret
+      type        = "SecureString"
+      description = "JWT signing secret"
+    },
+  ]
+
+  tags = {
+    Environment = "production"
+    DataClass   = "confidential"
+    Team        = "platform"
+  }
+}
+```
+
+## Read Existing Parameters
+
+Read parameters already stored in SSM (managed by another team or pipeline) for use as data sources.
+
+```hcl
+module "ssm_read" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ssm?depth=1&ref=master"
+
+  enabled = true
+
+  parameter_read = [
+    "/shared/infra/vpc_id",
+    "/shared/infra/private_subnet_ids",
+    "/shared/infra/kms_key_arn",
+  ]
+
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+  }
+}
+```
+
+## Write Parameters with Ignore Value Changes
+
+Write initial parameter values and then ignore external changes, useful for parameters whose values are managed by an application or CI/CD pipeline after initial creation.
+
+```hcl
+module "ssm_managed_by_app" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ssm?depth=1&ref=master"
+
+  enabled              = true
+  ignore_value_changes = true
+
+  kms_arn = "arn:aws:kms:eu-west-1:123456789012:key/mrk-00000000000000000000000000000000"
+
+  parameter_write = [
+    {
+      name        = "/production/myapp/oauth_client_secret"
+      value       = "initial-placeholder"
+      type        = "SecureString"
+      description = "OAuth client secret - rotated by the application"
+    },
+    {
+      name        = "/production/myapp/feature_flags"
+      value       = "{}"
+      type        = "String"
+      description = "Feature flag JSON - updated by the feature flag service"
+    },
+  ]
+
+  tags = {
+    Environment = "production"
+    ManagedBy   = "application"
+    Team        = "platform"
+  }
+}
+```

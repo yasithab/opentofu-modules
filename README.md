@@ -111,7 +111,7 @@ Reference a module by selecting a specific tag with a shallow clone - **never po
 ```hcl
 # select a specific tag and do shallow clone
 module "vpc" {
-  source = "git::https://github.com/yasithab/opentofu-modules.git//vpc?depth=1&ref=v2.0.0"
+  source = "git::https://github.com/yasithab/opentofu-modules.git//vpc?depth=1&ref=master"
 
   name    = "my-vpc"
   enabled = true

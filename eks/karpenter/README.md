@@ -15,13 +15,13 @@ In the following example, the Karpenter module will create:
 
 ```hcl
 module "eks" {
-  source = "terraform-aws-modules/eks/aws"
+  source = "git::https://github.com/yasithab/opentofu-modules.git//eks?depth=1&ref=master"
 
   ...
 }
 
 module "karpenter" {
-  source = "terraform-aws-modules/eks/aws//modules/karpenter"
+  source = "git::https://github.com/yasithab/opentofu-modules.git//eks/karpenter?depth=1&ref=master"
 
   cluster_name = module.eks.cluster_name
 
@@ -47,7 +47,7 @@ In this scenario, Karpenter will re-use an existing Node IAM role from the EKS m
 
 ```hcl
 module "eks" {
-  source = "terraform-aws-modules/eks"
+  source = "git::https://github.com/yasithab/opentofu-modules.git//eks?depth=1&ref=master"
 
   # Shown just for connection between cluster and Karpenter sub-module below
   eks_managed_node_groups = {
@@ -63,7 +63,7 @@ module "eks" {
 }
 
 module "karpenter" {
-  source = "terraform-aws-modules/eks/aws//modules/karpenter"
+  source = "git::https://github.com/yasithab/opentofu-modules.git//eks/karpenter?depth=1&ref=master"
 
   cluster_name = module.eks.cluster_name
 
@@ -80,102 +80,134 @@ module "karpenter" {
 }
 ```
 
-<!-- BEGIN_TF_DOCS -->
-## Requirements
 
-| Name | Version |
-|------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | 1.11.5 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | 6.38.0 |
+## Examples
 
-## Providers
+## Basic Usage
 
-| Name | Version |
-|------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.38.0 |
+Create Karpenter IAM role and SQS queue for spot termination handling using Pod Identity.
 
-## Inputs
+```hcl
+module "karpenter" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//eks/karpenter?depth=1&ref=master"
 
-| Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| <a name="input_access_entry_type"></a> [access\_entry\_type](#input\_access\_entry\_type) | Type of the access entry. `EC2_LINUX`, `FARGATE_LINUX`, or `EC2_WINDOWS`; defaults to `EC2_LINUX` | `string` | `"EC2_LINUX"` | no |
-| <a name="input_ami_id_ssm_parameter_arns"></a> [ami\_id\_ssm\_parameter\_arns](#input\_ami\_id\_ssm\_parameter\_arns) | List of SSM Parameter ARNs that Karpenter controller is allowed read access (for retrieving AMI IDs) | `list(string)` | `[]` | no |
-| <a name="input_cluster_ip_family"></a> [cluster\_ip\_family](#input\_cluster\_ip\_family) | The IP family used to assign Kubernetes pod and service addresses. Valid values are `ipv4` (default) and `ipv6`. Note: If `ipv6` is specified, the `AmazonEKS_CNI_IPv6_Policy` must exist in the account. This policy is created by the EKS module with `create_cni_ipv6_iam_policy = true` | `string` | `"ipv4"` | no |
-| <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | The name of the EKS cluster | `string` | `null` | no |
-| <a name="input_create"></a> [create](#input\_create) | Controls if resources should be created (affects nearly all resources) | `bool` | `true` | no |
-| <a name="input_create_access_entry"></a> [create\_access\_entry](#input\_create\_access\_entry) | Determines whether an access entry is created for the IAM role used by the node IAM role | `bool` | `true` | no |
-| <a name="input_create_iam_role"></a> [create\_iam\_role](#input\_create\_iam\_role) | Determines whether an IAM role is created | `bool` | `true` | no |
-| <a name="input_create_instance_profile"></a> [create\_instance\_profile](#input\_create\_instance\_profile) | Whether to create an IAM instance profile | `bool` | `false` | no |
-| <a name="input_create_node_iam_role"></a> [create\_node\_iam\_role](#input\_create\_node\_iam\_role) | Determines whether an IAM role is created or to use an existing IAM role | `bool` | `true` | no |
-| <a name="input_create_pod_identity_association"></a> [create\_pod\_identity\_association](#input\_create\_pod\_identity\_association) | Determines whether to create pod identity association | `bool` | `true` | no |
-| <a name="input_enable_irsa"></a> [enable\_irsa](#input\_enable\_irsa) | Determines whether to enable support for IAM role for service accounts | `bool` | `false` | no |
-| <a name="input_enable_pod_identity"></a> [enable\_pod\_identity](#input\_enable\_pod\_identity) | Determines whether to enable support for EKS pod identity | `bool` | `true` | no |
-| <a name="input_enable_spot_termination"></a> [enable\_spot\_termination](#input\_enable\_spot\_termination) | Determines whether to enable native spot termination handling | `bool` | `true` | no |
-| <a name="input_enable_v1_permissions"></a> [enable\_v1\_permissions](#input\_enable\_v1\_permissions) | Determines whether to enable permissions suitable for v1+ (`true`) or for v0.33.x-v0.37.x (`false`) | `bool` | `true` | no |
-| <a name="input_event_bus_name"></a> [event\_bus\_name](#input\_event\_bus\_name) | The name or ARN of the event bus to associate with EventBridge rules and targets. Defaults to the default event bus | `string` | `null` | no |
-| <a name="input_event_rule_force_destroy"></a> [event\_rule\_force\_destroy](#input\_event\_rule\_force\_destroy) | Used to delete managed rules created by AWS. Defaults to `false` | `bool` | `null` | no |
-| <a name="input_event_rule_role_arn"></a> [event\_rule\_role\_arn](#input\_event\_rule\_role\_arn) | The Amazon Resource Name (ARN) associated with the IAM role used for target invocation of the EventBridge rule | `string` | `null` | no |
-| <a name="input_event_rule_state"></a> [event\_rule\_state](#input\_event\_rule\_state) | State of the EventBridge rule. Valid values are `DISABLED`, `ENABLED`, and `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`. Defaults to `ENABLED` | `string` | `null` | no |
-| <a name="input_iam_policy_description"></a> [iam\_policy\_description](#input\_iam\_policy\_description) | IAM policy description | `string` | `"Karpenter controller IAM policy"` | no |
-| <a name="input_iam_policy_name"></a> [iam\_policy\_name](#input\_iam\_policy\_name) | Name of the IAM policy | `string` | `"KarpenterController"` | no |
-| <a name="input_iam_policy_path"></a> [iam\_policy\_path](#input\_iam\_policy\_path) | Path of the IAM policy | `string` | `"/"` | no |
-| <a name="input_iam_policy_statements"></a> [iam\_policy\_statements](#input\_iam\_policy\_statements) | A list of IAM policy [statements](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document#statement) - used for adding specific IAM permissions as needed | `any` | `[]` | no |
-| <a name="input_iam_policy_use_name_prefix"></a> [iam\_policy\_use\_name\_prefix](#input\_iam\_policy\_use\_name\_prefix) | Determines whether the name of the IAM policy (`iam_policy_name`) is used as a prefix | `bool` | `true` | no |
-| <a name="input_iam_role_description"></a> [iam\_role\_description](#input\_iam\_role\_description) | IAM role description | `string` | `"Karpenter controller IAM role"` | no |
-| <a name="input_iam_role_max_session_duration"></a> [iam\_role\_max\_session\_duration](#input\_iam\_role\_max\_session\_duration) | Maximum API session duration in seconds between 3600 and 43200 | `number` | `null` | no |
-| <a name="input_iam_role_name"></a> [iam\_role\_name](#input\_iam\_role\_name) | Name of the IAM role | `string` | `"KarpenterController"` | no |
-| <a name="input_iam_role_path"></a> [iam\_role\_path](#input\_iam\_role\_path) | Path of the IAM role | `string` | `"/"` | no |
-| <a name="input_iam_role_permissions_boundary_arn"></a> [iam\_role\_permissions\_boundary\_arn](#input\_iam\_role\_permissions\_boundary\_arn) | Permissions boundary ARN to use for the IAM role | `string` | `null` | no |
-| <a name="input_iam_role_policies"></a> [iam\_role\_policies](#input\_iam\_role\_policies) | Policies to attach to the IAM role in `{'static_name' = 'policy_arn'}` format | `map(string)` | `{}` | no |
-| <a name="input_iam_role_tags"></a> [iam\_role\_tags](#input\_iam\_role\_tags) | A map of additional tags to add the the IAM role | `map(any)` | `{}` | no |
-| <a name="input_iam_role_use_name_prefix"></a> [iam\_role\_use\_name\_prefix](#input\_iam\_role\_use\_name\_prefix) | Determines whether the name of the IAM role (`iam_role_name`) is used as a prefix | `bool` | `true` | no |
-| <a name="input_irsa_assume_role_condition_test"></a> [irsa\_assume\_role\_condition\_test](#input\_irsa\_assume\_role\_condition\_test) | Name of the [IAM condition operator](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html) to evaluate when assuming the role | `string` | `"StringEquals"` | no |
-| <a name="input_irsa_namespace_service_accounts"></a> [irsa\_namespace\_service\_accounts](#input\_irsa\_namespace\_service\_accounts) | List of `namespace:serviceaccount`pairs to use in trust policy for IAM role for service accounts | `list(string)` | <pre>[<br/>  "karpenter:karpenter"<br/>]</pre> | no |
-| <a name="input_irsa_oidc_provider_arn"></a> [irsa\_oidc\_provider\_arn](#input\_irsa\_oidc\_provider\_arn) | OIDC provider arn used in trust policy for IAM role for service accounts | `string` | `""` | no |
-| <a name="input_namespace"></a> [namespace](#input\_namespace) | Namespace to associate with the Karpenter Pod Identity | `string` | `"kube-system"` | no |
-| <a name="input_node_iam_role_additional_policies"></a> [node\_iam\_role\_additional\_policies](#input\_node\_iam\_role\_additional\_policies) | Additional policies to be added to the IAM role | `map(string)` | `{}` | no |
-| <a name="input_node_iam_role_arn"></a> [node\_iam\_role\_arn](#input\_node\_iam\_role\_arn) | Existing IAM role ARN for the IAM instance profile. Required if `create_iam_role` is set to `false` | `string` | `null` | no |
-| <a name="input_node_iam_role_attach_cni_policy"></a> [node\_iam\_role\_attach\_cni\_policy](#input\_node\_iam\_role\_attach\_cni\_policy) | Whether to attach the `AmazonEKS_CNI_Policy`/`AmazonEKS_CNI_IPv6_Policy` IAM policy to the IAM IAM role. WARNING: If set `false` the permissions must be assigned to the `aws-node` DaemonSet pods via another method or nodes will not be able to join the cluster | `bool` | `true` | no |
-| <a name="input_node_iam_role_description"></a> [node\_iam\_role\_description](#input\_node\_iam\_role\_description) | Description of the role | `string` | `null` | no |
-| <a name="input_node_iam_role_max_session_duration"></a> [node\_iam\_role\_max\_session\_duration](#input\_node\_iam\_role\_max\_session\_duration) | Maximum API session duration in seconds between 3600 and 43200 | `number` | `null` | no |
-| <a name="input_node_iam_role_name"></a> [node\_iam\_role\_name](#input\_node\_iam\_role\_name) | Name to use on IAM role created | `string` | `null` | no |
-| <a name="input_node_iam_role_path"></a> [node\_iam\_role\_path](#input\_node\_iam\_role\_path) | IAM role path | `string` | `"/"` | no |
-| <a name="input_node_iam_role_permissions_boundary"></a> [node\_iam\_role\_permissions\_boundary](#input\_node\_iam\_role\_permissions\_boundary) | ARN of the policy that is used to set the permissions boundary for the IAM role | `string` | `null` | no |
-| <a name="input_node_iam_role_tags"></a> [node\_iam\_role\_tags](#input\_node\_iam\_role\_tags) | A map of additional tags to add to the IAM role created | `map(string)` | `{}` | no |
-| <a name="input_node_iam_role_use_name_prefix"></a> [node\_iam\_role\_use\_name\_prefix](#input\_node\_iam\_role\_use\_name\_prefix) | Determines whether the Node IAM role name (`node_iam_role_name`) is used as a prefix | `bool` | `true` | no |
-| <a name="input_pod_identity_disable_session_tags"></a> [pod\_identity\_disable\_session\_tags](#input\_pod\_identity\_disable\_session\_tags) | Whether to disable automatic session tags for the Pod Identity association | `bool` | `null` | no |
-| <a name="input_pod_identity_target_role_arn"></a> [pod\_identity\_target\_role\_arn](#input\_pod\_identity\_target\_role\_arn) | The ARN of an IAM role to chain to the Karpenter role via assume role. Used for cross-account role chaining | `string` | `null` | no |
-| <a name="input_queue_delay_seconds"></a> [queue\_delay\_seconds](#input\_queue\_delay\_seconds) | Time in seconds that the delivery of all messages in the queue will be delayed. An integer from 0 to 900. Defaults to 0 | `number` | `null` | no |
-| <a name="input_queue_kms_data_key_reuse_period_seconds"></a> [queue\_kms\_data\_key\_reuse\_period\_seconds](#input\_queue\_kms\_data\_key\_reuse\_period\_seconds) | The length of time, in seconds, for which Amazon SQS can reuse a data key to encrypt or decrypt messages before calling AWS KMS again | `number` | `null` | no |
-| <a name="input_queue_kms_master_key_id"></a> [queue\_kms\_master\_key\_id](#input\_queue\_kms\_master\_key\_id) | The ID of an AWS-managed customer master key (CMK) for Amazon SQS or a custom CMK | `string` | `null` | no |
-| <a name="input_queue_managed_sse_enabled"></a> [queue\_managed\_sse\_enabled](#input\_queue\_managed\_sse\_enabled) | Boolean to enable server-side encryption (SSE) of message content with SQS-owned encryption keys | `bool` | `true` | no |
-| <a name="input_queue_max_message_size"></a> [queue\_max\_message\_size](#input\_queue\_max\_message\_size) | Limit of how many bytes a message can contain before Amazon SQS rejects it. An integer from 1024 bytes (1 KiB) up to 262144 bytes (256 KiB). Defaults to 262144 | `number` | `null` | no |
-| <a name="input_queue_name"></a> [queue\_name](#input\_queue\_name) | Name of the SQS queue | `string` | `null` | no |
-| <a name="input_queue_receive_wait_time_seconds"></a> [queue\_receive\_wait\_time\_seconds](#input\_queue\_receive\_wait\_time\_seconds) | Time for which a ReceiveMessage call will wait for a message to arrive (long polling) before returning. An integer from 0 to 20. Defaults to 0 | `number` | `null` | no |
-| <a name="input_queue_visibility_timeout_seconds"></a> [queue\_visibility\_timeout\_seconds](#input\_queue\_visibility\_timeout\_seconds) | Visibility timeout for the queue. An integer from 0 to 43200 (12 hours). Defaults to 30 | `number` | `null` | no |
-| <a name="input_rule_name_prefix"></a> [rule\_name\_prefix](#input\_rule\_name\_prefix) | Prefix used for all event bridge rules | `string` | `"Karpenter"` | no |
-| <a name="input_service_account"></a> [service\_account](#input\_service\_account) | Service account to associate with the Karpenter Pod Identity | `string` | `"karpenter"` | no |
-| <a name="input_tags"></a> [tags](#input\_tags) | A map of tags to add to all resources | `map(string)` | `{}` | no |
+  create       = true
+  cluster_name = "my-cluster"
 
-## Outputs
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+  }
+}
+```
 
-| Name | Description |
-|------|-------------|
-| <a name="output_event_rules"></a> [event\_rules](#output\_event\_rules) | Map of the event rules created and their attributes |
-| <a name="output_iam_role_arn"></a> [iam\_role\_arn](#output\_iam\_role\_arn) | The Amazon Resource Name (ARN) specifying the controller IAM role |
-| <a name="output_iam_role_name"></a> [iam\_role\_name](#output\_iam\_role\_name) | The name of the controller IAM role |
-| <a name="output_iam_role_unique_id"></a> [iam\_role\_unique\_id](#output\_iam\_role\_unique\_id) | Stable and unique string identifying the controller IAM role |
-| <a name="output_instance_profile_arn"></a> [instance\_profile\_arn](#output\_instance\_profile\_arn) | ARN assigned by AWS to the instance profile |
-| <a name="output_instance_profile_id"></a> [instance\_profile\_id](#output\_instance\_profile\_id) | Instance profile's ID |
-| <a name="output_instance_profile_name"></a> [instance\_profile\_name](#output\_instance\_profile\_name) | Name of the instance profile |
-| <a name="output_instance_profile_unique"></a> [instance\_profile\_unique](#output\_instance\_profile\_unique) | Stable and unique string identifying the IAM instance profile |
-| <a name="output_namespace"></a> [namespace](#output\_namespace) | Namespace associated with the Karpenter Pod Identity |
-| <a name="output_node_access_entry_arn"></a> [node\_access\_entry\_arn](#output\_node\_access\_entry\_arn) | Amazon Resource Name (ARN) of the node Access Entry |
-| <a name="output_node_iam_role_arn"></a> [node\_iam\_role\_arn](#output\_node\_iam\_role\_arn) | The Amazon Resource Name (ARN) specifying the node IAM role |
-| <a name="output_node_iam_role_name"></a> [node\_iam\_role\_name](#output\_node\_iam\_role\_name) | The name of the node IAM role |
-| <a name="output_node_iam_role_unique_id"></a> [node\_iam\_role\_unique\_id](#output\_node\_iam\_role\_unique\_id) | Stable and unique string identifying the node IAM role |
-| <a name="output_queue_arn"></a> [queue\_arn](#output\_queue\_arn) | The ARN of the SQS queue |
-| <a name="output_queue_name"></a> [queue\_name](#output\_queue\_name) | The name of the created Amazon SQS queue |
-| <a name="output_queue_url"></a> [queue\_url](#output\_queue\_url) | The URL for the created Amazon SQS queue |
-| <a name="output_service_account"></a> [service\_account](#output\_service\_account) | Service Account associated with the Karpenter Pod Identity |
-<!-- END_TF_DOCS -->
+## With Pod Identity Association
+
+Karpenter with Pod Identity association and Karpenter v1 permissions enabled.
+
+```hcl
+module "karpenter" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//eks/karpenter?depth=1&ref=master"
+
+  create       = true
+  cluster_name = "app-cluster"
+
+  enable_pod_identity           = true
+  create_pod_identity_association = true
+  enable_v1_permissions         = true
+
+  namespace       = "kube-system"
+  service_account = "karpenter"
+
+  enable_spot_termination = true
+
+  node_iam_role_name            = "KarpenterNodeRole-app-cluster"
+  node_iam_role_use_name_prefix = false
+  create_instance_profile       = true
+
+  tags = {
+    Environment = "production"
+    ManagedBy   = "terraform"
+  }
+}
+```
+
+## With IRSA (Legacy / Non-Pod-Identity Clusters)
+
+Karpenter using IRSA instead of Pod Identity for older EKS clusters.
+
+```hcl
+module "karpenter" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//eks/karpenter?depth=1&ref=master"
+
+  create       = true
+  cluster_name = "legacy-cluster"
+
+  enable_pod_identity = false
+  enable_irsa         = true
+
+  irsa_oidc_provider_arn          = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.ap-southeast-1.amazonaws.com/id/ABCD1234"
+  irsa_namespace_service_accounts = ["karpenter:karpenter"]
+
+  node_iam_role_name      = "KarpenterNodeRole-legacy-cluster"
+  create_instance_profile = true
+
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+  }
+}
+```
+
+## Advanced - Cross-Account with Custom SQS and Event Bridge
+
+Karpenter with a custom SQS queue name, KMS encryption, and cross-account role chaining.
+
+```hcl
+module "karpenter" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//eks/karpenter?depth=1&ref=master"
+
+  create       = true
+  cluster_name = "prod-cluster"
+
+  enable_pod_identity             = true
+  create_pod_identity_association = true
+  enable_v1_permissions           = true
+
+  iam_role_name            = "KarpenterController-prod"
+  iam_role_use_name_prefix = false
+  iam_role_description     = "Karpenter controller role for prod-cluster"
+
+  iam_role_permissions_boundary_arn = "arn:aws:iam::123456789012:policy/BoundaryPolicy"
+
+  pod_identity_target_role_arn = "arn:aws:iam::987654321098:role/KarpenterCrossAccountRole"
+
+  enable_spot_termination                    = true
+  queue_name                                 = "KarpenterInterruptionQueue-prod"
+  queue_managed_sse_enabled                  = false
+  queue_kms_master_key_id                    = "arn:aws:kms:ap-southeast-1:123456789012:key/mrk-abc123"
+  queue_kms_data_key_reuse_period_seconds    = 300
+  queue_visibility_timeout_seconds           = 60
+
+  node_iam_role_name                 = "KarpenterNodeRole-prod"
+  node_iam_role_use_name_prefix      = false
+  node_iam_role_permissions_boundary = "arn:aws:iam::123456789012:policy/BoundaryPolicy"
+  create_instance_profile            = true
+  node_iam_role_additional_policies = {
+    ssm = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  }
+
+  ami_id_ssm_parameter_arns = [
+    "arn:aws:ssm:ap-southeast-1::parameter/aws/service/eks/optimized-ami/*"
+  ]
+
+  event_rule_state    = "ENABLED"
+  rule_name_prefix    = "Karpenter-prod"
+
+  tags = {
+    Environment = "production"
+    ManagedBy   = "terraform"
+    CostCenter  = "platform"
+  }
+}
+```
