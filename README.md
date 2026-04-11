@@ -49,7 +49,6 @@ Each module folder includes the following files:
 - `outputs.tf` - Specifies the module's outputs.
 - `providers.tf` - Specifies the required OpenTofu and provider version constraints.
 - `README.md` - Documentation specific to the module.
-- `tests/basic.tftest.hcl` - Validation test for the module.
 
 Some modules contain additional files for organisational clarity (e.g. `iam.tf` for IAM-specific resources).
 
@@ -136,7 +135,6 @@ task --list
 | `task format` | Format all OpenTofu code recursively |
 | `task validate` | Run `tofu validate` in every module (backend-less) |
 | `task lint` | Run tflint across all modules |
-| `task test` | Run `tofu test` on all modules with test files |
 | `task security` | Run Trivy CRITICAL/HIGH misconfiguration scan |
 | `task ci` | Run all of the above |
 
@@ -187,14 +185,12 @@ Runs on every pull request:
 1. Format (`task format`) — auto-commits any formatting changes
 2. Validate all modules (`task validate`)
 3. Lint with tflint (`task lint`)
-4. Test changed modules (`tofu test` on modules with changed `.tf` files)
-5. Trivy security scan (fails on CRITICAL/HIGH)
+4. Trivy security scan (fails on CRITICAL/HIGH)
 
 ### Release Workflow (`.github/workflows/release.yml`)
 
 Runs on every push to `master`:
 
-1. Test changed modules (`tofu test` on modules with changed `.tf` files)
 2. Auto-create semantic version tag based on commit message prefix
 3. Create GitHub release with auto-generated notes
 
@@ -203,7 +199,7 @@ Runs on every push to `master`:
 Runs monthly (1st of each month):
 
 1. Validates all modules
-2. Detects modules missing test files or README
+2. Detects modules missing README
 3. Creates a GitHub issue if problems are found
 
 ## Best Practices

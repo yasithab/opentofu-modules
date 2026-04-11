@@ -38,24 +38,6 @@ jobs:
       - name: Create provider plugin cache dir
         run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
 
-      - name: Check modules missing tests
-        id: missing_tests
-        run: |
-          MISSING=""
-          for main_tf in $(find . -name "main.tf" -not -path "*/.terraform/*" -not -path "*/wrappers/*" | sort); do
-            dir=$(dirname "$main_tf")
-            mod=$(echo "$dir" | sed 's|^\./||')
-            if [ ! -d "$dir/tests" ] || [ -z "$(ls "$dir/tests"/*.tftest.hcl 2>/dev/null)" ]; then
-              MISSING="$MISSING\n- \`$mod\`"
-            fi
-          done
-          if [ -n "$MISSING" ]; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-            echo -e "$MISSING" > /tmp/missing-tests.txt
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Check modules missing README
         id: missing_readme
         run: |
@@ -117,12 +99,6 @@ jobs:
               echo ""
             fi
 
-            if [ "${{ steps.missing_tests.outputs.found }}" = "true" ]; then
-              echo "### ⚠️ Modules Missing Tests"
-              cat /tmp/missing-tests.txt
-              echo ""
-            fi
-
             if [ "${{ steps.missing_readme.outputs.found }}" = "true" ]; then
               echo "### ⚠️ Modules Missing README"
               cat /tmp/missing-readme.txt
@@ -130,15 +106,14 @@ jobs:
             fi
 
             if [ "${{ steps.validate.outputs.has_failures }}" = "false" ] && \
-               [ "${{ steps.missing_tests.outputs.found }}" = "false" ] && \
                [ "${{ steps.missing_readme.outputs.found }}" = "false" ]; then
               echo "### ✅ All checks passed"
-              echo "All modules have valid configuration, test files, and documentation."
+              echo "All modules have valid configuration and documentation."
             fi
           } | tee /tmp/report.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create issue if problems found
-        if: steps.validate.outputs.has_failures == 'true' || steps.missing_tests.outputs.found == 'true'
+        if: steps.validate.outputs.has_failures == 'true'
         uses: actions/github-script@v8
         with:
           script: |

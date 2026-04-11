@@ -14,15 +14,13 @@ Collection of 128+ reusable OpenTofu modules for AWS infrastructure. All modules
 | `task validate` | Run `tofu validate` in every module (backend-less init) |
 | `task lint` | Run tflint across all modules |
 | `task lint-init` | Install tflint plugins (run once before first lint) |
-| `task test` | Run `tofu test` on all modules with test files |
 | `task security` | Trivy CRITICAL/HIGH misconfiguration scan |
 | `task ci` | Run all of the above in parallel |
 | `pre-commit run --all-files` | Run all pre-commit hooks manually |
 
-To lint, validate, or test a single module:
+To lint or validate a single module:
 ```bash
 cd <module-dir> && tofu init -backend=false && tofu validate
-cd <module-dir> && tofu init -backend=false && tofu test
 tflint --chdir <module-dir>
 ```
 
@@ -34,7 +32,6 @@ Every module follows this structure:
 - `outputs.tf` — outputs (expose all useful resource attributes via `try()`)
 - `providers.tf` — version constraints (OpenTofu + AWS provider)
 - `README.md` — module documentation with usage examples covering all patterns
-- `tests/basic.tftest.hcl` — validation test (plan with `enabled = false`)
 
 ### Required patterns in every module
 
@@ -55,7 +52,6 @@ locals {
 
 **Outputs** use `try()` for safe extraction with empty string defaults. Expose all useful resource attributes for composability.
 
-**Tests** — every module must have `tests/basic.tftest.hcl` with a plan test using `enabled = false`.
 
 ### Complex modules
 
@@ -67,11 +63,10 @@ Some modules have submodules under `modules/` (e.g., `eks/modules/`, `cloudwatch
 1. Format (`task format`) — auto-commits fixes
 2. Validate all modules (`task validate`)
 3. Lint with tflint (`task lint`)
-4. Test changed modules (`tofu test` on modules with changed `.tf` files)
-5. Trivy security scan (fails on CRITICAL/HIGH)
+4. Trivy security scan (fails on CRITICAL/HIGH)
 
 ### Master Merge
-1. Test changed modules (must pass before release)
+1. Validate all modules (`task validate`)
 2. Auto-create semantic version tag and GitHub release
 
 ## Versioning

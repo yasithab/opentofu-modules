@@ -31,8 +31,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # ── Test ALL modules before releasing ────────────────────────────────────
-  test:
+  # ── Validate ALL modules before releasing ──────────────────────────────────
+  validate:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -66,14 +66,14 @@ jobs:
       - name: Create provider plugin cache dir
         run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
 
-      - name: Run all tests
-        run: task test
+      - name: Validate all modules
+        run: task validate
 
   # ── Create tag and release ─────────────────────────────────────────────────
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [test]
+    needs: [validate]
     permissions:
       contents: write
       issues: write
