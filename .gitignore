@@ -21,6 +21,7 @@ override.tf.json
 *.tfvars.json
 *.auto.tfvars
 *.auto.tfvars.json
+!terratest.tfvars
 
 # Crash logs
 crash.log
