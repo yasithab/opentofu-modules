@@ -69,10 +69,6 @@ data "aws_iam_policy_document" "trust" {
       }
     }
   }
-
-  lifecycle {
-    enabled = local.create_role
-  }
 }
 
 resource "aws_iam_role" "this" {
