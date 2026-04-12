@@ -1,1 +1,2 @@
-# No required variables
+create_ecr_repo = false
+enabled         = false

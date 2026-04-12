@@ -1,2 +1,3 @@
-name = "terratest-plan"
-destination = "terratest-destination"
+name        = "terratest-plan"
+destination = "extended_s3"
+enabled     = false

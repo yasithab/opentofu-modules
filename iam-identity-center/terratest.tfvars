@@ -1,1 +1,1 @@
-# No required variables
+# All variables have defaults - empty maps produce no resources

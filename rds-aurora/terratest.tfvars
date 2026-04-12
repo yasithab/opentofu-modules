@@ -1,1 +1,3 @@
-# No required variables
+name    = "terratest-plan"
+engine  = "aurora-mysql"
+enabled = false

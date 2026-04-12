@@ -1,1 +1,2 @@
-# No required variables
+cluster_name = "terratest-plan"
+enabled      = false

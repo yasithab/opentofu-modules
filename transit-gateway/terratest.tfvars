@@ -1,1 +1,1 @@
-# No required variables
+name = "terratest-plan"

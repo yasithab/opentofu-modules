@@ -1,1 +1,1 @@
-# No required variables
+enabled = false

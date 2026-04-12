@@ -1,1 +1,1 @@
-# No required variables
+bus_name = "terratest-plan"

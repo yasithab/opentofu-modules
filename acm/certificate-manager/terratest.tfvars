@@ -1,1 +1,1 @@
-# No required variables
+domain_name = "test.example.com"

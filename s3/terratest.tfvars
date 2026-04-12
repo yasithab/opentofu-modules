@@ -1,1 +1,1 @@
-# No required variables
+bucket = "terratest-plan-bucket"

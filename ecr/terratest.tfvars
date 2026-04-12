@@ -1,1 +1,1 @@
-# No required variables
+repository_name = "terratest-plan"

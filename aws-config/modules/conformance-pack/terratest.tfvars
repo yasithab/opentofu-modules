@@ -1,1 +1,3 @@
-name = "terratest-plan"
+name          = "terratest-plan"
+template_body = ""
+enabled       = false

@@ -1,3 +1,4 @@
-name = "terratest-plan"
-vpc_id = "vpc-12345678"
+name      = "terratest-plan"
+vpc_id    = "vpc-12345678"
 subnet_id = "subnet-12345678"
+enabled   = false

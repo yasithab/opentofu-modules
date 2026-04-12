@@ -1,1 +1,2 @@
-# No required variables
+name    = "terratest-plan"
+service = "terratest"

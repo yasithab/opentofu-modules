@@ -1,1 +1,1 @@
-# No required variables
+platform = "linux"
