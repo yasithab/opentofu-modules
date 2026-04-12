@@ -114,9 +114,12 @@ resource "aws_msk_cluster" "this" {
     }
   }
 
-  configuration_info {
-    arn      = aws_msk_configuration.this.arn
-    revision = aws_msk_configuration.this.latest_revision
+  dynamic "configuration_info" {
+    for_each = var.server_properties != null ? [1] : []
+    content {
+      arn      = aws_msk_configuration.this.arn
+      revision = aws_msk_configuration.this.latest_revision
+    }
   }
 
   open_monitoring {

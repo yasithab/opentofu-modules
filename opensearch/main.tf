@@ -10,7 +10,7 @@ data "aws_iam_session_context" "current" {
 
 locals {
   enabled                = var.enabled
-  opensearch_domain_name = var.opensearch_domain_name != null ? var.opensearch_domain_name : var.name
+  opensearch_domain_name = coalesce(var.opensearch_domain_name, var.name, "opensearch")
   partition              = try(data.aws_partition.current.partition, "")
   region                 = try(data.aws_region.current.region, "")
   account_id             = try(data.aws_caller_identity.current.account_id, "")

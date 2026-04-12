@@ -49,6 +49,8 @@ resource "aws_iam_role_policy" "policy_codebuild_runners" {
 
 
 data "aws_vpc" "vpc" {
+  count = local.create && var.vpc_id != null ? 1 : 0
+
   filter {
     name   = "vpc-id"
     values = [var.vpc_id]
@@ -57,7 +59,8 @@ data "aws_vpc" "vpc" {
 
 # Creating Codebuild Project
 data "aws_ecr_repository" "codebuild_runner" {
-  name = var.codebuild_runner_repository_name
+  count = local.create ? 1 : 0
+  name  = var.codebuild_runner_repository_name
 }
 
 #######################################################################################################################
@@ -79,7 +82,7 @@ data "aws_security_group" "codebuild_runners_sg" {
 resource "aws_security_group" "codebuild_runners" {
   name        = "codebuild-runners-${local.workspace}-security-group"
   description = "Allow internal traffic within the security group and all outbound traffic"
-  vpc_id      = data.aws_vpc.vpc.id
+  vpc_id      = try(data.aws_vpc.vpc[0].id, var.vpc_id)
 
   tags = merge(local.tags, { Name = "codebuild-runners-${local.workspace}-security-group" })
 
@@ -197,7 +200,7 @@ resource "aws_codebuild_project" "codebuild_build_runner" {
   }
 
   environment {
-    image                       = "${var.codebuild_runner_repository_url != null ? var.codebuild_runner_repository_url : data.aws_ecr_repository.codebuild_runner.repository_url}:${var.codebuild_runner_image_tag}"
+    image                       = "${var.codebuild_runner_repository_url != null ? var.codebuild_runner_repository_url : try(data.aws_ecr_repository.codebuild_runner[0].repository_url, "")}:${var.codebuild_runner_image_tag}"
     type                        = var.build_runner_environment_type
     compute_type                = var.build_runner_compute_type
     privileged_mode             = true
@@ -458,7 +461,7 @@ resource "aws_codebuild_project" "codebuild_deployment_runner" {
   }
 
   environment {
-    image                       = "${var.codebuild_runner_repository_url != null ? var.codebuild_runner_repository_url : data.aws_ecr_repository.codebuild_runner.repository_url}:${var.codebuild_runner_image_tag}"
+    image                       = "${var.codebuild_runner_repository_url != null ? var.codebuild_runner_repository_url : try(data.aws_ecr_repository.codebuild_runner[0].repository_url, "")}:${var.codebuild_runner_image_tag}"
     type                        = var.deployment_runner_environment_type
     compute_type                = var.deployment_runner_compute_type
     privileged_mode             = true

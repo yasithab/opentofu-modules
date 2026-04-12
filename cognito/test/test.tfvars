@@ -1,1 +1,2 @@
-user_pool_name = "terratest-plan"
+name   = "terratest-plan"
+domain = "terratest-plan"

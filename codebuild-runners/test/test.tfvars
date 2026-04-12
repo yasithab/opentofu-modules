@@ -1,4 +1,7 @@
-name                     = "terratest-plan"
+codebuild_project_name   = "terratest-plan"
 repository_name          = "test-repo"
 github_organization_name = "test-org"
-enabled                  = false
+vpc_id                   = null
+codebuild_subnets        = []
+create_iam_role          = true
+create_security_group    = true

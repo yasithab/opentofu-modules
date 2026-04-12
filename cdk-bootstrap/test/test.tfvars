@@ -1,2 +1,1 @@
-region  = "us-east-1"
-enabled = false
+region = "us-east-1"

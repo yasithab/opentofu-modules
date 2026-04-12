@@ -9,8 +9,8 @@ locals {
     try(nonsensitive(aws_ssm_parameter.ignore_value.value), null),
   ]))
   stored_insecure_value = one(compact([
-    try(aws_ssm_parameter.this.insecure_value, null),
-    try(aws_ssm_parameter.ignore_value.insecure_value, null),
+    try(nonsensitive(aws_ssm_parameter.this.insecure_value), null),
+    try(nonsensitive(aws_ssm_parameter.ignore_value.insecure_value), null),
   ]))
   raw_value = one(compact([local.stored_value, local.stored_insecure_value]))
 }

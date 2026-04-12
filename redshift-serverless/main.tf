@@ -34,7 +34,14 @@ resource "random_password" "master_password" {
 
 resource "aws_iam_role" "serverless" {
   name               = var.iam_role_name
-  assume_role_policy = var.assume_role_policy
+  assume_role_policy = coalesce(var.assume_role_policy, jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "redshift.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  }))
 
   tags = local.tags
 
@@ -49,7 +56,7 @@ resource "aws_iam_role_policy" "serverless" {
   policy = var.policy
 
   lifecycle {
-    enabled = local.create && local.is_serverless && var.policy_enabled && var.iam_role_enabled && var.policy_arn == null
+    enabled = local.create && local.is_serverless && var.policy_enabled && var.iam_role_enabled && (var.policy_arn == null ? true : false)
   }
 }
 
@@ -58,7 +65,7 @@ resource "aws_iam_role_policy_attachment" "serverless" {
   policy_arn = var.policy_arn
 
   lifecycle {
-    enabled = local.create && local.is_serverless && var.policy_enabled && var.iam_role_enabled && var.policy_arn != null
+    enabled = local.create && local.is_serverless && var.policy_enabled && var.iam_role_enabled && (var.policy_arn != null ? true : false)
   }
 }
 

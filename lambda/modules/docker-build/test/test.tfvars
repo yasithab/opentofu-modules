@@ -1,2 +1,3 @@
 create_ecr_repo = false
-enabled         = false
+image_tag       = "latest"
+source_path     = "."

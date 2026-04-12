@@ -1,2 +1,3 @@
-name    = "terratest-plan"
-enabled = false
+name           = "terratest-plan"
+admin_username = "admin"
+namespace_name = "terratest"

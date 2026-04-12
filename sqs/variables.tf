@@ -151,7 +151,7 @@ variable "deadletter_queue_policy_enabled" {
 variable "deadletter_queue_policy_statements" {
   description = "Custom IAM policy statements for the dead letter queue. When empty and deadletter_queue_policy_enabled is true, the main queue's policy statements are used instead."
   type        = any
-  default     = []
+  default     = {}
 }
 
 variable "deadletter_source_policy_documents" {

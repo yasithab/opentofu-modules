@@ -44,7 +44,7 @@ locals {
     windows      = "${path.module}/../../templates/windows_user_data.tpl"
   }
 
-  cluster_service_cidr = coalesce(var.cluster_service_cidr, "")
+  cluster_service_cidr = try(coalesce(var.cluster_service_cidr, ""), "")
   cluster_dns_ips      = flatten(concat([try(cidrhost(local.cluster_service_cidr, 10), "")], var.additional_cluster_dns_ips))
 
   user_data = base64encode(templatefile(

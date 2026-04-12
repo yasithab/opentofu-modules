@@ -41,7 +41,7 @@ resource "aws_elasticache_user" "default" {
   engine               = try(var.default_user.engine, "REDIS")
   no_password_required = try(var.default_user.no_password_required, null)
   passwords            = try(var.default_user.passwords, null)
-  user_id              = var.default_user.user_id
+  user_id              = try(var.default_user.user_id, null)
   user_name            = "default"
 
   tags = local.tags

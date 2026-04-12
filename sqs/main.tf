@@ -2,15 +2,16 @@ locals {
   enabled        = var.enabled
   sqs_queue_name = var.sqs_queue_name != null ? var.sqs_queue_name : var.name
   redrive_policy = jsonencode({
-    deadLetterTargetArn = var.enabled ? concat(try(aws_sqs_queue.deadletter.arn, null), tolist([]))[0] : null
+    deadLetterTargetArn = var.enabled ? try(aws_sqs_queue.deadletter.arn, null) : null
     maxReceiveCount     = var.deadletter_queue_count
   })
 
   # Determine which statements to use for DLQ policy:
   # If custom DLQ statements provided → use them; otherwise → copy from main queue
-  deadletter_policy_statements = length(var.deadletter_queue_policy_statements) > 0 ? var.deadletter_queue_policy_statements : var.queue_policy_statements
-  deadletter_source_docs       = length(var.deadletter_queue_policy_statements) > 0 ? var.deadletter_source_policy_documents : var.source_queue_policy_documents
-  deadletter_override_docs     = length(var.deadletter_queue_policy_statements) > 0 ? var.deadletter_override_policy_documents : var.override_queue_policy_documents
+  has_custom_dlq_policy        = try(length(var.deadletter_queue_policy_statements), 0) > 0
+  deadletter_policy_statements = local.has_custom_dlq_policy ? var.deadletter_queue_policy_statements : var.queue_policy_statements
+  deadletter_source_docs       = local.has_custom_dlq_policy ? var.deadletter_source_policy_documents : var.source_queue_policy_documents
+  deadletter_override_docs     = local.has_custom_dlq_policy ? var.deadletter_override_policy_documents : var.override_queue_policy_documents
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"

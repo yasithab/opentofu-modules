@@ -1,1 +1,2 @@
-# All variables have defaults - empty maps produce no resources
+sso_groups = {}
+sso_users  = {}

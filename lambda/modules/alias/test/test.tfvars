@@ -1,4 +1,3 @@
 name             = "terratest-plan"
-function_name    = "test-function"
+function_name    = "terratest-function"
 function_version = "1"
-enabled          = false

@@ -162,7 +162,7 @@ resource "aws_iam_role_policy_attachment" "dms_vpc_role" {
 ################################################################################
 
 resource "aws_dms_replication_subnet_group" "this" {
-  replication_subnet_group_id          = lower(var.repl_subnet_group_name)
+  replication_subnet_group_id          = try(lower(var.repl_subnet_group_name), null)
   replication_subnet_group_description = var.repl_subnet_group_description
   subnet_ids                           = var.repl_subnet_group_subnet_ids
 

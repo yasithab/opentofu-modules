@@ -35,6 +35,12 @@ variable "additional_security_group_ids" {
   default     = []
 }
 
+variable "create_security_group" {
+  description = "Whether to create the default security group for fck-nat."
+  type        = bool
+  default     = true
+}
+
 ################################################################################
 # Instance
 ################################################################################

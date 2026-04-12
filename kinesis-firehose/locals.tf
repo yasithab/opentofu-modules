@@ -204,11 +204,11 @@ locals {
   ) : null)
 
   search_destination_vpc_create_firehose_sg                    = local.is_search_destination && var.vpc_create_security_group
-  search_destination_vpc_sgs                                   = local.search_destination_vpc_create_firehose_sg ? [aws_security_group.firehose.id] : var.vpc_security_group_firehose_ids
+  search_destination_vpc_sgs                                   = local.search_destination_vpc_create_firehose_sg ? [aws_security_group.firehose.id] : coalesce(var.vpc_security_group_firehose_ids, [])
   search_destination_vpc_configure_existing_firehose_sg        = local.is_search_destination && var.enable_vpc && var.vpc_security_group_firehose_configure_existing && !local.search_destination_vpc_create_firehose_sg
   search_destination_vpc_create_destination_group              = local.is_search_destination && var.vpc_create_destination_security_group && !var.vpc_security_group_same_as_destination
-  search_destination_vpc_firehose_sgs                          = local.search_destination_vpc_create_firehose_sg ? [aws_security_group.firehose.id] : var.vpc_security_group_firehose_ids
-  search_destination_vpc_destination_sgs                       = local.search_destination_vpc_create_destination_group ? [aws_security_group.destination.id] : var.vpc_security_group_destination_ids
+  search_destination_vpc_firehose_sgs                          = local.search_destination_vpc_create_firehose_sg ? [aws_security_group.firehose.id] : coalesce(var.vpc_security_group_firehose_ids, [])
+  search_destination_vpc_destination_sgs                       = local.search_destination_vpc_create_destination_group ? [aws_security_group.destination.id] : coalesce(var.vpc_security_group_destination_ids, [])
   not_search_destination_vpc_create_destination_group          = contains(["splunk", "redshift"], local.destination) && var.vpc_create_destination_security_group
   vpc_create_destination_group                                 = local.search_destination_vpc_create_destination_group || local.not_search_destination_vpc_create_destination_group
   search_destination_vpc_configure_existing_destination_sg     = local.is_search_destination && var.enable_vpc && var.vpc_security_group_destination_configure_existing && !local.search_destination_vpc_create_destination_group && !var.vpc_security_group_same_as_destination

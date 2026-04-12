@@ -232,7 +232,7 @@ resource "aws_iam_role" "access" {
 }
 
 resource "aws_iam_role_policy_attachment" "access_managed" {
-  for_each = { for arn in tolist(try(var.access_iam_role_managed_policy_arns, toset([]))) : arn => arn if local.create_access_iam_role }
+  for_each = { for arn in tolist(coalesce(var.access_iam_role_managed_policy_arns, toset([]))) : arn => arn if local.create_access_iam_role }
 
   policy_arn = each.value
   role       = aws_iam_role.access.name
@@ -349,7 +349,7 @@ resource "aws_iam_role" "instance" {
 }
 
 resource "aws_iam_role_policy_attachment" "instance_managed" {
-  for_each = { for arn in tolist(try(var.instance_iam_role_managed_policy_arns, toset([]))) : arn => arn if local.create_instance_iam_role }
+  for_each = { for arn in tolist(coalesce(var.instance_iam_role_managed_policy_arns, toset([]))) : arn => arn if local.create_instance_iam_role }
 
   policy_arn = each.value
   role       = aws_iam_role.instance.name

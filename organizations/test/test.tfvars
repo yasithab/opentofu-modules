@@ -1,2 +1,1 @@
-name    = "terratest-plan"
-enabled = false
+name = "terratest-plan"

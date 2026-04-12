@@ -166,7 +166,7 @@ data "cloudinit_config" "this" {
 ################################################################################
 
 data "aws_subnet" "this" {
-  count = local.create ? 1 : 0
+  count = local.create && local.use_data_volume ? 1 : 0
   id    = var.subnet_id
 }
 

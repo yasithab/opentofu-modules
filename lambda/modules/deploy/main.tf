@@ -224,7 +224,7 @@ data "aws_iam_role" "codedeploy" {
 }
 
 resource "aws_iam_role" "codedeploy" {
-  name               = coalesce(var.codedeploy_role_name, "${local.app_name}-codedeploy")
+  name               = try(coalesce(var.codedeploy_role_name, "${local.app_name}-codedeploy"), "codedeploy")
   assume_role_policy = data.aws_iam_policy_document.assume_role[0].json
   tags               = local.tags
 

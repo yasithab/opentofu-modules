@@ -37,7 +37,7 @@ output "cloudwatch_log_group_arn" {
 
 output "cluster_capacity_providers" {
   description = "Map of cluster capacity providers attributes"
-  value       = { for k, v in aws_ecs_cluster_capacity_providers.this : v.id => v }
+  value       = try({ for k, v in aws_ecs_cluster_capacity_providers.this : v.id => v }, {})
 }
 
 ################################################################################

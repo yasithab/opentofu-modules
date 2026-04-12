@@ -11,7 +11,8 @@ locals {
 #####################################################################################
 
 data "aws_iam_openid_connect_provider" "github_oidc" {
-  arn = var.github_oidc_arn
+  count = var.github_oidc_arn != null ? 1 : 0
+  arn   = var.github_oidc_arn
 }
 
 #####################################################################################
@@ -27,7 +28,7 @@ data "aws_iam_policy_document" "github_actions_oid_assume_role_policy" {
     ]
     principals {
       type        = "Federated"
-      identifiers = [data.aws_iam_openid_connect_provider.github_oidc.arn]
+      identifiers = [try(data.aws_iam_openid_connect_provider.github_oidc[0].arn, var.github_oidc_arn)]
     }
     condition {
       test     = length(var.repo_names) == 1 ? "StringLike" : "ForAnyValue:StringLike"

@@ -14,7 +14,7 @@ locals {
   eip_id        = length(var.eip_allocation_ids) > 0 ? var.eip_allocation_ids[0] : ""
   instance_name = lookup(var.tags, "Name", var.name)
 
-  security_groups = concat([aws_security_group.this.id], var.additional_security_group_ids)
+  security_groups = var.create_security_group ? concat([aws_security_group.this.id], var.additional_security_group_ids) : var.additional_security_group_ids
 }
 
 ################################################################################
@@ -57,7 +57,7 @@ locals {
 ################################################################################
 
 data "aws_vpc" "this" {
-  count = local.create ? 1 : 0
+  count = local.create && var.create_security_group ? 1 : 0
   id    = var.vpc_id
 }
 
@@ -89,7 +89,7 @@ resource "aws_security_group" "this" {
   })
 
   lifecycle {
-    enabled               = local.create
+    enabled               = local.create && var.create_security_group
     create_before_destroy = true
   }
 }
