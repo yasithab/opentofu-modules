@@ -177,7 +177,180 @@ jobs:
       if: steps.lint.outcome != 'success'
       run: exit 1
 
-  # ── 4. Security scan ──────────────────────────────────────────────────────
+  # ── 4. Terratest (validate + plan) ────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [format]
+    permissions:
+      contents: read
+      id-token: write   # Required for OIDC
+    env:
+      TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
+      TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE: "true"
+
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 1
+
+    - name: Setup OpenTofu
+      uses: opentofu/setup-opentofu@v2
+      with:
+        tofu_version: "1.11.5"
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: test/go.mod
+        cache-dependency-path: test/go.sum
+
+    - name: Configure AWS credentials via OIDC
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_TEST_RO_ROLE_ARN }}
+        aws-region: us-east-1
+        role-session-name: terratest-pr-${{ github.event.pull_request.number }}
+
+    - name: Cache OpenTofu provider plugins
+      uses: actions/cache@v5
+      with:
+        path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+        key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/providers.tf', '**/versions.tf') }}
+        restore-keys: |
+          opentofu-providers-${{ runner.os }}-
+
+    - name: Create provider plugin cache dir
+      run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
+
+    - name: Run Terratest (validate)
+      id: validate_test
+      working-directory: test
+      run: |
+        set -o pipefail
+        go test -v -run "TestValidateAllModules" -timeout 15m -count=1 2>&1 | tee /tmp/validate-test-output.txt
+      continue-on-error: true
+
+    - name: Run Terratest (plan)
+      id: plan_test
+      working-directory: test
+      run: |
+        set -o pipefail
+        go test -v -run "TestPlanAllModules" -timeout 30m -count=1 2>&1 | tee /tmp/plan-test-output.txt
+      continue-on-error: true
+
+    - name: Step Summary
+      if: always()
+      run: |
+        generate_table() {
+          local file="$1"
+          local test_name="$2"
+          local passed=0 failed=0
+
+          echo "| Module | Status |"
+          echo "|--------|--------|"
+
+          # Parse Go test output for PASS/FAIL lines
+          grep -E "^\s+--- (PASS|FAIL):" "$file" 2>/dev/null | while IFS= read -r line; do
+            if echo "$line" | grep -q "PASS:"; then
+              mod=$(echo "$line" | sed "s/.*PASS: ${test_name}\///" | sed 's/ (.*//')
+              echo "| \`$mod\` | ✅ Pass |"
+            elif echo "$line" | grep -q "FAIL:"; then
+              mod=$(echo "$line" | sed "s/.*FAIL: ${test_name}\///" | sed 's/ (.*//')
+              echo "| \`$mod\` | ❌ Fail |"
+            fi
+          done
+
+          # Summary counts
+          passed=$(grep -c "PASS: ${test_name}/" "$file" 2>/dev/null || echo "0")
+          failed=$(grep -c "FAIL: ${test_name}/" "$file" 2>/dev/null || echo "0")
+          echo ""
+          echo "**Total: $passed passed, $failed failed**"
+        }
+
+        {
+          echo "## Terratest Results"
+          echo ""
+
+          # Validate summary
+          echo "### Validate Tests"
+          if [ -f /tmp/validate-test-output.txt ]; then
+            V_PASSED=$(grep -c "PASS: TestValidateAllModules/" /tmp/validate-test-output.txt 2>/dev/null || echo "0")
+            V_FAILED=$(grep -c "FAIL: TestValidateAllModules/" /tmp/validate-test-output.txt 2>/dev/null || echo "0")
+            if [ "$V_FAILED" = "0" ]; then
+              echo "✅ All $V_PASSED modules passed validation"
+            else
+              echo "❌ $V_FAILED module(s) failed validation"
+            fi
+            echo ""
+            if [ "$V_FAILED" != "0" ]; then
+              echo "#### Failed Modules (validate)"
+              echo "| Module | Status |"
+              echo "|--------|--------|"
+              grep "FAIL: TestValidateAllModules/" /tmp/validate-test-output.txt 2>/dev/null | while IFS= read -r line; do
+                mod=$(echo "$line" | sed 's/.*FAIL: TestValidateAllModules\///' | sed 's/ (.*//')
+                echo "| \`$mod\` | ❌ |"
+              done
+              echo ""
+            fi
+          fi
+
+          # Plan summary
+          echo "### Plan Tests"
+          if [ -f /tmp/plan-test-output.txt ]; then
+            if grep -q "Skipping plan tests" /tmp/plan-test-output.txt 2>/dev/null; then
+              echo "⏭️ Plan tests skipped (no AWS credentials)"
+            else
+              P_PASSED=$(grep -c "PASS: TestPlanAllModules/" /tmp/plan-test-output.txt 2>/dev/null || echo "0")
+              P_FAILED=$(grep -c "FAIL: TestPlanAllModules/" /tmp/plan-test-output.txt 2>/dev/null || echo "0")
+              P_TOTAL=$((P_PASSED + P_FAILED))
+              if [ "$P_FAILED" = "0" ]; then
+                echo "✅ All $P_PASSED modules passed plan"
+              else
+                echo "❌ $P_FAILED of $P_TOTAL modules failed plan"
+              fi
+              echo ""
+
+              # Full results table for plan (always show — this is the important one)
+              echo "<details><summary>Full plan results ($P_PASSED passed, $P_FAILED failed)</summary>"
+              echo ""
+              echo "| Module | Status | Duration |"
+              echo "|--------|--------|----------|"
+              grep -E "^\s+--- (PASS|FAIL): TestPlanAllModules/" /tmp/plan-test-output.txt 2>/dev/null | while IFS= read -r line; do
+                mod=$(echo "$line" | sed 's/.*TestPlanAllModules\///' | sed 's/ (.*//')
+                duration=$(echo "$line" | grep -oE '\([0-9.]+s\)' || echo "")
+                if echo "$line" | grep -q "PASS:"; then
+                  echo "| \`$mod\` | ✅ Pass | $duration |"
+                else
+                  echo "| \`$mod\` | ❌ Fail | $duration |"
+                fi
+              done
+              echo ""
+              echo "</details>"
+
+              # Show errors for failed modules
+              if [ "$P_FAILED" != "0" ]; then
+                echo ""
+                echo "<details><summary>❌ Plan failure details</summary>"
+                echo ""
+                echo '```'
+                # Extract error blocks for failed modules
+                grep -B5 "FAIL: TestPlanAllModules/" /tmp/plan-test-output.txt 2>/dev/null | grep -i "error\|fail" | head -50
+                echo '```'
+                echo "</details>"
+              fi
+            fi
+          else
+            echo "⏭️ Plan tests did not run"
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Fail if tests errored
+      if: steps.validate_test.outcome != 'success' || steps.plan_test.outcome == 'failure'
+      run: exit 1
+
+  # ── 5. Security scan ──────────────────────────────────────────────────────
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 15

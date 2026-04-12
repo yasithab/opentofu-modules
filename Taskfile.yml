@@ -51,6 +51,18 @@ tasks:
             tflint --chdir "$dir"
           '
 
+  test:
+    desc: Run Terratest on all modules (validate only, no AWS creds needed)
+    dir: test
+    cmds:
+      - go test -v -run "TestValidateAllModules" -timeout 30m -count=1
+
+  test-plan:
+    desc: Run Terratest plan on all modules (requires AWS credentials)
+    dir: test
+    cmds:
+      - go test -v -run "TestPlanAllModules" -timeout 30m -count=1
+
   security:
     desc: Run Trivy misconfiguration scan (CRITICAL + HIGH)
     cmds:
@@ -67,5 +79,5 @@ tasks:
           .
 
   ci:
-    desc: Run all CI tasks (format + validate + lint + security)
-    deps: [format, validate, lint, security]
+    desc: Run all CI tasks (format + validate + lint + test + security)
+    deps: [format, validate, lint, test, security]

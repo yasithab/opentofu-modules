@@ -37,6 +37,7 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
+      id-token: write
     env:
       TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
       TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE: "true"
@@ -55,6 +56,19 @@ jobs:
       - name: Setup Task
         uses: arduino/setup-task@v2
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: test/go.mod
+          cache-dependency-path: test/go.sum
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TEST_RO_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: terratest-release-${{ github.sha }}
+
       - name: Cache OpenTofu provider plugins
         uses: actions/cache@v5
         with:
@@ -68,6 +82,48 @@ jobs:
 
       - name: Validate all modules
         run: task validate
+
+      - name: Run Terratest (validate + plan)
+        working-directory: test
+        run: |
+          set -o pipefail
+          go test -v -timeout 30m -count=1 2>&1 | tee /tmp/terratest-output.txt
+
+      - name: Terratest Summary
+        if: always()
+        run: |
+          {
+            echo "## Terratest Results"
+            echo ""
+            for test_name in TestValidateAllModules TestPlanAllModules; do
+              LABEL=$(echo "$test_name" | sed 's/TestValidateAllModules/Validate/;s/TestPlanAllModules/Plan/')
+              PASSED=$(grep -c "PASS: ${test_name}/" /tmp/terratest-output.txt 2>/dev/null || echo "0")
+              FAILED=$(grep -c "FAIL: ${test_name}/" /tmp/terratest-output.txt 2>/dev/null || echo "0")
+              TOTAL=$((PASSED + FAILED))
+              if [ "$TOTAL" = "0" ]; then
+                echo "### $LABEL: ⏭️ Skipped"
+              elif [ "$FAILED" = "0" ]; then
+                echo "### $LABEL: ✅ $PASSED/$TOTAL passed"
+              else
+                echo "### $LABEL: ❌ $FAILED/$TOTAL failed"
+              fi
+              echo ""
+              if [ "$TOTAL" -gt 0 ]; then
+                echo "| Module | Status | Duration |"
+                echo "|--------|--------|----------|"
+                grep -E "^\s+--- (PASS|FAIL): ${test_name}/" /tmp/terratest-output.txt 2>/dev/null | while IFS= read -r line; do
+                  mod=$(echo "$line" | sed "s/.*${test_name}\///" | sed 's/ (.*//')
+                  duration=$(echo "$line" | grep -oE '\([0-9.]+s\)' || echo "")
+                  if echo "$line" | grep -q "PASS:"; then
+                    echo "| \`$mod\` | ✅ | $duration |"
+                  else
+                    echo "| \`$mod\` | ❌ | $duration |"
+                  fi
+                done
+                echo ""
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ── Create tag and release ─────────────────────────────────────────────────
   release:

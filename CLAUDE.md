@@ -14,6 +14,8 @@ Collection of 128+ reusable OpenTofu modules for AWS infrastructure. All modules
 | `task validate` | Run `tofu validate` in every module (backend-less init) |
 | `task lint` | Run tflint across all modules |
 | `task lint-init` | Install tflint plugins (run once before first lint) |
+| `task test` | Run Terratest validate on all modules (no AWS creds needed) |
+| `task test-plan` | Run Terratest plan on all modules (requires AWS creds) |
 | `task security` | Trivy CRITICAL/HIGH misconfiguration scan |
 | `task ci` | Run all of the above in parallel |
 | `pre-commit run --all-files` | Run all pre-commit hooks manually |
@@ -63,11 +65,14 @@ Some modules have submodules under `modules/` (e.g., `eks/modules/`, `cloudwatch
 1. Format (`task format`) — auto-commits fixes
 2. Validate all modules (`task validate`)
 3. Lint with tflint (`task lint`)
-4. Trivy security scan (fails on CRITICAL/HIGH)
+4. Terratest validate — Go-based syntax/type validation (no AWS creds)
+5. Terratest plan — Go-based plan validation via AWS OIDC (read-only, no resources created)
+6. Trivy security scan (fails on CRITICAL/HIGH)
 
 ### Master Merge
 1. Validate all modules (`task validate`)
-2. Auto-create semantic version tag and GitHub release
+2. Terratest validate + plan (all modules, via AWS OIDC)
+3. Auto-create semantic version tag and GitHub release
 
 ## Versioning
 

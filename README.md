@@ -31,6 +31,7 @@ This repository provides reusable OpenTofu modules that follow industry best pra
 | [AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest) | >= 6.34 |
 | [Task](https://taskfile.dev/installation/) | >= 3.0 |
 | [tflint](https://github.com/terraform-linters/tflint#installation) | latest |
+| [Go](https://go.dev/doc/install) | >= 1.22 |
 | [Trivy](https://aquasecurity.github.io/trivy/latest/getting-started/installation/) | latest |
 | [pre-commit](https://pre-commit.com/#install) | >= 3.0 |
 
@@ -135,6 +136,8 @@ task --list
 | `task format` | Format all OpenTofu code recursively |
 | `task validate` | Run `tofu validate` in every module (backend-less) |
 | `task lint` | Run tflint across all modules |
+| `task test` | Run Terratest validate on all modules (no AWS creds needed) |
+| `task test-plan` | Run Terratest plan on all modules (requires AWS credentials) |
 | `task security` | Run Trivy CRITICAL/HIGH misconfiguration scan |
 | `task ci` | Run all of the above |
 
@@ -185,14 +188,18 @@ Runs on every pull request:
 1. Format (`task format`) — auto-commits any formatting changes
 2. Validate all modules (`task validate`)
 3. Lint with tflint (`task lint`)
-4. Trivy security scan (fails on CRITICAL/HIGH)
+4. Terratest validate — Go-based syntax/type validation
+5. Terratest plan — validates all modules against real AWS APIs via OIDC (read-only, no resources created)
+6. Trivy security scan (fails on CRITICAL/HIGH)
 
 ### Release Workflow (`.github/workflows/release.yml`)
 
 Runs on every push to `master`:
 
-2. Auto-create semantic version tag based on commit message prefix
-3. Create GitHub release with auto-generated notes
+1. Validate all modules (`task validate`)
+2. Terratest validate + plan (all modules, via AWS OIDC)
+3. Auto-create semantic version tag based on commit message prefix
+4. Create GitHub release with auto-generated notes
 
 ### Module Health Check (`.github/workflows/module-health.yml`)
 
