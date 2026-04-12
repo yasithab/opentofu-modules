@@ -3,4 +3,5 @@ cidr               = "10.99.0.0/16"
 azs                = ["us-east-1a", "us-east-1b"]
 private_subnets    = ["10.99.1.0/24", "10.99.2.0/24"]
 public_subnets     = ["10.99.101.0/24", "10.99.102.0/24"]
-enable_nat_gateway = false
+enable_nat_gateway = true
+single_nat_gateway = true

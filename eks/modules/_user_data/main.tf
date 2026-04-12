@@ -65,9 +65,9 @@ locals {
       cluster_dns_ips = "[${join(", ", formatlist("\"%s\"", local.cluster_dns_ips))}]"
 
       # Optional
-      bootstrap_extra_args     = var.bootstrap_extra_args
-      pre_bootstrap_user_data  = var.pre_bootstrap_user_data
-      post_bootstrap_user_data = var.post_bootstrap_user_data
+      bootstrap_extra_args     = var.bootstrap_extra_args != null ? var.bootstrap_extra_args : ""
+      pre_bootstrap_user_data  = var.pre_bootstrap_user_data != null ? var.pre_bootstrap_user_data : ""
+      post_bootstrap_user_data = var.post_bootstrap_user_data != null ? var.post_bootstrap_user_data : ""
     }
   )) : ""
 
