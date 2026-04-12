@@ -87,7 +87,7 @@ jobs:
         working-directory: test
         run: |
           set -o pipefail
-          go test -v -timeout 30m -count=1 2>&1 | tee /tmp/terratest-output.txt
+          go test -v -timeout 30m -count=1 -parallel=4 2>&1 | tee /tmp/terratest-output.txt
 
       - name: Terratest Summary
         if: always()

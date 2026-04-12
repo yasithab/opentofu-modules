@@ -193,20 +193,45 @@ jobs:
     - name: Check out repository code
       uses: actions/checkout@v6
       with:
-        fetch-depth: 1
+        fetch-depth: 0
+
+    - name: Detect changed modules
+      id: changes
+      run: |
+        BASE_SHA=$(git merge-base origin/${{ github.event.pull_request.base.ref }} HEAD)
+        CHANGED=$(git diff --name-only "$BASE_SHA" HEAD | \
+          grep '\.tf$' | \
+          xargs -I{} dirname {} | \
+          sort -u | \
+          while read dir; do
+            d="$dir"
+            while [ "$d" != "." ] && [ ! -f "$d/main.tf" ]; do
+              d=$(dirname "$d")
+            done
+            if [ -f "$d/main.tf" ] && [[ "$d" != *"wrappers"* ]]; then
+              echo "$d"
+            fi
+          done | sort -u | paste -sd ',' -)
+        echo "modules=$CHANGED" >> "$GITHUB_OUTPUT"
+        COUNT=$(echo "$CHANGED" | tr ',' '\n' | grep -c '[^[:space:]]' || echo "0")
+        echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+        echo "Changed modules ($COUNT): $CHANGED"
 
     - name: Setup OpenTofu
+      if: steps.changes.outputs.count != '0'
       uses: opentofu/setup-opentofu@v2
       with:
         tofu_version: "1.11.5"
 
     - name: Setup Go
+      if: steps.changes.outputs.count != '0'
       uses: actions/setup-go@v5
       with:
         go-version-file: test/go.mod
         cache-dependency-path: test/go.sum
 
     - name: Configure AWS credentials via OIDC
+      if: steps.changes.outputs.count != '0'
       uses: aws-actions/configure-aws-credentials@v6
       with:
         role-to-assume: ${{ secrets.AWS_MGMT_RO_ROLE_ARN }}
@@ -214,6 +239,7 @@ jobs:
         role-session-name: terratest-pr-${{ github.event.pull_request.number }}
 
     - name: Cache OpenTofu provider plugins
+      if: steps.changes.outputs.count != '0'
       uses: actions/cache@v5
       with:
         path: ${{ env.TF_PLUGIN_CACHE_DIR }}
@@ -222,22 +248,29 @@ jobs:
           opentofu-providers-${{ runner.os }}-
 
     - name: Create provider plugin cache dir
+      if: steps.changes.outputs.count != '0'
       run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
 
     - name: Run Terratest (validate)
       id: validate_test
+      if: steps.changes.outputs.count != '0'
       working-directory: test
+      env:
+        TEST_MODULES: ${{ steps.changes.outputs.modules }}
       run: |
         set -o pipefail
-        go test -v -run "TestValidateAllModules" -timeout 15m -count=1 2>&1 | tee /tmp/validate-test-output.txt
+        go test -v -run "TestValidateAllModules" -timeout 15m -count=1 -parallel=4 2>&1 | tee /tmp/validate-test-output.txt
       continue-on-error: true
 
     - name: Run Terratest (plan)
       id: plan_test
+      if: steps.changes.outputs.count != '0'
       working-directory: test
+      env:
+        TEST_MODULES: ${{ steps.changes.outputs.modules }}
       run: |
         set -o pipefail
-        go test -v -run "TestPlanAllModules" -timeout 30m -count=1 2>&1 | tee /tmp/plan-test-output.txt
+        go test -v -run "TestPlanAllModules" -timeout 30m -count=1 -parallel=4 2>&1 | tee /tmp/plan-test-output.txt
       continue-on-error: true
 
     - name: Step Summary
@@ -270,8 +303,12 @@ jobs:
         }
 
         {
-          echo "## Terratest Results"
+          echo "## Terratest Results (changed modules: ${{ steps.changes.outputs.count }})"
           echo ""
+
+          if [ "${{ steps.changes.outputs.count }}" = "0" ]; then
+            echo "⏭️ No module changes detected — tests skipped"
+          fi
 
           # Validate summary
           echo "### Validate Tests"
@@ -347,7 +384,9 @@ jobs:
         } >> "$GITHUB_STEP_SUMMARY"
 
     - name: Fail if tests errored
-      if: steps.validate_test.outcome != 'success' || steps.plan_test.outcome == 'failure'
+      if: |
+        steps.changes.outputs.count != '0' &&
+        (steps.validate_test.outcome == 'failure' || steps.plan_test.outcome == 'failure')
       run: exit 1
 
   # ── 5. Security scan ──────────────────────────────────────────────────────
