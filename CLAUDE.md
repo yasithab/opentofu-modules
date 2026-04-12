@@ -34,7 +34,7 @@ Every module follows this structure:
 - `outputs.tf` — outputs (expose all useful resource attributes via `try()`)
 - `providers.tf` — version constraints (OpenTofu + AWS provider)
 - `README.md` — module documentation with usage examples covering all patterns
-- `terratest.tfvars` — (optional) realistic variable values for `tofu plan` testing in CI
+- `test/test.tfvars` — realistic variable values for Terratest `tofu plan` in CI
 
 ### Required patterns in every module
 

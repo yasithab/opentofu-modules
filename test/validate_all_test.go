@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -36,10 +35,10 @@ func TestValidateAllModules(t *testing.T) {
 	}
 }
 
-// TestPlanAllModules runs tofu plan on modules that have a terratest.tfvars file.
+// TestPlanAllModules runs tofu plan on modules that have a test/test.tfvars file.
 // Requires AWS credentials (read-only). Plan never creates resources.
 //
-// To enable plan testing for a module, create a terratest.tfvars file in
+// To enable plan testing for a module, create a test/test.tfvars file in
 // the module directory with realistic variable values. Modules without
 // this file are skipped (they still pass validate tests above).
 func TestPlanAllModules(t *testing.T) {
@@ -57,10 +56,10 @@ func TestPlanAllModules(t *testing.T) {
 	for _, mod := range modules {
 		mod := mod
 		modDir := filepath.Join(rootDir, mod)
-		tfvarsFile := filepath.Join(modDir, "terratest.tfvars")
+		tfvarsFile := filepath.Join(modDir, "test/test.tfvars")
 
 		if _, err := os.Stat(tfvarsFile); os.IsNotExist(err) {
-			continue // No terratest.tfvars — skip this module
+			continue // No test/test.tfvars — skip this module
 		}
 
 		plannable++
@@ -81,7 +80,7 @@ func TestPlanAllModules(t *testing.T) {
 	}
 
 	if plannable == 0 {
-		t.Log("No modules have terratest.tfvars — add one to enable plan testing for a module")
+		t.Log("No modules have test/test.tfvars — add one to enable plan testing for a module")
 	}
 }
 
@@ -129,50 +128,3 @@ func discoverModules(t *testing.T, rootDir string) []string {
 	return modules
 }
 
-// buildRequiredVars is kept for backward compatibility but no longer used
-// by TestPlanAllModules (which now uses terratest.tfvars files instead).
-func buildRequiredVars(t *testing.T, modDir string) map[string]interface{} {
-	t.Helper()
-	vars := make(map[string]interface{})
-
-	varsFile := filepath.Join(modDir, "variables.tf")
-	content, err := os.ReadFile(varsFile)
-	if err != nil {
-		return vars
-	}
-
-	src := string(content)
-	varPattern := regexp.MustCompile(`variable\s+"(\w+)"\s*\{`)
-	matches := varPattern.FindAllStringSubmatchIndex(src, -1)
-
-	for _, match := range matches {
-		varName := src[match[2]:match[3]]
-		block := extractBlock(src[match[0]:])
-		if block == "" || regexp.MustCompile(`\bdefault\s*=`).MatchString(block) {
-			continue
-		}
-		if varName == "enabled" || varName == "tags" || varName == "region" {
-			continue
-		}
-		vars[varName] = "test-value"
-	}
-
-	return vars
-}
-
-func extractBlock(s string) string {
-	depth := 0
-	started := false
-	for i, ch := range s {
-		if ch == '{' {
-			depth++
-			started = true
-		} else if ch == '}' {
-			depth--
-		}
-		if started && depth == 0 {
-			return s[:i+1]
-		}
-	}
-	return ""
-}
