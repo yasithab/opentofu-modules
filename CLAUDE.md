@@ -29,12 +29,12 @@ tflint --chdir <module-dir>
 ## Module Conventions
 
 Every module follows this structure:
-- `main.tf` — resources and locals
-- `variables.tf` — inputs
-- `outputs.tf` — outputs (expose all useful resource attributes via `try()`)
-- `providers.tf` — version constraints (OpenTofu + AWS provider)
-- `README.md` — module documentation with usage examples covering all patterns
-- `test/test.tfvars` — realistic variable values for Terratest `tofu plan` in CI
+- `main.tf` - resources and locals
+- `variables.tf` - inputs
+- `outputs.tf` - outputs (expose all useful resource attributes via `try()`)
+- `providers.tf` - version constraints (OpenTofu + AWS provider)
+- `README.md` - module documentation with usage examples covering all patterns
+- `test/test.tfvars` - realistic variable values for Terratest `tofu plan` in CI
 
 ### Required patterns in every module
 
@@ -48,10 +48,10 @@ locals {
 ```
 
 **Standard variables** every module must have:
-- `enabled` (bool, default `true`) — controls resource creation via `lifecycle { enabled = local.enabled }`
-- `tags` (map(string), default `{}`) — merged with `{ ManagedBy = "opentofu" }` in locals
+- `enabled` (bool, default `true`) - controls resource creation via `lifecycle { enabled = local.enabled }`
+- `tags` (map(string), default `{}`) - merged with `{ ManagedBy = "opentofu" }` in locals
 
-**Resource lifecycle** — resources use `lifecycle { enabled = local.enabled }` for toggling. **Important:** `lifecycle { enabled }` is mutually exclusive with `for_each`/`count`. Resources that use `for_each` must use the `if local.enabled` filter pattern instead (e.g., `for_each = { for k, v in var.items : k => v if local.enabled }`). Never use `lifecycle { enabled }` on `data` sources.
+**Resource lifecycle** - resources use `lifecycle { enabled = local.enabled }` for toggling. **Important:** `lifecycle { enabled }` is mutually exclusive with `for_each`/`count`. Resources that use `for_each` must use the `if local.enabled` filter pattern instead (e.g., `for_each = { for k, v in var.items : k => v if local.enabled }`). Never use `lifecycle { enabled }` on `data` sources.
 
 **Outputs** use `try()` for safe extraction with empty string defaults. Expose all useful resource attributes for composability.
 
@@ -63,11 +63,11 @@ Some modules have submodules under `modules/` (e.g., `eks/modules/`, `cloudwatch
 ## CI/CD
 
 ### PR Workflow
-1. Format (`task format`) — auto-commits fixes
+1. Format (`task format`) - auto-commits fixes
 2. Validate all modules (`task validate`)
 3. Lint with tflint (`task lint`)
-4. Terratest validate — Go-based syntax/type validation (no AWS creds)
-5. Terratest plan — Go-based plan validation via AWS OIDC (read-only, no resources created)
+4. Terratest validate - Go-based syntax/type validation (no AWS creds)
+5. Terratest plan - Go-based plan validation via AWS OIDC (read-only, no resources created)
 6. Trivy security scan (fails on CRITICAL/HIGH)
 
 ### Master Merge
@@ -78,9 +78,9 @@ Some modules have submodules under `modules/` (e.g., `eks/modules/`, `cloudwatch
 ## Versioning
 
 Commit message prefix determines version bump on merge to `master`:
-- `[MAJOR]` — breaking change (v1.0.0 -> v2.0.0)
-- `[MINOR]` — new feature (v1.0.0 -> v1.1.0)
-- No prefix — patch (v1.0.0 -> v1.0.1)
+- `[MAJOR]` - breaking change (v1.0.0 -> v2.0.0)
+- `[MINOR]` - new feature (v1.0.0 -> v1.1.0)
+- No prefix - patch (v1.0.0 -> v1.0.1)
 
 Versions in `providers.tf` must be updated manually when upgrading OpenTofu or AWS provider versions.
 
@@ -96,7 +96,7 @@ Modules ship with secure defaults. Key ones to preserve when editing:
 
 ## Key Rules
 
-- Modules must be generic — no environment-specific values
+- Modules must be generic - no environment-specific values
 - Never hard-code secrets; use variables or secrets management
 - Reference modules via git tags, never branches
 - Run `task ci` before pushing

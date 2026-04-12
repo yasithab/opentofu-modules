@@ -151,7 +151,7 @@ module "vpc" {
 
 ## With Regional NAT Gateway
 
-Managed regional NAT gateway with automatic cross-AZ high availability. No EIP or public subnet required — AWS handles failover transparently. Creates a single private route table.
+Managed regional NAT gateway with automatic cross-AZ high availability. No EIP or public subnet required - AWS handles failover transparently. Creates a single private route table.
 
 ```hcl
 module "vpc" {

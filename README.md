@@ -185,11 +185,11 @@ task security
 
 Runs on every pull request:
 
-1. Format (`task format`) — auto-commits any formatting changes
+1. Format (`task format`) - auto-commits any formatting changes
 2. Validate all modules (`task validate`)
 3. Lint with tflint (`task lint`)
-4. Terratest validate — Go-based syntax/type validation
-5. Terratest plan — validates all modules against real AWS APIs via OIDC (read-only, no resources created)
+4. Terratest validate - Go-based syntax/type validation
+5. Terratest plan - validates all modules against real AWS APIs via OIDC (read-only, no resources created)
 6. Trivy security scan (fails on CRITICAL/HIGH)
 
 ### Release Workflow (`.github/workflows/release.yml`)

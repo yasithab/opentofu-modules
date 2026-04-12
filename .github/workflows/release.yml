@@ -91,39 +91,7 @@ jobs:
 
       - name: Terratest Summary
         if: always()
-        run: |
-          {
-            echo "## Terratest Results"
-            echo ""
-            for test_name in TestValidateAllModules TestPlanAllModules; do
-              LABEL=$(echo "$test_name" | sed 's/TestValidateAllModules/Validate/;s/TestPlanAllModules/Plan/')
-              PASSED=$(grep -c "PASS: ${test_name}/" /tmp/terratest-output.txt 2>/dev/null || echo "0")
-              FAILED=$(grep -c "FAIL: ${test_name}/" /tmp/terratest-output.txt 2>/dev/null || echo "0")
-              TOTAL=$((PASSED + FAILED))
-              if [ "$TOTAL" = "0" ]; then
-                echo "### $LABEL: ⏭️ Skipped"
-              elif [ "$FAILED" = "0" ]; then
-                echo "### $LABEL: ✅ $PASSED/$TOTAL passed"
-              else
-                echo "### $LABEL: ❌ $FAILED/$TOTAL failed"
-              fi
-              echo ""
-              if [ "$TOTAL" -gt 0 ]; then
-                echo "| Module | Status | Duration |"
-                echo "|--------|--------|----------|"
-                grep -E "^\s+--- (PASS|FAIL): ${test_name}/" /tmp/terratest-output.txt 2>/dev/null | while IFS= read -r line; do
-                  mod=$(echo "$line" | sed "s/.*${test_name}\///" | sed 's/ (.*//')
-                  duration=$(echo "$line" | grep -oE '\([0-9.]+s\)' || echo "")
-                  if echo "$line" | grep -q "PASS:"; then
-                    echo "| \`$mod\` | ✅ | $duration |"
-                  else
-                    echo "| \`$mod\` | ❌ | $duration |"
-                  fi
-                done
-                echo ""
-              fi
-            done
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: bash .github/scripts/terratest-summary.sh /tmp/terratest-output.txt >> "$GITHUB_STEP_SUMMARY"
 
   # ── Create tag and release ─────────────────────────────────────────────────
   release:

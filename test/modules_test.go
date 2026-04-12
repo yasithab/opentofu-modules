@@ -59,7 +59,7 @@ func TestPlanAllModules(t *testing.T) {
 		tfvarsFile := filepath.Join(modDir, "test/test.tfvars")
 
 		if _, err := os.Stat(tfvarsFile); os.IsNotExist(err) {
-			continue // No test/test.tfvars — skip this module
+			continue // No test/test.tfvars - skip this module
 		}
 
 		plannable++
@@ -80,7 +80,7 @@ func TestPlanAllModules(t *testing.T) {
 	}
 
 	if plannable == 0 {
-		t.Log("No modules have test/test.tfvars — add one to enable plan testing for a module")
+		t.Log("No modules have test/test.tfvars - add one to enable plan testing for a module")
 	}
 }
 

@@ -51,7 +51,7 @@ variable "minimum_load_balancer_capacity" {
 }
 
 variable "secondary_ips_auto_assigned_per_subnet" {
-  description = "Number of secondary private IPv4 addresses to automatically assign to each NLB network interface. Valid values are 0–7. NLB only"
+  description = "Number of secondary private IPv4 addresses to automatically assign to each NLB network interface. Valid values are 0-7. NLB only"
   type        = number
   default     = null
 }

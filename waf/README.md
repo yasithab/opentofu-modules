@@ -235,7 +235,7 @@ Each rule in `var.rules`:
     }
 
     rate_based_statement = {
-      limit                 = number   # 100–2000000000
+      limit                 = number   # 100-2000000000
       aggregate_key_type    = string   # IP, CONSTANT, CUSTOM_KEYS, FORWARDED_IP
       evaluation_window_sec = number   # 60, 120, 300, 600
       forwarded_ip_config   = { fallback_behavior = "MATCH", header_name = "X-Forwarded-For" }

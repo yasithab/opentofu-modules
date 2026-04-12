@@ -276,112 +276,13 @@ jobs:
     - name: Step Summary
       if: always()
       run: |
-        generate_table() {
-          local file="$1"
-          local test_name="$2"
-          local passed=0 failed=0
-
-          echo "| Module | Status |"
-          echo "|--------|--------|"
-
-          # Parse Go test output for PASS/FAIL lines
-          grep -E "^\s+--- (PASS|FAIL):" "$file" 2>/dev/null | while IFS= read -r line; do
-            if echo "$line" | grep -q "PASS:"; then
-              mod=$(echo "$line" | sed "s/.*PASS: ${test_name}\///" | sed 's/ (.*//')
-              echo "| \`$mod\` | ✅ Pass |"
-            elif echo "$line" | grep -q "FAIL:"; then
-              mod=$(echo "$line" | sed "s/.*FAIL: ${test_name}\///" | sed 's/ (.*//')
-              echo "| \`$mod\` | ❌ Fail |"
-            fi
-          done
-
-          # Summary counts
-          passed=$(grep -c "PASS: ${test_name}/" "$file" 2>/dev/null || echo "0")
-          failed=$(grep -c "FAIL: ${test_name}/" "$file" 2>/dev/null || echo "0")
-          echo ""
-          echo "**Total: $passed passed, $failed failed**"
-        }
-
-        {
-          echo "## Terratest Results (changed modules: ${{ steps.changes.outputs.count }})"
-          echo ""
-
-          if [ "${{ steps.changes.outputs.count }}" = "0" ]; then
-            echo "⏭️ No module changes detected — tests skipped"
-          fi
-
-          # Validate summary
-          echo "### Validate Tests"
-          if [ -f /tmp/validate-test-output.txt ]; then
-            V_PASSED=$(grep -c "PASS: TestValidateAllModules/" /tmp/validate-test-output.txt 2>/dev/null || echo "0")
-            V_FAILED=$(grep -c "FAIL: TestValidateAllModules/" /tmp/validate-test-output.txt 2>/dev/null || echo "0")
-            if [ "$V_FAILED" = "0" ]; then
-              echo "✅ All $V_PASSED modules passed validation"
-            else
-              echo "❌ $V_FAILED module(s) failed validation"
-            fi
-            echo ""
-            if [ "$V_FAILED" != "0" ]; then
-              echo "#### Failed Modules (validate)"
-              echo "| Module | Status |"
-              echo "|--------|--------|"
-              grep "FAIL: TestValidateAllModules/" /tmp/validate-test-output.txt 2>/dev/null | while IFS= read -r line; do
-                mod=$(echo "$line" | sed 's/.*FAIL: TestValidateAllModules\///' | sed 's/ (.*//')
-                echo "| \`$mod\` | ❌ |"
-              done
-              echo ""
-            fi
-          fi
-
-          # Plan summary
-          echo "### Plan Tests"
-          if [ -f /tmp/plan-test-output.txt ]; then
-            if grep -q "Skipping plan tests" /tmp/plan-test-output.txt 2>/dev/null; then
-              echo "⏭️ Plan tests skipped (no AWS credentials)"
-            else
-              P_PASSED=$(grep -c "PASS: TestPlanAllModules/" /tmp/plan-test-output.txt 2>/dev/null || echo "0")
-              P_FAILED=$(grep -c "FAIL: TestPlanAllModules/" /tmp/plan-test-output.txt 2>/dev/null || echo "0")
-              P_TOTAL=$((P_PASSED + P_FAILED))
-              if [ "$P_FAILED" = "0" ]; then
-                echo "✅ All $P_PASSED modules passed plan"
-              else
-                echo "❌ $P_FAILED of $P_TOTAL modules failed plan"
-              fi
-              echo ""
-
-              # Full results table for plan (always show — this is the important one)
-              echo "<details><summary>Full plan results ($P_PASSED passed, $P_FAILED failed)</summary>"
-              echo ""
-              echo "| Module | Status | Duration |"
-              echo "|--------|--------|----------|"
-              grep -E "^\s+--- (PASS|FAIL): TestPlanAllModules/" /tmp/plan-test-output.txt 2>/dev/null | while IFS= read -r line; do
-                mod=$(echo "$line" | sed 's/.*TestPlanAllModules\///' | sed 's/ (.*//')
-                duration=$(echo "$line" | grep -oE '\([0-9.]+s\)' || echo "")
-                if echo "$line" | grep -q "PASS:"; then
-                  echo "| \`$mod\` | ✅ Pass | $duration |"
-                else
-                  echo "| \`$mod\` | ❌ Fail | $duration |"
-                fi
-              done
-              echo ""
-              echo "</details>"
-
-              # Show errors for failed modules
-              if [ "$P_FAILED" != "0" ]; then
-                echo ""
-                echo "<details><summary>❌ Plan failure details</summary>"
-                echo ""
-                echo '```'
-                # Extract error blocks for failed modules
-                grep -B5 "FAIL: TestPlanAllModules/" /tmp/plan-test-output.txt 2>/dev/null | grep -i "error\|fail" | head -50
-                echo '```'
-                echo "</details>"
-              fi
-            fi
-          else
-            echo "⏭️ Plan tests did not run"
-          fi
-        } >> "$GITHUB_STEP_SUMMARY"
+        if [ "${{ steps.changes.outputs.count }}" = "0" ]; then
+          echo "## Terratest Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "⏭️ No module changes detected - tests skipped" >> "$GITHUB_STEP_SUMMARY"
+        else
+          bash .github/scripts/terratest-summary.sh /tmp/validate-test-output.txt /tmp/plan-test-output.txt >> "$GITHUB_STEP_SUMMARY"
+        fi
 
     - name: Fail if tests errored
       if: |

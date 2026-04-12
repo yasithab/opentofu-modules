@@ -51,7 +51,7 @@ variable "secret_resource_policy" {
 }
 
 variable "recovery_window_in_days" {
-  description = "Number of days that AWS Secrets Manager waits before it can delete the secret. Must be 0 (force delete, no recovery) or 7–30. The default value is 30."
+  description = "Number of days that AWS Secrets Manager waits before it can delete the secret. Must be 0 (force delete, no recovery) or 7-30. The default value is 30."
   type        = number
   default     = 30
 

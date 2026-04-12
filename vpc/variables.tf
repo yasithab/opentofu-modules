@@ -1234,7 +1234,7 @@ variable "nat_gateway_destination_cidr_block" {
 }
 
 variable "nat_gateway_type" {
-  description = "Type of NAT Gateway to create when enable_nat_gateway is true. Valid values: 'single' (one shared NAT GW), 'multi_az' (one NAT GW per AZ — requires var.azs and enough public subnets), 'regional' (single regional NAT GW with automatic HA, no EIP/public subnet needed)."
+  description = "Type of NAT Gateway to create when enable_nat_gateway is true. Valid values: 'single' (one shared NAT GW), 'multi_az' (one NAT GW per AZ - requires var.azs and enough public subnets), 'regional' (single regional NAT GW with automatic HA, no EIP/public subnet needed)."
   type        = string
   default     = "single"
 
