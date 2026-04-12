@@ -1004,7 +1004,7 @@ variable "vpc_security_group_tags" {
 variable "vpc_security_group_destination_ids" {
   description = "A list of security group IDs associated to destinations to allow firehose traffic"
   type        = list(string)
-  default     = null
+  default     = []
 }
 
 variable "vpc_create_destination_security_group" {

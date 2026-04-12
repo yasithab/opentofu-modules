@@ -36,7 +36,7 @@ locals {
 }
 
 data "aws_ssm_parameter" "ami" {
-  count = try(1, 0)
+  count = var.enabled && var.ami_id == null ? 1 : 0
 
   name = local.ami_type_to_ssm_param[var.ami_type]
 }
@@ -200,7 +200,7 @@ resource "aws_launch_template" "this" {
     arn = var.create_iam_instance_profile ? aws_iam_instance_profile.this.arn : var.iam_instance_profile_arn
   }
 
-  image_id                             = coalesce(var.ami_id, nonsensitive(data.aws_ssm_parameter.ami[0].value))
+  image_id                             = coalesce(var.ami_id, try(nonsensitive(data.aws_ssm_parameter.ami[0].value), ""))
   instance_initiated_shutdown_behavior = var.instance_initiated_shutdown_behavior
 
   dynamic "instance_market_options" {
@@ -828,7 +828,7 @@ resource "aws_autoscaling_group" "this" {
     }
   }
 
-  vpc_zone_identifier       = local.enable_efa_support ? data.aws_subnets.placement_group[0].ids : var.subnet_ids
+  vpc_zone_identifier       = local.enable_efa_support ? try(data.aws_subnets.placement_group[0].ids, var.subnet_ids) : var.subnet_ids
   wait_for_capacity_timeout = var.wait_for_capacity_timeout
   wait_for_elb_capacity     = var.wait_for_elb_capacity
 
@@ -901,7 +901,7 @@ resource "aws_iam_role" "this" {
   path        = var.iam_role_path
   description = var.iam_role_description
 
-  assume_role_policy    = data.aws_iam_policy_document.assume_role_policy[0].json
+  assume_role_policy    = try(data.aws_iam_policy_document.assume_role_policy[0].json, "")
   permissions_boundary  = var.iam_role_permissions_boundary
   force_detach_policies = true
 
@@ -1005,7 +1005,7 @@ data "aws_iam_policy_document" "role" {
 resource "aws_iam_role_policy" "this" {
   name        = var.iam_role_use_name_prefix ? null : local.iam_role_name
   name_prefix = var.iam_role_use_name_prefix ? "${local.iam_role_name}-" : null
-  policy      = data.aws_iam_policy_document.role[0].json
+  policy      = try(data.aws_iam_policy_document.role[0].json, "")
   role        = aws_iam_role.this.id
 
   lifecycle {

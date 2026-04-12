@@ -1,8 +1,11 @@
 locals {
-  create         = var.enabled
-  is_serverless  = var.engine_mode == "serverless"
-  admin_password = local.create && !var.manage_admin_password ? (var.create_random_password ? random_password.master_password.result : var.admin_password) : null
-  port           = var.port
+  create              = var.enabled
+  is_serverless       = var.engine_mode == "serverless"
+  has_policy_arn      = try(nonsensitive(var.policy_arn != null), var.policy_arn != null)
+  create_role_policy  = nonsensitive(local.create && local.is_serverless && var.policy_enabled && var.iam_role_enabled && !local.has_policy_arn)
+  attach_role_policy  = nonsensitive(local.create && local.is_serverless && var.policy_enabled && var.iam_role_enabled && local.has_policy_arn)
+  admin_password      = local.create && !var.manage_admin_password ? (var.create_random_password ? random_password.master_password.result : var.admin_password) : null
+  port                = var.port
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -53,10 +56,10 @@ resource "aws_iam_role" "serverless" {
 resource "aws_iam_role_policy" "serverless" {
   name   = var.policy_name != null ? var.policy_name : format("%s-policy", var.iam_role_name)
   role   = aws_iam_role.serverless.id
-  policy = var.policy
+  policy = coalesce(var.policy, "{}")
 
   lifecycle {
-    enabled = local.create && local.is_serverless && var.policy_enabled && var.iam_role_enabled && (var.policy_arn == null ? true : false)
+    enabled = local.create_role_policy
   }
 }
 
@@ -65,7 +68,7 @@ resource "aws_iam_role_policy_attachment" "serverless" {
   policy_arn = var.policy_arn
 
   lifecycle {
-    enabled = local.create && local.is_serverless && var.policy_enabled && var.iam_role_enabled && (var.policy_arn != null ? true : false)
+    enabled = local.attach_role_policy
   }
 }
 

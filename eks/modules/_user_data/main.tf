@@ -47,8 +47,8 @@ locals {
   cluster_service_cidr = try(coalesce(var.cluster_service_cidr, ""), "")
   cluster_dns_ips      = flatten(concat([try(cidrhost(local.cluster_service_cidr, 10), "")], var.additional_cluster_dns_ips))
 
-  user_data = base64encode(templatefile(
-    coalesce(var.user_data_template_path, local.template_path[local.user_data_type]),
+  user_data = var.enabled ? base64encode(templatefile(
+    coalesce(var.user_data_template_path, try(local.template_path[local.user_data_type], local.template_path["linux"])),
     {
       # https://docs.aws.amazon.com/eks/latest/userguide/launch-templates.html#launch-template-custom-ami
       enable_bootstrap_user_data = var.enable_bootstrap_user_data
@@ -69,7 +69,7 @@ locals {
       pre_bootstrap_user_data  = var.pre_bootstrap_user_data
       post_bootstrap_user_data = var.post_bootstrap_user_data
     }
-  ))
+  )) : ""
 
   user_data_type_to_rendered = {
     al2023 = {

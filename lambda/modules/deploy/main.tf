@@ -3,8 +3,8 @@ locals {
   qualifier       = try(data.aws_lambda_function.this[0].qualifier, "")
   current_version = local.qualifier == "$LATEST" ? 1 : local.qualifier
 
-  app_name              = try(aws_codedeploy_app.this.name, var.app_name)
-  deployment_group_name = try(aws_codedeploy_deployment_group.this.deployment_group_name, var.deployment_group_name)
+  app_name              = try(coalesce(try(aws_codedeploy_app.this.name, null), var.app_name), "")
+  deployment_group_name = try(coalesce(try(aws_codedeploy_deployment_group.this.deployment_group_name, null), var.deployment_group_name), "")
 
   appspec = merge({
     version = "0.0"
@@ -148,7 +148,7 @@ resource "aws_codedeploy_app" "this" {
 resource "aws_codedeploy_deployment_group" "this" {
   app_name               = local.app_name
   deployment_group_name  = var.deployment_group_name
-  service_role_arn       = try(aws_iam_role.codedeploy.arn, data.aws_iam_role.codedeploy[0].arn, "")
+  service_role_arn       = try(aws_iam_role.codedeploy.arn, try(data.aws_iam_role.codedeploy[0].arn, ""), "")
   deployment_config_name = var.deployment_config_name
 
   outdated_instances_strategy = var.outdated_instances_strategy
@@ -225,7 +225,7 @@ data "aws_iam_role" "codedeploy" {
 
 resource "aws_iam_role" "codedeploy" {
   name               = try(coalesce(var.codedeploy_role_name, "${local.app_name}-codedeploy"), "codedeploy")
-  assume_role_policy = data.aws_iam_policy_document.assume_role[0].json
+  assume_role_policy = try(data.aws_iam_policy_document.assume_role[0].json, "")
   tags               = local.tags
 
   lifecycle {
@@ -273,7 +273,7 @@ data "aws_iam_policy_document" "hooks" {
 }
 
 resource "aws_iam_policy" "hooks" {
-  policy = data.aws_iam_policy_document.hooks[0].json
+  policy = try(data.aws_iam_policy_document.hooks[0].json, "")
   tags   = local.tags
 
   lifecycle {
@@ -305,7 +305,7 @@ data "aws_iam_policy_document" "triggers" {
 }
 
 resource "aws_iam_policy" "triggers" {
-  policy = data.aws_iam_policy_document.triggers[0].json
+  policy = try(data.aws_iam_policy_document.triggers[0].json, "")
   tags   = local.tags
 
   lifecycle {

@@ -434,7 +434,7 @@ resource "aws_eks_node_group" "this" {
   # Required
   cluster_name  = var.cluster_name
   node_role_arn = var.create_iam_role ? aws_iam_role.this.arn : var.iam_role_arn
-  subnet_ids    = local.create_placement_group ? data.aws_subnets.placement_group[0].ids : var.subnet_ids
+  subnet_ids    = local.create_placement_group ? try(data.aws_subnets.placement_group[0].ids, var.subnet_ids) : var.subnet_ids
 
   scaling_config {
     min_size     = var.min_size
@@ -574,7 +574,7 @@ resource "aws_iam_role" "this" {
   path        = var.iam_role_path
   description = var.iam_role_description
 
-  assume_role_policy    = data.aws_iam_policy_document.assume_role_policy[0].json
+  assume_role_policy    = try(data.aws_iam_policy_document.assume_role_policy[0].json, "")
   permissions_boundary  = var.iam_role_permissions_boundary
   force_detach_policies = true
 
@@ -663,7 +663,7 @@ data "aws_iam_policy_document" "role" {
 resource "aws_iam_role_policy" "this" {
   name        = var.iam_role_use_name_prefix ? null : local.iam_role_name
   name_prefix = var.iam_role_use_name_prefix ? "${local.iam_role_name}-" : null
-  policy      = data.aws_iam_policy_document.role[0].json
+  policy      = try(data.aws_iam_policy_document.role[0].json, "")
   role        = aws_iam_role.this.id
 
   lifecycle {

@@ -22,7 +22,7 @@ data "aws_iam_policy_document" "assume_role_policy_codebuild_runners" {
 }
 
 data "aws_iam_role" "role_codebuild_runners" {
-  count = var.create_iam_role ? 0 : 1
+  count = local.create && !var.create_iam_role ? 1 : 0
   name  = try(var.iam_role_name, "codebuild-${var.repository_name}")
 }
 
@@ -59,7 +59,7 @@ data "aws_vpc" "vpc" {
 
 # Creating Codebuild Project
 data "aws_ecr_repository" "codebuild_runner" {
-  count = local.create ? 1 : 0
+  count = local.create && var.codebuild_runner_repository_url == null ? 1 : 0
   name  = var.codebuild_runner_repository_name
 }
 
@@ -67,7 +67,7 @@ data "aws_ecr_repository" "codebuild_runner" {
 # Security Group for Codebuild
 #######################################################################################################################
 data "aws_security_group" "codebuild_runners_sg" {
-  count = var.create_security_group ? 0 : 1
+  count = local.create && !var.create_security_group ? 1 : 0
 
   filter {
     name   = "tag:Name"
@@ -328,7 +328,7 @@ resource "aws_codebuild_project" "codebuild_build_runner" {
   vpc_config {
     vpc_id             = var.vpc_id
     subnets            = var.codebuild_subnets
-    security_group_ids = var.create_security_group ? [aws_security_group.codebuild_runners.id] : [data.aws_security_group.codebuild_runners_sg[0].id]
+    security_group_ids = var.create_security_group ? [aws_security_group.codebuild_runners.id] : [try(data.aws_security_group.codebuild_runners_sg[0].id, "")]
   }
 
   logs_config {
@@ -589,7 +589,7 @@ resource "aws_codebuild_project" "codebuild_deployment_runner" {
   vpc_config {
     vpc_id             = var.vpc_id
     subnets            = var.codebuild_subnets
-    security_group_ids = var.create_security_group ? [aws_security_group.codebuild_runners.id] : [data.aws_security_group.codebuild_runners_sg[0].id]
+    security_group_ids = var.create_security_group ? [aws_security_group.codebuild_runners.id] : [try(data.aws_security_group.codebuild_runners_sg[0].id, "")]
   }
 
   logs_config {

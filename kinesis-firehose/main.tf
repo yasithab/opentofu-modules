@@ -873,7 +873,7 @@ resource "aws_vpc_security_group_ingress_rule" "destination_from_firehose_sg" {
 
 # Allow inbound HTTPS from Firehose CIDR blocks (non-search destination)
 resource "aws_vpc_security_group_ingress_rule" "destination_from_firehose_cidr" {
-  for_each = { for idx, cidr in local.firehose_cidr_blocks[local.destination][data.aws_region.current.region] : idx => cidr if local.vpc_create_destination_group && !local.is_search_destination }
+  for_each = { for idx, cidr in try(local.firehose_cidr_blocks[local.destination][data.aws_region.current.region], []) : idx => cidr if local.vpc_create_destination_group && !local.is_search_destination }
 
   security_group_id = aws_security_group.destination.id
   ip_protocol       = "tcp"
@@ -933,7 +933,7 @@ resource "aws_vpc_security_group_ingress_rule" "destination_existing_from_cidr" 
   ip_protocol       = "tcp"
   from_port         = 443
   to_port           = 443
-  cidr_ipv4         = local.firehose_cidr_blocks[local.destination][data.aws_region.current.region][0]
+  cidr_ipv4         = try(local.firehose_cidr_blocks[local.destination][data.aws_region.current.region][0], "0.0.0.0/32")
   description       = "Allow Inbound HTTPS Traffic from Firehose"
 
   tags = local.tags

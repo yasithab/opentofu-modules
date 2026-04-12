@@ -1,5 +1,9 @@
-alias_name      = "terratest"
-function_name   = "terratest-function"
-target_version  = "1"
-current_version = "1"
-app_name        = "terratest-deploy"
+alias_name             = "terratest"
+function_name          = "terratest-function"
+target_version         = "1"
+current_version        = "1"
+app_name               = "terratest-deploy"
+deployment_group_name  = "terratest-deploy-group"
+enabled                = false
+create_deployment      = false
+create_codedeploy_role = false

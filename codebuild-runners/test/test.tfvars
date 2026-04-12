@@ -1,7 +1,9 @@
-codebuild_project_name   = "terratest-plan"
-repository_name          = "test-repo"
-github_organization_name = "test-org"
-vpc_id                   = null
-codebuild_subnets        = []
-create_iam_role          = true
-create_security_group    = true
+codebuild_project_name        = "terratest-plan"
+repository_name               = "test-repo"
+github_organization_name      = "test-org"
+vpc_id                        = null
+codebuild_subnets             = []
+create_iam_role               = true
+create_security_group         = true
+enabled                       = false
+codebuild_runner_repository_url = "123456789012.dkr.ecr.us-east-1.amazonaws.com/codebuild-runner"

@@ -55,7 +55,7 @@ variable "interpreter" {
 variable "description" {
   description = "Description to use for the deployment"
   type        = string
-  default     = null
+  default     = ""
 }
 
 #########################
