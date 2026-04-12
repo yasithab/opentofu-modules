@@ -51,22 +51,13 @@ jobs:
           go-version-file: test/go.mod
           cache-dependency-path: test/go.sum
 
-      - name: Assume management account role via OIDC
+      - name: Configure AWS credentials via OIDC
         if: inputs.test_type == 'all' || inputs.test_type == 'plan'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_MGMT_RO_ROLE_ARN }}
           aws-region: us-east-1
           role-session-name: terratest-dispatch-${{ github.run_id }}
-
-      - name: Assume child account role
-        if: inputs.test_type == 'all' || inputs.test_type == 'plan'
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_TEST_RO_ROLE_ARN }}
-          aws-region: us-east-1
-          role-session-name: terratest-dispatch-${{ github.run_id }}-child
-          role-chaining: true
 
       - name: Cache OpenTofu provider plugins
         uses: actions/cache@v5
