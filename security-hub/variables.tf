@@ -4,21 +4,15 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region where Security Hub resources will be created. If null, uses the provider default region"
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name prefix for Security Hub resources used in naming and tagging"
   type        = string
-}
 
-variable "tags" {
-  description = "Map of tags to apply to all Security Hub resources"
-  type        = map(string)
-  default     = {}
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "The name must not be empty."
+  }
 }
 
 ################################################################################
@@ -35,6 +29,11 @@ variable "control_finding_generator" {
   description = "Updates whether the calling account has consolidated control findings turned on. Valid values: SECURITY_CONTROL, STANDARD_CONTROL"
   type        = string
   default     = "SECURITY_CONTROL"
+
+  validation {
+    condition     = contains(["SECURITY_CONTROL", "STANDARD_CONTROL"], var.control_finding_generator)
+    error_message = "The control_finding_generator must be 'SECURITY_CONTROL' or 'STANDARD_CONTROL'."
+  }
 }
 
 variable "auto_enable_controls" {
@@ -81,6 +80,11 @@ variable "finding_aggregator_linking_mode" {
   description = "Linking mode for the finding aggregator. Valid values: ALL_REGIONS, ALL_REGIONS_EXCEPT_SPECIFIED, SPECIFIED_REGIONS"
   type        = string
   default     = "ALL_REGIONS"
+
+  validation {
+    condition     = contains(["ALL_REGIONS", "ALL_REGIONS_EXCEPT_SPECIFIED", "SPECIFIED_REGIONS"], var.finding_aggregator_linking_mode)
+    error_message = "The finding_aggregator_linking_mode must be 'ALL_REGIONS', 'ALL_REGIONS_EXCEPT_SPECIFIED', or 'SPECIFIED_REGIONS'."
+  }
 }
 
 variable "finding_aggregator_regions" {
@@ -109,12 +113,22 @@ variable "organization_auto_enable_standards" {
   description = "Whether to automatically enable default standards for new member accounts. Valid values: DEFAULT, NONE"
   type        = string
   default     = "DEFAULT"
+
+  validation {
+    condition     = contains(["DEFAULT", "NONE"], var.organization_auto_enable_standards)
+    error_message = "The organization_auto_enable_standards must be 'DEFAULT' or 'NONE'."
+  }
 }
 
 variable "organization_configuration_type" {
   description = "Organization configuration type. Valid values: CENTRAL, LOCAL. Set to null to skip the organization_configuration block"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.organization_configuration_type == null || contains(["CENTRAL", "LOCAL"], var.organization_configuration_type)
+    error_message = "The organization_configuration_type must be 'CENTRAL', 'LOCAL', or null."
+  }
 }
 
 ################################################################################

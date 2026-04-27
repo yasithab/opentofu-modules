@@ -46,13 +46,6 @@ resource "aws_vpc_peering_connection_options" "requestor_dns" {
   }
 }
 
-# Lookup requestor VPC so that we can reference the CIDR
-data "aws_vpc" "requestor" {
-  count = var.enabled && var.requestor_vpc_id != null ? 1 : 0
-  id    = var.requestor_vpc_id
-  tags  = var.requestor_vpc_tags
-}
-
 data "aws_route_tables" "requestor" {
   count  = var.enabled && var.requestor_vpc_id != null ? 1 : 0
   vpc_id = var.requestor_vpc_id

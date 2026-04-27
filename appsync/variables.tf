@@ -4,11 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region override. Uses provider region when null."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name of the AppSync GraphQL API."
@@ -29,6 +24,11 @@ variable "authentication_type" {
   description = "Default authentication type. Valid values: `API_KEY`, `AWS_IAM`, `AMAZON_COGNITO_USER_POOLS`, `OPENID_CONNECT`, `AWS_LAMBDA`."
   type        = string
   default     = "API_KEY"
+
+  validation {
+    condition     = contains(["API_KEY", "AWS_IAM", "AMAZON_COGNITO_USER_POOLS", "OPENID_CONNECT", "AWS_LAMBDA"], var.authentication_type)
+    error_message = "authentication_type must be one of: API_KEY, AWS_IAM, AMAZON_COGNITO_USER_POOLS, OPENID_CONNECT, AWS_LAMBDA."
+  }
 }
 
 variable "schema" {
@@ -47,24 +47,44 @@ variable "introspection_config" {
   description = "Introspection configuration. Valid values: `ENABLED`, `DISABLED`."
   type        = string
   default     = "ENABLED"
+
+  validation {
+    condition     = contains(["ENABLED", "DISABLED"], var.introspection_config)
+    error_message = "introspection_config must be one of: ENABLED, DISABLED."
+  }
 }
 
 variable "query_depth_limit" {
   description = "Maximum depth of a query. Valid range: 1-75."
   type        = number
   default     = null
+
+  validation {
+    condition     = var.query_depth_limit == null || (var.query_depth_limit >= 1 && var.query_depth_limit <= 75)
+    error_message = "query_depth_limit must be between 1 and 75."
+  }
 }
 
 variable "resolver_count_limit" {
   description = "Maximum number of resolvers per query. Valid range: 1-10000."
   type        = number
   default     = null
+
+  validation {
+    condition     = var.resolver_count_limit == null || (var.resolver_count_limit >= 1 && var.resolver_count_limit <= 10000)
+    error_message = "resolver_count_limit must be between 1 and 10000."
+  }
 }
 
 variable "visibility" {
   description = "API visibility. Valid values: `GLOBAL`, `PRIVATE`."
   type        = string
   default     = "GLOBAL"
+
+  validation {
+    condition     = contains(["GLOBAL", "PRIVATE"], var.visibility)
+    error_message = "visibility must be one of: GLOBAL, PRIVATE."
+  }
 }
 
 ################################################################################
@@ -175,12 +195,22 @@ variable "cache_api_caching_behavior" {
   description = "Caching behavior. Valid values: `FULL_REQUEST_CACHING`, `PER_RESOLVER_CACHING`."
   type        = string
   default     = "FULL_REQUEST_CACHING"
+
+  validation {
+    condition     = contains(["FULL_REQUEST_CACHING", "PER_RESOLVER_CACHING"], var.cache_api_caching_behavior)
+    error_message = "cache_api_caching_behavior must be one of: FULL_REQUEST_CACHING, PER_RESOLVER_CACHING."
+  }
 }
 
 variable "cache_type" {
   description = "Cache instance type. Valid values: `SMALL`, `MEDIUM`, `LARGE`, `XLARGE`, `LARGE_2X`, `LARGE_4X`, `LARGE_8X`, `LARGE_12X`, `T2_SMALL`, `T2_MEDIUM`, `R4_LARGE`, `R4_XLARGE`, `R4_2XLARGE`, `R4_4XLARGE`, `R4_8XLARGE`."
   type        = string
   default     = "SMALL"
+
+  validation {
+    condition     = contains(["SMALL", "MEDIUM", "LARGE", "XLARGE", "LARGE_2X", "LARGE_4X", "LARGE_8X", "LARGE_12X", "T2_SMALL", "T2_MEDIUM", "R4_LARGE", "R4_XLARGE", "R4_2XLARGE", "R4_4XLARGE", "R4_8XLARGE"], var.cache_type)
+    error_message = "cache_type must be one of: SMALL, MEDIUM, LARGE, XLARGE, LARGE_2X, LARGE_4X, LARGE_8X, LARGE_12X, T2_SMALL, T2_MEDIUM, R4_LARGE, R4_XLARGE, R4_2XLARGE, R4_4XLARGE, R4_8XLARGE."
+  }
 }
 
 variable "cache_ttl" {
@@ -221,6 +251,11 @@ variable "domain_certificate_arn" {
   description = "ARN of the ACM certificate for the custom domain."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.domain_certificate_arn == null || can(regex("^arn:", var.domain_certificate_arn))
+    error_message = "domain_certificate_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "domain_description" {
@@ -237,6 +272,11 @@ variable "waf_web_acl_arn" {
   description = "ARN of the WAFv2 Web ACL to associate with the GraphQL API."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.waf_web_acl_arn == null || can(regex("^arn:", var.waf_web_acl_arn))
+    error_message = "waf_web_acl_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 ################################################################################
@@ -259,12 +299,22 @@ variable "logging_role_arn" {
   description = "ARN of an existing IAM role for CloudWatch logging. Used when `create_logging_role` is false."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.logging_role_arn == null || can(regex("^arn:", var.logging_role_arn))
+    error_message = "logging_role_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "log_field_log_level" {
   description = "Field-level logging level. Valid values: `ALL`, `ERROR`, `NONE`."
   type        = string
   default     = "ERROR"
+
+  validation {
+    condition     = contains(["ALL", "ERROR", "NONE"], var.log_field_log_level)
+    error_message = "log_field_log_level must be one of: ALL, ERROR, NONE."
+  }
 }
 
 variable "log_exclude_verbose_content" {

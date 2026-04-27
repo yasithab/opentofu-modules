@@ -1,6 +1,6 @@
 locals {
-  create      = var.enabled
-  role_arn    = local.create && var.create_iam_role ? aws_iam_role.this.arn : var.role_arn
+  enabled     = var.enabled
+  role_arn    = local.enabled && var.create_iam_role ? aws_iam_role.this.arn : var.role_arn
   role_name   = coalesce(var.iam_role_name, var.name)
   policy_name = coalesce(var.iam_policy_name, var.name)
 
@@ -53,7 +53,7 @@ resource "aws_db_proxy" "this" {
   depends_on = [aws_cloudwatch_log_group.this]
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -69,7 +69,7 @@ resource "aws_db_proxy_default_target_group" "this" {
   }
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -79,7 +79,7 @@ resource "aws_db_proxy_target" "db_instance" {
   db_instance_identifier = var.db_instance_identifier
 
   lifecycle {
-    enabled = local.create && var.target_db_instance
+    enabled = local.enabled && var.target_db_instance
   }
 }
 
@@ -89,12 +89,12 @@ resource "aws_db_proxy_target" "db_cluster" {
   db_cluster_identifier = var.db_cluster_identifier
 
   lifecycle {
-    enabled = local.create && var.target_db_cluster
+    enabled = local.enabled && var.target_db_cluster
   }
 }
 
 resource "aws_db_proxy_endpoint" "this" {
-  for_each = { for k, v in var.endpoints : k => v if local.create }
+  for_each = { for k, v in var.endpoints : k => v if local.enabled }
 
   db_proxy_name          = aws_db_proxy.this.name
   db_proxy_endpoint_name = each.value.name
@@ -119,7 +119,7 @@ resource "aws_cloudwatch_log_group" "this" {
   tags = merge(local.tags, var.log_group_tags)
 
   lifecycle {
-    enabled = local.create && var.manage_log_group
+    enabled = local.enabled && var.manage_log_group
   }
 }
 
@@ -128,7 +128,7 @@ resource "aws_cloudwatch_log_group" "this" {
 ################################################################################
 
 data "aws_iam_policy_document" "assume_role" {
-  count = local.create && var.create_iam_role ? 1 : 0
+  count = local.enabled && var.create_iam_role ? 1 : 0
 
   statement {
     sid     = "RDSAssume"
@@ -156,12 +156,12 @@ resource "aws_iam_role" "this" {
   tags = merge(local.tags, var.iam_role_tags)
 
   lifecycle {
-    enabled = local.create && var.create_iam_role
+    enabled = local.enabled && var.create_iam_role
   }
 }
 
 data "aws_iam_policy_document" "this" {
-  count = local.create && var.create_iam_role && var.create_iam_policy ? 1 : 0
+  count = local.enabled && var.create_iam_role && var.create_iam_policy ? 1 : 0
 
   statement {
     sid     = "DecryptSecrets"
@@ -212,6 +212,6 @@ resource "aws_iam_role_policy" "this" {
   role        = aws_iam_role.this.id
 
   lifecycle {
-    enabled = local.create && var.create_iam_role && var.create_iam_policy
+    enabled = local.enabled && var.create_iam_role && var.create_iam_policy
   }
 }

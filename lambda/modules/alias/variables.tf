@@ -66,12 +66,22 @@ variable "function_name" {
   description = "The function ARN of the Lambda function for which you want to create an alias."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.function_name == null || length(var.function_name) > 0
+    error_message = "function_name must not be empty when provided."
+  }
 }
 
 variable "function_version" {
   description = "Lambda function version for which you are creating the alias. Pattern: ($LATEST|[0-9]+)."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.function_version == null || can(regex("^(\\$LATEST|[0-9]+)$", var.function_version))
+    error_message = "function_version must match the pattern '$LATEST' or a numeric version (e.g. '1', '42')."
+  }
 }
 
 variable "routing_additional_version_weights" {
@@ -88,24 +98,44 @@ variable "maximum_event_age_in_seconds" {
   description = "Maximum age of a request that Lambda sends to a function for processing in seconds. Valid values between 60 and 21600."
   type        = number
   default     = null
+
+  validation {
+    condition     = var.maximum_event_age_in_seconds == null || (var.maximum_event_age_in_seconds >= 60 && var.maximum_event_age_in_seconds <= 21600)
+    error_message = "maximum_event_age_in_seconds must be between 60 and 21600."
+  }
 }
 
 variable "maximum_retry_attempts" {
   description = "Maximum number of times to retry when the function returns an error. Valid values between 0 and 2. Defaults to 2."
   type        = number
   default     = null
+
+  validation {
+    condition     = var.maximum_retry_attempts == null || (var.maximum_retry_attempts >= 0 && var.maximum_retry_attempts <= 2)
+    error_message = "maximum_retry_attempts must be between 0 and 2."
+  }
 }
 
 variable "destination_on_failure" {
   description = "Amazon Resource Name (ARN) of the destination resource for failed asynchronous invocations"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.destination_on_failure == null || can(regex("^arn:", var.destination_on_failure))
+    error_message = "destination_on_failure must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "destination_on_success" {
   description = "Amazon Resource Name (ARN) of the destination resource for successful asynchronous invocations"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.destination_on_success == null || can(regex("^arn:", var.destination_on_success))
+    error_message = "destination_on_success must be a valid ARN starting with 'arn:'."
+  }
 }
 
 ############################################

@@ -1,4 +1,4 @@
-variable "create" {
+variable "enabled" {
   description = "Controls if resources should be created (affects nearly all resources)"
   type        = bool
   default     = true
@@ -42,6 +42,11 @@ variable "iam_role_path" {
   description = "Path of the IAM role"
   type        = string
   default     = "/"
+
+  validation {
+    condition     = can(regex("^/", var.iam_role_path))
+    error_message = "The iam_role_path must begin with '/'."
+  }
 }
 
 variable "iam_role_description" {
@@ -54,12 +59,22 @@ variable "iam_role_max_session_duration" {
   description = "Maximum API session duration in seconds between 3600 and 43200"
   type        = number
   default     = null
+
+  validation {
+    condition     = var.iam_role_max_session_duration == null || (var.iam_role_max_session_duration >= 3600 && var.iam_role_max_session_duration <= 43200)
+    error_message = "The iam_role_max_session_duration must be null or between 3600 and 43200 seconds."
+  }
 }
 
 variable "iam_role_permissions_boundary_arn" {
   description = "Permissions boundary ARN to use for the IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_role_permissions_boundary_arn == null || can(regex("^arn:", var.iam_role_permissions_boundary_arn))
+    error_message = "The iam_role_permissions_boundary_arn must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_role_tags" {
@@ -84,6 +99,11 @@ variable "iam_policy_path" {
   description = "Path of the IAM policy"
   type        = string
   default     = "/"
+
+  validation {
+    condition     = can(regex("^/", var.iam_policy_path))
+    error_message = "The iam_policy_path must begin with '/'."
+  }
 }
 
 variable "iam_policy_description" {
@@ -136,6 +156,11 @@ variable "irsa_oidc_provider_arn" {
   description = "OIDC provider arn used in trust policy for IAM role for service accounts"
   type        = string
   default     = ""
+
+  validation {
+    condition     = var.irsa_oidc_provider_arn == "" || can(regex("^arn:", var.irsa_oidc_provider_arn))
+    error_message = "The irsa_oidc_provider_arn must be empty or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "irsa_namespace_service_accounts" {
@@ -175,6 +200,11 @@ variable "pod_identity_target_role_arn" {
   description = "The ARN of an IAM role to chain to the Karpenter role via assume role. Used for cross-account role chaining"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.pod_identity_target_role_arn == null || can(regex("^arn:", var.pod_identity_target_role_arn))
+    error_message = "The pod_identity_target_role_arn must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "pod_identity_disable_session_tags" {
@@ -255,12 +285,22 @@ variable "cluster_ip_family" {
   description = "The IP family used to assign Kubernetes pod and service addresses. Valid values are `ipv4` (default) and `ipv6`. Note: If `ipv6` is specified, the `AmazonEKS_CNI_IPv6_Policy` must exist in the account. This policy is created by the EKS module with `create_cni_ipv6_iam_policy = true`"
   type        = string
   default     = "ipv4"
+
+  validation {
+    condition     = contains(["ipv4", "ipv6"], var.cluster_ip_family)
+    error_message = "The cluster_ip_family must be 'ipv4' or 'ipv6'."
+  }
 }
 
 variable "node_iam_role_arn" {
   description = "Existing IAM role ARN for the IAM instance profile. Required if `create_iam_role` is set to `false`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.node_iam_role_arn == null || can(regex("^arn:", var.node_iam_role_arn))
+    error_message = "The node_iam_role_arn must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "node_iam_role_name" {
@@ -279,6 +319,11 @@ variable "node_iam_role_path" {
   description = "IAM role path"
   type        = string
   default     = "/"
+
+  validation {
+    condition     = can(regex("^/", var.node_iam_role_path))
+    error_message = "The node_iam_role_path must begin with '/'."
+  }
 }
 
 variable "node_iam_role_description" {
@@ -291,12 +336,22 @@ variable "node_iam_role_max_session_duration" {
   description = "Maximum API session duration in seconds between 3600 and 43200"
   type        = number
   default     = null
+
+  validation {
+    condition     = var.node_iam_role_max_session_duration == null || (var.node_iam_role_max_session_duration >= 3600 && var.node_iam_role_max_session_duration <= 43200)
+    error_message = "The node_iam_role_max_session_duration must be null or between 3600 and 43200 seconds."
+  }
 }
 
 variable "node_iam_role_permissions_boundary" {
   description = "ARN of the policy that is used to set the permissions boundary for the IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.node_iam_role_permissions_boundary == null || can(regex("^arn:", var.node_iam_role_permissions_boundary))
+    error_message = "The node_iam_role_permissions_boundary must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "node_iam_role_attach_cni_policy" {
@@ -331,6 +386,11 @@ variable "access_entry_type" {
   description = "Type of the access entry. `EC2_LINUX`, `FARGATE_LINUX`, or `EC2_WINDOWS`; defaults to `EC2_LINUX`"
   type        = string
   default     = "EC2_LINUX"
+
+  validation {
+    condition     = contains(["EC2_LINUX", "FARGATE_LINUX", "EC2_WINDOWS"], var.access_entry_type)
+    error_message = "The access_entry_type must be 'EC2_LINUX', 'FARGATE_LINUX', or 'EC2_WINDOWS'."
+  }
 }
 
 ################################################################################
@@ -357,6 +417,11 @@ variable "event_rule_state" {
   description = "State of the EventBridge rule. Valid values are `DISABLED`, `ENABLED`, and `ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS`. Defaults to `ENABLED`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.event_rule_state == null || contains(["DISABLED", "ENABLED", "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS"], var.event_rule_state)
+    error_message = "The event_rule_state must be null, 'DISABLED', 'ENABLED', or 'ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS'."
+  }
 }
 
 variable "event_rule_force_destroy" {
@@ -369,6 +434,11 @@ variable "event_rule_role_arn" {
   description = "The Amazon Resource Name (ARN) associated with the IAM role used for target invocation of the EventBridge rule"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.event_rule_role_arn == null || can(regex("^arn:", var.event_rule_role_arn))
+    error_message = "The event_rule_role_arn must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "event_bus_name" {

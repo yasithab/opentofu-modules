@@ -1,8 +1,7 @@
 data "aws_region" "current" {}
-data "aws_caller_identity" "current" {}
 
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -18,7 +17,7 @@ locals {
 ################################################################################
 
 data "aws_ssm_parameter" "ami" {
-  count = local.create && var.ami_id == null ? 1 : 0
+  count = local.enabled && var.ami_id == null ? 1 : 0
   name  = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-${local.is_arm ? "arm64" : "x86_64"}"
 }
 
@@ -35,22 +34,27 @@ resource "aws_security_group" "this" {
   description = "Tailscale subnet router - egress only"
   vpc_id      = var.vpc_id
 
-  # trivy:ignore:AVD-AWS-0104 - Subnet router needs outbound for WireGuard tunnels and VPC resource access
-  egress {
-    description = "All outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   tags = merge(local.tags, {
     "Name" = var.name
   })
 
   lifecycle {
-    enabled               = local.create
+    enabled               = local.enabled
     create_before_destroy = true
+  }
+}
+
+# trivy:ignore:AVD-AWS-0104 - Subnet router needs outbound for WireGuard tunnels and VPC resource access
+resource "aws_vpc_security_group_egress_rule" "all" {
+  security_group_id = aws_security_group.this.id
+  description       = "All outbound"
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
+
+  tags = local.tags
+
+  lifecycle {
+    enabled = local.enabled
   }
 }
 
@@ -152,7 +156,7 @@ resource "aws_launch_template" "this" {
   })
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
     precondition {
       condition     = var.headscale_auth_key != "" || var.secrets_manager_arn != ""
       error_message = "Either headscale_auth_key or secrets_manager_arn must be provided."
@@ -202,7 +206,7 @@ resource "aws_autoscaling_group" "this" {
   }
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -231,7 +235,7 @@ resource "aws_iam_role" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -242,7 +246,7 @@ resource "aws_iam_instance_profile" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled               = local.create
+    enabled               = local.enabled
     create_before_destroy = true
   }
 }
@@ -331,7 +335,7 @@ resource "aws_iam_policy" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -340,7 +344,7 @@ resource "aws_iam_role_policy_attachment" "this" {
   policy_arn = aws_iam_policy.this.arn
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -354,7 +358,7 @@ resource "aws_sns_topic" "alarm" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.alarm_enabled && var.alarm_sns_topic_arn == ""
+    enabled = local.enabled && var.alarm_enabled && var.alarm_sns_topic_arn == ""
   }
 }
 
@@ -380,7 +384,7 @@ resource "aws_cloudwatch_metric_alarm" "asg_health" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.alarm_enabled
+    enabled = local.enabled && var.alarm_enabled
   }
 }
 
@@ -395,6 +399,6 @@ resource "aws_cloudwatch_log_group" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.cloudwatch_logs_enabled
+    enabled = local.enabled && var.cloudwatch_logs_enabled
   }
 }

@@ -10,11 +10,6 @@ variable "region" {
   default     = null
 }
 
-variable "name" {
-  description = "Name prefix used for identifying X-Ray resources."
-  type        = string
-}
-
 variable "tags" {
   description = "Map of tags to apply to all resources."
   type        = map(string)

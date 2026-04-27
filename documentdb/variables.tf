@@ -4,11 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region override. If null, the provider default region is used."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name of the DocumentDB cluster and used as a default for related resources."
@@ -66,6 +61,11 @@ variable "backup_retention_period" {
   description = "Number of days to retain automated backups."
   type        = number
   default     = 7
+
+  validation {
+    condition     = var.backup_retention_period == null || (var.backup_retention_period >= 1 && var.backup_retention_period <= 35)
+    error_message = "backup_retention_period must be between 1 and 35 days."
+  }
 }
 
 variable "preferred_backup_window" {
@@ -255,6 +255,62 @@ variable "vpc_id" {
 
 variable "security_group_rules" {
   description = "Map of security group rules for the DocumentDB cluster."
-  type        = any
+  type = map(object({
+    type                         = optional(string, "ingress")
+    ip_protocol                  = optional(string, "tcp")
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
+  }))
+  default = {}
+}
+
+################################################################################
+# CloudWatch Log Group
+################################################################################
+
+variable "create_cloudwatch_log_group" {
+  description = "Determines whether a CloudWatch log group is created for each `enabled_cloudwatch_logs_exports`"
+  type        = bool
+  default     = false
+}
+
+variable "cloudwatch_log_group_retention_in_days" {
+  description = "The number of days to retain CloudWatch logs for the DocumentDB cluster"
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = contains([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.cloudwatch_log_group_retention_in_days)
+    error_message = "cloudwatch_log_group_retention_in_days must be one of the allowed CloudWatch Logs retention values."
+  }
+}
+
+variable "cloudwatch_log_group_kms_key_id" {
+  description = "The ARN of the KMS Key to use when encrypting log data"
+  type        = string
+  default     = null
+}
+
+variable "cloudwatch_log_group_skip_destroy" {
+  description = "Set to true if you do not wish the log group to be deleted at destroy time"
+  type        = bool
+  default     = null
+}
+
+variable "cloudwatch_log_group_class" {
+  description = "Specified the log class of the log group. Possible values are: STANDARD or INFREQUENT_ACCESS"
+  type        = string
+  default     = null
+}
+
+variable "cloudwatch_log_group_tags" {
+  description = "Additional tags for the CloudWatch log group(s)"
+  type        = map(string)
   default     = {}
 }

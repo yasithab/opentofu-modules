@@ -3,118 +3,11 @@
 ################################################################################
 
 locals {
-  create          = var.enabled
-  security_groups = var.create_security_group ? try(aws_security_group.this.id, null) : var.security_groups
+  enabled            = var.enabled
+  security_group_ids = var.create_security_group ? [aws_security_group.this.id] : var.security_groups
 
-  default_rabbitmq_ingress_rules = tolist([
-    {
-      description      = "RabbitMQ AMQP TLS access"
-      from_port        = 5671
-      to_port          = 5671
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = null
-      prefix_list_ids  = null
-      security_groups  = null
-      self             = null
-    },
-    {
-      description      = "RabbitMQ management console access"
-      from_port        = 15671
-      to_port          = 15671
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = null
-      prefix_list_ids  = null
-      security_groups  = null
-      self             = null
-    },
-    {
-      description      = "RabbitMQ management console access"
-      from_port        = 443
-      to_port          = 443
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = null
-      prefix_list_ids  = null
-      security_groups  = null
-      self             = null
-    }
-  ])
-
-  default_activemq_ingress_rules = tolist([
-    {
-      description      = "ActiveMQ AMQP access"
-      from_port        = 5671
-      to_port          = 5671
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = null
-      prefix_list_ids  = null
-      security_groups  = null
-      self             = null
-    },
-    {
-      description      = "ActiveMQ STOMP access"
-      from_port        = 61614
-      to_port          = 61614
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = null
-      prefix_list_ids  = null
-      security_groups  = null
-      self             = null
-    },
-    {
-      description      = "ActiveMQ MQTT access"
-      from_port        = 8883
-      to_port          = 8883
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = null
-      prefix_list_ids  = null
-      security_groups  = null
-      self             = null
-    },
-    {
-      description      = "ActiveMQ WSS access"
-      from_port        = 61619
-      to_port          = 61619
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = null
-      prefix_list_ids  = null
-      security_groups  = null
-      self             = null
-    },
-    {
-      description      = "ActiveMQ OpenWire access"
-      from_port        = 61617
-      to_port          = 61617
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = null
-      prefix_list_ids  = null
-      security_groups  = null
-      self             = null
-    },
-    {
-      description      = "ActiveMQ web console access"
-      from_port        = 8162
-      to_port          = 8162
-      protocol         = "tcp"
-      cidr_blocks      = ["0.0.0.0/0"]
-      ipv6_cidr_blocks = null
-      prefix_list_ids  = null
-      security_groups  = null
-      self             = null
-    }
-  ])
-
-  computed_ingress_rules = coalesce(
-    var.ingress_rules,
-    var.engine_type == "RabbitMQ" ? local.default_rabbitmq_ingress_rules : local.default_activemq_ingress_rules
-  )
+  create_security_group = local.enabled && var.create_security_group
+  security_group_name   = try(coalesce(var.security_group_name, var.broker_name), "")
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -125,48 +18,52 @@ locals {
 # Security Groups
 ################################################################################
 
-# trivy:ignore:AVD-AWS-0104 - MQ broker egress rules are caller-controlled via var.egress_rules
 resource "aws_security_group" "this" {
-  name        = var.security_group_name != null ? var.security_group_name : null
-  name_prefix = var.security_group_name == null ? coalesce(var.security_group_name_prefix, "${var.broker_name}-") : null
-  description = var.security_group_description
+  name        = var.security_group_use_name_prefix ? null : local.security_group_name
+  name_prefix = var.security_group_use_name_prefix ? "${local.security_group_name}-" : null
+  description = coalesce(var.security_group_description, "Security group for MQ broker ${var.broker_name}")
   vpc_id      = var.vpc_id
 
-  dynamic "ingress" {
-    for_each = local.computed_ingress_rules
-    content {
-      description      = ingress.value.description
-      from_port        = ingress.value.from_port
-      to_port          = ingress.value.to_port
-      protocol         = ingress.value.protocol
-      cidr_blocks      = lookup(ingress.value, "cidr_blocks", null)
-      ipv6_cidr_blocks = lookup(ingress.value, "ipv6_cidr_blocks", null)
-      prefix_list_ids  = lookup(ingress.value, "prefix_list_ids", null)
-      security_groups  = lookup(ingress.value, "security_groups", null)
-      self             = lookup(ingress.value, "self", null)
-    }
-  }
-
-  dynamic "egress" {
-    for_each = var.egress_rules
-    content {
-      description      = egress.value.description
-      from_port        = egress.value.from_port
-      to_port          = egress.value.to_port
-      protocol         = egress.value.protocol
-      cidr_blocks      = lookup(egress.value, "cidr_blocks", null)
-      ipv6_cidr_blocks = lookup(egress.value, "ipv6_cidr_blocks", null)
-      prefix_list_ids  = lookup(egress.value, "prefix_list_ids", null)
-      security_groups  = lookup(egress.value, "security_groups", null)
-      self             = lookup(egress.value, "self", null)
-    }
-  }
-
-  tags = merge(local.tags, var.security_group_tags)
+  tags = merge(local.tags, var.security_group_tags, { Name = local.security_group_name })
 
   lifecycle {
-    enabled = var.create_security_group
+    enabled               = local.create_security_group
+    create_before_destroy = true
   }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "this" {
+  for_each = { for k, v in var.security_group_rules : k => v if local.create_security_group && try(v.type, "ingress") == "ingress" }
+
+  security_group_id = aws_security_group.this.id
+  ip_protocol       = try(each.value.ip_protocol, "tcp")
+
+  cidr_ipv4                    = lookup(each.value, "cidr_ipv4", null)
+  cidr_ipv6                    = lookup(each.value, "cidr_ipv6", null)
+  description                  = try(each.value.description, null)
+  from_port                    = try(each.value.from_port, null)
+  prefix_list_id               = lookup(each.value, "prefix_list_id", null)
+  referenced_security_group_id = lookup(each.value, "referenced_security_group_id", null)
+  to_port                      = try(each.value.to_port, null)
+
+  tags = merge(local.tags, var.security_group_tags, try(each.value.tags, {}))
+}
+
+resource "aws_vpc_security_group_egress_rule" "this" {
+  for_each = { for k, v in var.security_group_rules : k => v if local.create_security_group && try(v.type, "ingress") == "egress" }
+
+  security_group_id = aws_security_group.this.id
+  ip_protocol       = try(each.value.ip_protocol, "tcp")
+
+  cidr_ipv4                    = lookup(each.value, "cidr_ipv4", null)
+  cidr_ipv6                    = lookup(each.value, "cidr_ipv6", null)
+  description                  = try(each.value.description, null)
+  from_port                    = try(each.value.from_port, null)
+  prefix_list_id               = lookup(each.value, "prefix_list_id", null)
+  referenced_security_group_id = lookup(each.value, "referenced_security_group_id", null)
+  to_port                      = try(each.value.to_port, null)
+
+  tags = merge(local.tags, var.security_group_tags, try(each.value.tags, {}))
 }
 
 ################################################################################
@@ -187,7 +84,7 @@ resource "aws_mq_broker" "this" {
   data_replication_mode               = var.data_replication_mode
   data_replication_primary_broker_arn = var.data_replication_primary_broker_arn
   publicly_accessible                 = var.publicly_accessible
-  security_groups                     = local.security_groups
+  security_groups                     = local.security_group_ids
   storage_type                        = var.storage_type
   authentication_strategy             = var.authentication_strategy
 
@@ -261,7 +158,18 @@ resource "aws_mq_broker" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
+  }
+}
+
+################################################################################
+# OpenTofu Check Blocks
+################################################################################
+
+check "encryption_enabled" {
+  assert {
+    condition     = !var.enabled || try(aws_mq_broker.this.encryption_options[0].use_aws_owned_key, false) || try(aws_mq_broker.this.encryption_options[0].kms_key_id, "") != ""
+    error_message = "MQ broker should have encryption at rest enabled."
   }
 }
 

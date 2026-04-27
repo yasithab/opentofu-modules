@@ -20,12 +20,22 @@ variable "opensearch_domain_name" {
   description = "Name of the opensearch domain"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.opensearch_domain_name == null || can(regex("^[a-z][a-z0-9\\-]{2,27}$", var.opensearch_domain_name))
+    error_message = "opensearch_domain_name must be 3-28 characters, start with a lowercase letter, and contain only lowercase letters, numbers, and hyphens."
+  }
 }
 
 variable "ip_address_type" {
   description = "The IP address type for the endpoint. Valid values are ipv4 and dualstack"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.ip_address_type == null || contains(["ipv4", "dualstack"], var.ip_address_type)
+    error_message = "ip_address_type must be either 'ipv4' or 'dualstack'."
+  }
 }
 
 variable "opensearch_version" {
@@ -41,6 +51,16 @@ variable "ebs_options" {
     ebs_enabled = true
     volume_size = 30
     volume_type = "gp3"
+  }
+
+  validation {
+    condition     = try(var.ebs_options.volume_type, null) == null || contains(["gp2", "gp3", "io1", "io2", "standard"], try(var.ebs_options.volume_type, "gp3"))
+    error_message = "ebs_options.volume_type must be one of: 'gp2', 'gp3', 'io1', 'io2', 'standard'."
+  }
+
+  validation {
+    condition     = try(var.ebs_options.volume_size, null) == null || (try(var.ebs_options.volume_size, 30) >= 10 && try(var.ebs_options.volume_size, 30) <= 16384)
+    error_message = "ebs_options.volume_size must be between 10 and 16384 GiB."
   }
 }
 
@@ -112,15 +132,26 @@ variable "cluster_config" {
       availability_zone_count = 3
     }
   }
+
+  validation {
+    condition     = try(var.cluster_config.instance_type, null) == null || can(regex("\\.search$", try(var.cluster_config.instance_type, "")))
+    error_message = "cluster_config.instance_type must be a valid OpenSearch instance type ending with '.search' (e.g. 't3.small.search', 'r6g.large.search')."
+  }
+
+  validation {
+    condition     = try(var.cluster_config.dedicated_master_count, null) == null || (try(var.cluster_config.dedicated_master_count, 0) >= 0 && try(var.cluster_config.dedicated_master_count, 0) <= 5)
+    error_message = "cluster_config.dedicated_master_count must be between 0 and 5."
+  }
 }
 
 variable "advanced_security_options" {
-  description = "Configuration block for [fine-grained access control](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/fgac.html)"
+  description = "Configuration block for [fine-grained access control](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/fgac.html). Note: master_user_password, if provided, will be stored in state as the provider does not support write_only for this field"
   type        = any
   default = {
     enabled                = true
     anonymous_auth_enabled = false
   }
+  sensitive = true
 }
 
 variable "node_to_node_encryption" {
@@ -148,6 +179,11 @@ variable "snapshot_options" {
     automated_snapshot_start_hour = number
   })
   default = null
+
+  validation {
+    condition     = var.snapshot_options == null || (var.snapshot_options.automated_snapshot_start_hour >= 0 && var.snapshot_options.automated_snapshot_start_hour <= 23)
+    error_message = "snapshot_options.automated_snapshot_start_hour must be between 0 and 23."
+  }
 }
 
 variable "software_update_options" {
@@ -221,6 +257,11 @@ variable "cloudwatch_log_group_kms_key_id" {
   description = "If a KMS Key ARN is set, this key will be used to encrypt the corresponding log group. Please be sure that the KMS Key has an appropriate key policy (https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/encrypt-log-data-kms.html)"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.cloudwatch_log_group_kms_key_id == null || can(regex("^arn:", var.cloudwatch_log_group_kms_key_id))
+    error_message = "cloudwatch_log_group_kms_key_id must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "cloudwatch_log_group_skip_destroy" {
@@ -233,6 +274,11 @@ variable "cloudwatch_log_group_class" {
   description = "Specified the log class of the log group. Possible values are: STANDARD or INFREQUENT_ACCESS"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.cloudwatch_log_group_class == null || contains(["STANDARD", "INFREQUENT_ACCESS"], var.cloudwatch_log_group_class)
+    error_message = "cloudwatch_log_group_class must be either 'STANDARD' or 'INFREQUENT_ACCESS'."
+  }
 }
 
 variable "create_cloudwatch_log_resource_policy" {
@@ -277,8 +323,19 @@ variable "security_group_description" {
 
 variable "security_group_rules" {
   description = "Security group ingress and egress rules to add to the security group created"
-  type        = any
-  default     = {}
+  type = map(object({
+    type                         = optional(string, "ingress")
+    ip_protocol                  = optional(string, "tcp")
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
+  }))
+  default = {}
 }
 
 variable "security_group_tags" {

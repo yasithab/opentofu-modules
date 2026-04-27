@@ -3,12 +3,12 @@
 # ============================================================
 
 locals {
-  create       = var.enabled
-  plan_enabled = local.create && var.plan_enabled
+  enabled      = var.enabled
+  plan_enabled = local.enabled && var.plan_enabled
   vault_name   = coalesce(var.vault_name, var.name)
   plan_name    = var.plan_name_suffix == null ? var.name : format("%s_%s", var.name, var.plan_name_suffix)
 
-  iam_role_name = local.create ? coalesce(var.iam_role_name, "${var.name}-backup") : null
+  iam_role_name = local.enabled ? coalesce(var.iam_role_name, "${var.name}-backup") : null
   iam_role_arn  = var.iam_role_enabled ? try(aws_iam_role.this.arn, "") : try(data.aws_iam_role.existing[0].arn, "")
 
   vault_id  = var.vault_enabled ? try(aws_backup_vault.this.id, "") : try(data.aws_backup_vault.existing[0].id, "")
@@ -53,12 +53,12 @@ resource "aws_backup_vault" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.vault_enabled
+    enabled = local.enabled && var.vault_enabled
   }
 }
 
 data "aws_backup_vault" "existing" {
-  count = local.create && !var.vault_enabled ? 1 : 0
+  count = local.enabled && !var.vault_enabled ? 1 : 0
   name  = local.vault_name
 }
 
@@ -73,7 +73,7 @@ resource "aws_backup_vault_lock_configuration" "this" {
   min_retention_days  = try(var.vault_lock.min_retention_days, null)
 
   lifecycle {
-    enabled = local.create && var.vault_enabled && var.vault_lock != null
+    enabled = local.enabled && var.vault_enabled && var.vault_lock != null
   }
 }
 
@@ -86,7 +86,7 @@ resource "aws_backup_vault_policy" "this" {
   policy            = var.vault_policy
 
   lifecycle {
-    enabled = local.create && var.vault_enabled && var.vault_policy != null
+    enabled = local.enabled && var.vault_enabled && var.vault_policy != null
   }
 }
 
@@ -100,7 +100,7 @@ resource "aws_backup_vault_notifications" "this" {
   backup_vault_events = local._notification_events
 
   lifecycle {
-    enabled = local.create && var.vault_enabled && var.notifications != null
+    enabled = local.enabled && var.vault_enabled && var.notifications != null
   }
 }
 
@@ -117,7 +117,7 @@ resource "aws_backup_logically_air_gapped_vault" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.air_gapped_vault != null
+    enabled = local.enabled && var.air_gapped_vault != null
   }
 }
 
@@ -126,7 +126,7 @@ resource "aws_backup_logically_air_gapped_vault" "this" {
 # ============================================================
 
 data "aws_iam_policy_document" "assume_role" {
-  count = local.create && var.iam_role_enabled ? 1 : 0
+  count = local.enabled && var.iam_role_enabled ? 1 : 0
 
   statement {
     effect  = "Allow"
@@ -147,17 +147,17 @@ resource "aws_iam_role" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.iam_role_enabled
+    enabled = local.enabled && var.iam_role_enabled
   }
 }
 
 data "aws_iam_role" "existing" {
-  count = local.create && !var.iam_role_enabled ? 1 : 0
+  count = local.enabled && !var.iam_role_enabled ? 1 : 0
   name  = local.iam_role_name
 }
 
 resource "aws_iam_role_policy_attachment" "this" {
-  for_each = local.create && var.iam_role_enabled ? toset(local._all_policies) : toset([])
+  for_each = local.enabled && var.iam_role_enabled ? toset(local._all_policies) : toset([])
 
   policy_arn = each.value
   role       = aws_iam_role.this.name
@@ -316,7 +316,7 @@ resource "aws_backup_selection" "this" {
 # ============================================================
 
 resource "aws_backup_framework" "this" {
-  for_each = local.create ? var.frameworks : {}
+  for_each = local.enabled ? var.frameworks : {}
 
   name        = each.key
   description = try(each.value.description, null)
@@ -356,7 +356,7 @@ resource "aws_backup_framework" "this" {
 # ============================================================
 
 resource "aws_backup_report_plan" "this" {
-  for_each = local.create ? var.report_plans : {}
+  for_each = local.enabled ? var.report_plans : {}
 
   name        = each.key
   description = try(each.value.description, null)
@@ -387,7 +387,7 @@ resource "aws_backup_region_settings" "this" {
   resource_type_management_preference = try(var.region_settings.resource_type_management_preference, null)
 
   lifecycle {
-    enabled = local.create && var.region_settings != null
+    enabled = local.enabled && var.region_settings != null
   }
 }
 
@@ -412,7 +412,7 @@ resource "aws_backup_restore_testing_plan" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.restore_testing_plan != null
+    enabled = local.enabled && var.restore_testing_plan != null
   }
 }
 
@@ -421,7 +421,7 @@ resource "aws_backup_restore_testing_plan" "this" {
 # ============================================================
 
 resource "aws_backup_restore_testing_selection" "this" {
-  for_each = local.create && var.restore_testing_plan != null ? var.restore_testing_selections : {}
+  for_each = local.enabled && var.restore_testing_plan != null ? var.restore_testing_selections : {}
 
   name                       = each.key
   restore_testing_plan_name  = aws_backup_restore_testing_plan.this.name

@@ -26,30 +26,55 @@ variable "visibility_timeout_seconds" {
   description = "The visibility timeout for the queue. An integer from 0 to 43200 (12 hours)"
   type        = number
   default     = 30
+
+  validation {
+    condition     = var.visibility_timeout_seconds >= 0 && var.visibility_timeout_seconds <= 43200
+    error_message = "The visibility_timeout_seconds must be between 0 and 43200 (12 hours)."
+  }
 }
 
 variable "message_retention_seconds" {
   description = "The number of seconds Amazon SQS retains a message. Integer representing seconds, from 60 (1 minute) to 1209600 (14 days)"
   type        = number
   default     = 604800
+
+  validation {
+    condition     = var.message_retention_seconds >= 60 && var.message_retention_seconds <= 1209600
+    error_message = "The message_retention_seconds must be between 60 (1 minute) and 1209600 (14 days)."
+  }
 }
 
 variable "max_message_size" {
   description = "The limit of how many bytes a message can contain before Amazon SQS rejects it. An integer from 1024 bytes (1 KiB) up to 262144 bytes (256 KiB)"
   type        = number
   default     = 262144
+
+  validation {
+    condition     = var.max_message_size >= 1024 && var.max_message_size <= 262144
+    error_message = "The max_message_size must be between 1024 (1 KiB) and 262144 (256 KiB)."
+  }
 }
 
 variable "delay_seconds" {
   description = "The time in seconds that the delivery of all messages in the queue will be delayed. An integer from 0 to 900 (15 minutes)"
   type        = number
   default     = 0
+
+  validation {
+    condition     = var.delay_seconds >= 0 && var.delay_seconds <= 900
+    error_message = "The delay_seconds must be between 0 and 900 (15 minutes)."
+  }
 }
 
 variable "receive_wait_time_seconds" {
   description = "The time for which a ReceiveMessage call will wait for a message to arrive (long polling) before returning. An integer from 0 to 20 (seconds)"
   type        = number
   default     = 0
+
+  validation {
+    condition     = var.receive_wait_time_seconds >= 0 && var.receive_wait_time_seconds <= 20
+    error_message = "The receive_wait_time_seconds must be between 0 and 20."
+  }
 }
 
 variable "create_queue_policy" {
@@ -110,12 +135,22 @@ variable "fifo_high_throughput_deduplication_scope" {
   description = "(Optional) Specifies whether message deduplication occurs at the message group or queue level. Valid values are messageGroup and queue (default)"
   type        = string
   default     = "messageGroup"
+
+  validation {
+    condition     = contains(["messageGroup", "queue"], var.fifo_high_throughput_deduplication_scope)
+    error_message = "The fifo_high_throughput_deduplication_scope must be 'messageGroup' or 'queue'."
+  }
 }
 
 variable "fifo_high_throughput_limit" {
   description = "(Optional) Specifies whether the FIFO queue throughput quota applies to the entire queue or per message group. Valid values are perQueue (default) and perMessageGroupId"
   type        = string
   default     = "perMessageGroupId"
+
+  validation {
+    condition     = contains(["perQueue", "perMessageGroupId"], var.fifo_high_throughput_limit)
+    error_message = "The fifo_high_throughput_limit must be 'perQueue' or 'perMessageGroupId'."
+  }
 }
 
 variable "content_based_deduplication" {
@@ -140,6 +175,11 @@ variable "kms_data_key_reuse_period_seconds" {
   description = "The length of time, in seconds, for which Amazon SQS can reuse a data key to encrypt or decrypt messages before calling AWS KMS again. An integer representing seconds, between 60 seconds (1 minute) and 86,400 seconds (24 hours)"
   type        = number
   default     = 300
+
+  validation {
+    condition     = var.kms_data_key_reuse_period_seconds >= 60 && var.kms_data_key_reuse_period_seconds <= 86400
+    error_message = "The kms_data_key_reuse_period_seconds must be between 60 (1 minute) and 86400 (24 hours)."
+  }
 }
 
 variable "deadletter_queue_policy_enabled" {
@@ -176,6 +216,11 @@ variable "redrive_allow_policy_permission" {
   description = "Permission type for the redrive allow policy. Valid values: allowAll, denyAll, byQueue"
   type        = string
   default     = "denyAll"
+
+  validation {
+    condition     = contains(["allowAll", "denyAll", "byQueue"], var.redrive_allow_policy_permission)
+    error_message = "The redrive_allow_policy_permission must be 'allowAll', 'denyAll', or 'byQueue'."
+  }
 }
 
 variable "redrive_allow_policy_source_queue_arns" {

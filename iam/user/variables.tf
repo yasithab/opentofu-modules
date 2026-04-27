@@ -4,15 +4,15 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region. If specified, overrides the provider's default region."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "The name of the IAM user."
   type        = string
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "The name must not be empty."
+  }
 }
 
 variable "tags" {
@@ -25,12 +25,22 @@ variable "path" {
   description = "Path in which to create the user."
   type        = string
   default     = "/"
+
+  validation {
+    condition     = can(regex("^/", var.path))
+    error_message = "The path must begin with '/'."
+  }
 }
 
 variable "permissions_boundary" {
   description = "The ARN of the policy that is used to set the permissions boundary for the user."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.permissions_boundary == null || can(regex("^arn:", var.permissions_boundary))
+    error_message = "The permissions_boundary must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "force_destroy" {
@@ -51,6 +61,11 @@ variable "password_length" {
   description = "The length of the generated password on resource creation."
   type        = number
   default     = 20
+
+  validation {
+    condition     = var.password_length >= 8 && var.password_length <= 128
+    error_message = "The password_length must be between 8 and 128."
+  }
 }
 
 variable "password_reset_required" {
@@ -77,6 +92,11 @@ variable "access_key_status" {
   description = "Access key status. Active or Inactive."
   type        = string
   default     = "Active"
+
+  validation {
+    condition     = contains(["Active", "Inactive"], var.access_key_status)
+    error_message = "The access_key_status must be 'Active' or 'Inactive'."
+  }
 }
 
 # --- Policy Attachments ---
@@ -85,6 +105,11 @@ variable "managed_policy_arns" {
   description = "Set of managed policy ARNs to attach to the user."
   type        = set(string)
   default     = []
+
+  validation {
+    condition     = alltrue([for arn in var.managed_policy_arns : can(regex("^arn:", arn))])
+    error_message = "Each managed_policy_arns entry must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "inline_policies" {
@@ -113,12 +138,22 @@ variable "ssh_key_encoding" {
   description = "The public key encoding format. Valid values are SSH and PEM."
   type        = string
   default     = "SSH"
+
+  validation {
+    condition     = contains(["SSH", "PEM"], var.ssh_key_encoding)
+    error_message = "The ssh_key_encoding must be 'SSH' or 'PEM'."
+  }
 }
 
 variable "ssh_key_status" {
   description = "The status of the SSH public key. Active or Inactive."
   type        = string
   default     = "Active"
+
+  validation {
+    condition     = contains(["Active", "Inactive"], var.ssh_key_status)
+    error_message = "The ssh_key_status must be 'Active' or 'Inactive'."
+  }
 }
 
 # --- Virtual MFA Device ---
@@ -133,4 +168,9 @@ variable "virtual_mfa_device_path" {
   description = "The path for the virtual MFA device."
   type        = string
   default     = "/"
+
+  validation {
+    condition     = can(regex("^/", var.virtual_mfa_device_path))
+    error_message = "The virtual_mfa_device_path must begin with '/'."
+  }
 }

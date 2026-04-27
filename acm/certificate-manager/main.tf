@@ -1,5 +1,5 @@
 locals {
-  create                      = var.enabled
+  enabled                     = var.enabled
   create_route53_records_only = var.create_route53_records_only
 
   # Get distinct list of domains and SANs
@@ -9,7 +9,7 @@ locals {
 
   # Get the list of distinct domain_validation_options, with wildcard
   # domain names replaced by the domain name
-  validation_domains = local.create || local.create_route53_records_only ? distinct(
+  validation_domains = local.enabled || local.create_route53_records_only ? distinct(
     [for k, v in try(aws_acm_certificate.this.domain_validation_options, var.acm_certificate_domain_validation_options) : merge(
       tomap(v), { domain_name = replace(v.domain_name, "*.", "") }
     )]
@@ -52,13 +52,13 @@ resource "aws_acm_certificate" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled               = local.create
+    enabled               = local.enabled
     create_before_destroy = true
   }
 }
 
 resource "aws_route53_record" "validation" {
-  count = (local.create || local.create_route53_records_only) && var.validation_method == "DNS" && var.create_route53_records && (var.validate_certificate || local.create_route53_records_only) ? length(local.distinct_domain_names) : 0
+  count = (local.enabled || local.create_route53_records_only) && var.validation_method == "DNS" && var.create_route53_records && (var.validate_certificate || local.create_route53_records_only) ? length(local.distinct_domain_names) : 0
 
   zone_id = lookup(var.zones, element(local.validation_domains, count.index)["domain_name"], var.zone_id)
   name    = element(local.validation_domains, count.index)["resource_record_name"]
@@ -85,6 +85,6 @@ resource "aws_acm_certificate_validation" "this" {
   }
 
   lifecycle {
-    enabled = local.create && var.validation_method != null && var.validate_certificate && var.wait_for_validation
+    enabled = local.enabled && var.validation_method != null && var.validate_certificate && var.wait_for_validation
   }
 }

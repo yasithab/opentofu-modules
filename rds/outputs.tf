@@ -60,6 +60,7 @@ output "db_instance_username" {
 output "db_instance_master_user_secret" {
   description = "The master user secret when manage_master_user_password is set to true"
   value       = try(aws_db_instance.this.master_user_secret, null)
+  sensitive   = true
 }
 
 output "db_instance_hosted_zone_id" {
@@ -99,6 +100,7 @@ output "db_instance_latest_restorable_time" {
 output "read_replicas" {
   description = "A map of read replicas and their attributes"
   value       = aws_db_instance.read_replica
+  sensitive   = true
 }
 
 ################################################################################

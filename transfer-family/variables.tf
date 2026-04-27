@@ -4,15 +4,15 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region override. Uses provider region when null."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name used as a prefix for all Transfer Family resources."
   type        = string
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "The name must not be empty."
+  }
 }
 
 variable "tags" {
@@ -35,18 +35,33 @@ variable "identity_provider_type" {
   description = "Identity provider type. Valid values: `SERVICE_MANAGED`, `API_GATEWAY`, `AWS_DIRECTORY_SERVICE`, `AWS_LAMBDA`."
   type        = string
   default     = "SERVICE_MANAGED"
+
+  validation {
+    condition     = contains(["SERVICE_MANAGED", "API_GATEWAY", "AWS_DIRECTORY_SERVICE", "AWS_LAMBDA"], var.identity_provider_type)
+    error_message = "The identity_provider_type must be 'SERVICE_MANAGED', 'API_GATEWAY', 'AWS_DIRECTORY_SERVICE', or 'AWS_LAMBDA'."
+  }
 }
 
 variable "endpoint_type" {
   description = "Endpoint type. Valid values: `PUBLIC`, `VPC`."
   type        = string
   default     = "PUBLIC"
+
+  validation {
+    condition     = contains(["PUBLIC", "VPC"], var.endpoint_type)
+    error_message = "The endpoint_type must be 'PUBLIC' or 'VPC'."
+  }
 }
 
 variable "domain" {
   description = "Storage domain. Valid values: `S3`, `EFS`."
   type        = string
   default     = "S3"
+
+  validation {
+    condition     = contains(["S3", "EFS"], var.domain)
+    error_message = "The domain must be 'S3' or 'EFS'."
+  }
 }
 
 variable "security_policy_name" {
@@ -59,6 +74,11 @@ variable "certificate_arn" {
   description = "ARN of the ACM certificate for FTPS protocol."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.certificate_arn == null || can(regex("^arn:", var.certificate_arn))
+    error_message = "The certificate_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "host_key" {
@@ -94,6 +114,11 @@ variable "identity_provider_function_arn" {
   description = "ARN of the Lambda function for custom identity provider (AWS_LAMBDA type)."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.identity_provider_function_arn == null || can(regex("^arn:", var.identity_provider_function_arn))
+    error_message = "The identity_provider_function_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "identity_provider_url" {
@@ -106,6 +131,11 @@ variable "identity_provider_invocation_role_arn" {
   description = "IAM role ARN for invoking the API Gateway identity provider."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.identity_provider_invocation_role_arn == null || can(regex("^arn:", var.identity_provider_invocation_role_arn))
+    error_message = "The identity_provider_invocation_role_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "directory_id" {
@@ -122,6 +152,11 @@ variable "vpc_id" {
   description = "VPC ID for VPC endpoint type. Required when `endpoint_type` is `VPC`."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.vpc_id == null || can(regex("^vpc-", var.vpc_id))
+    error_message = "The vpc_id must start with 'vpc-'."
+  }
 }
 
 variable "subnet_ids" {
@@ -214,6 +249,11 @@ variable "logging_role_arn" {
   description = "ARN of an existing IAM role for CloudWatch logging. Used when `create_logging_role` is false."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.logging_role_arn == null || can(regex("^arn:", var.logging_role_arn))
+    error_message = "The logging_role_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "structured_log_destinations" {

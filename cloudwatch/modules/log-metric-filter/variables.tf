@@ -11,6 +11,11 @@ variable "enabled" {
 variable "name" {
   description = "The name of the CloudWatch Log Metric Filter."
   type        = string
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "name must not be empty."
+  }
 }
 
 variable "pattern" {
@@ -21,16 +26,31 @@ variable "pattern" {
 variable "log_group_name" {
   description = "The name of the log group to associate the metric filter with."
   type        = string
+
+  validation {
+    condition     = length(var.log_group_name) > 0
+    error_message = "log_group_name must not be empty."
+  }
 }
 
 variable "metric_transformation_name" {
   description = "The name of the CloudWatch metric to which the monitored log information should be published."
   type        = string
+
+  validation {
+    condition     = length(var.metric_transformation_name) > 0
+    error_message = "metric_transformation_name must not be empty."
+  }
 }
 
 variable "metric_transformation_namespace" {
   description = "The destination namespace of the CloudWatch metric."
   type        = string
+
+  validation {
+    condition     = length(var.metric_transformation_namespace) > 0
+    error_message = "metric_transformation_namespace must not be empty."
+  }
 }
 
 variable "metric_transformation_value" {

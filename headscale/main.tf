@@ -1,8 +1,7 @@
 data "aws_region" "current" {}
-data "aws_caller_identity" "current" {}
 
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -34,7 +33,7 @@ locals {
 ################################################################################
 
 data "aws_ssm_parameter" "ami" {
-  count = local.create && var.ami_id == null ? 1 : 0
+  count = local.enabled && var.ami_id == null ? 1 : 0
   name  = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-${local.is_arm ? "arm64" : "x86_64"}"
 }
 
@@ -51,57 +50,73 @@ resource "aws_security_group" "this" {
   description = "Headscale coordination server"
   vpc_id      = var.vpc_id
 
-  # HTTPS / gRPC (Tailscale clients connect here)
-  ingress {
-    description = "HTTPS and gRPC"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_cidr_blocks
-  }
-
-  # Let's Encrypt HTTP-01 challenge (only when using built-in ACME)
-  dynamic "ingress" {
-    for_each = local.use_letsencrypt ? [1] : []
-
-    content {
-      description = "HTTP for Lets Encrypt ACME challenge"
-      from_port   = 80
-      to_port     = 80
-      protocol    = "tcp"
-      cidr_blocks = ["0.0.0.0/0"]
-    }
-  }
-
-  # DERP STUN (UDP - NAT traversal relay)
-  dynamic "ingress" {
-    for_each = var.derp_enabled ? [1] : []
-
-    content {
-      description = "DERP STUN"
-      from_port   = var.derp_stun_port
-      to_port     = var.derp_stun_port
-      protocol    = "udp"
-      cidr_blocks = ["0.0.0.0/0"]
-    }
-  }
-
-  # trivy:ignore:AVD-AWS-0104 - Headscale needs outbound for DERP relay traffic and package updates
-  egress {
-    description = "All outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   tags = merge(local.tags, {
     "Name" = var.name
   })
 
   lifecycle {
-    enabled               = local.create
+    enabled               = local.enabled
     create_before_destroy = true
+  }
+}
+
+# HTTPS / gRPC (Tailscale clients connect here)
+resource "aws_vpc_security_group_ingress_rule" "https" {
+  for_each = { for idx, cidr in var.allowed_cidr_blocks : idx => cidr if local.enabled }
+
+  security_group_id = aws_security_group.this.id
+  description       = "HTTPS and gRPC"
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
+  cidr_ipv4         = each.value
+
+  tags = local.tags
+}
+
+# Let's Encrypt HTTP-01 challenge (only when using built-in ACME)
+resource "aws_vpc_security_group_ingress_rule" "letsencrypt" {
+  security_group_id = aws_security_group.this.id
+  description       = "HTTP for Lets Encrypt ACME challenge"
+  from_port         = 80
+  to_port           = 80
+  ip_protocol       = "tcp"
+  cidr_ipv4         = "0.0.0.0/0"
+
+  tags = local.tags
+
+  lifecycle {
+    enabled = local.enabled && local.use_letsencrypt
+  }
+}
+
+# DERP STUN (UDP - NAT traversal relay)
+resource "aws_vpc_security_group_ingress_rule" "derp_stun" {
+  security_group_id = aws_security_group.this.id
+  description       = "DERP STUN"
+  from_port         = var.derp_stun_port
+  to_port           = var.derp_stun_port
+  ip_protocol       = "udp"
+  cidr_ipv4         = "0.0.0.0/0"
+
+  tags = local.tags
+
+  lifecycle {
+    enabled = local.enabled && var.derp_enabled
+  }
+}
+
+# trivy:ignore:AVD-AWS-0104 - Headscale needs outbound for DERP relay traffic and package updates
+resource "aws_vpc_security_group_egress_rule" "all" {
+  security_group_id = aws_security_group.this.id
+  description       = "All outbound"
+  ip_protocol       = "-1"
+  cidr_ipv4         = "0.0.0.0/0"
+
+  tags = local.tags
+
+  lifecycle {
+    enabled = local.enabled
   }
 }
 
@@ -166,7 +181,7 @@ data "cloudinit_config" "this" {
 ################################################################################
 
 data "aws_subnet" "this" {
-  count = local.create && local.use_data_volume ? 1 : 0
+  count = local.enabled && local.use_data_volume ? 1 : 0
   id    = var.subnet_id
 }
 
@@ -182,7 +197,7 @@ resource "aws_ebs_volume" "data" {
   })
 
   lifecycle {
-    enabled = local.create && local.use_data_volume
+    enabled = local.enabled && local.use_data_volume
   }
 }
 
@@ -210,7 +225,7 @@ resource "aws_iam_role" "dlm" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && local.use_data_volume && var.snapshot_enabled
+    enabled = local.enabled && local.use_data_volume && var.snapshot_enabled
   }
 }
 
@@ -219,7 +234,7 @@ resource "aws_iam_role_policy_attachment" "dlm" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSDataLifecycleManagerServiceRole"
 
   lifecycle {
-    enabled = local.create && local.use_data_volume && var.snapshot_enabled
+    enabled = local.enabled && local.use_data_volume && var.snapshot_enabled
   }
 }
 
@@ -260,7 +275,7 @@ resource "aws_dlm_lifecycle_policy" "data_volume" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && local.use_data_volume && var.snapshot_enabled
+    enabled = local.enabled && local.use_data_volume && var.snapshot_enabled
   }
 }
 
@@ -326,7 +341,7 @@ resource "aws_launch_template" "this" {
   })
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
     precondition {
       condition     = !var.subnet_router_enabled || length(var.subnet_router_advertise_routes) > 0 || var.exit_node_enabled
       error_message = "subnet_router_advertise_routes must not be empty when subnet_router_enabled is true (unless exit_node_enabled is true)."
@@ -381,7 +396,7 @@ resource "aws_autoscaling_group" "this" {
   }
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -410,7 +425,7 @@ resource "aws_iam_role" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -421,7 +436,7 @@ resource "aws_iam_instance_profile" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled               = local.create
+    enabled               = local.enabled
     create_before_destroy = true
   }
 }
@@ -548,7 +563,7 @@ resource "aws_iam_policy" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -557,7 +572,7 @@ resource "aws_iam_role_policy_attachment" "this" {
   policy_arn = aws_iam_policy.this.arn
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -566,7 +581,7 @@ resource "aws_iam_role_policy_attachment" "this" {
 ################################################################################
 
 data "aws_eip" "existing" {
-  count = local.create && var.eip_allocation_id != "" ? 1 : 0
+  count = local.enabled && var.eip_allocation_id != "" ? 1 : 0
   id    = var.eip_allocation_id
 }
 
@@ -578,7 +593,7 @@ resource "aws_eip" "this" {
   })
 
   lifecycle {
-    enabled = local.create && var.create_eip && var.eip_allocation_id == ""
+    enabled = local.enabled && var.create_eip && var.eip_allocation_id == ""
   }
 }
 
@@ -597,7 +612,7 @@ resource "aws_route53_record" "this" {
   records = [local.dns_ip]
 
   lifecycle {
-    enabled = local.create && var.route53_zone_id != "" && local.has_eip
+    enabled = local.enabled && var.route53_zone_id != "" && local.has_eip
   }
 }
 
@@ -611,7 +626,7 @@ resource "aws_sns_topic" "alarm" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.alarm_enabled && var.alarm_sns_topic_arn == ""
+    enabled = local.enabled && var.alarm_enabled && var.alarm_sns_topic_arn == ""
   }
 }
 
@@ -637,7 +652,7 @@ resource "aws_cloudwatch_metric_alarm" "asg_health" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.alarm_enabled
+    enabled = local.enabled && var.alarm_enabled
   }
 }
 
@@ -652,7 +667,7 @@ resource "aws_cloudwatch_log_group" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.cloudwatch_logs_enabled
+    enabled = local.enabled && var.cloudwatch_logs_enabled
   }
 }
 

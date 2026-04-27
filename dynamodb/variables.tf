@@ -20,6 +20,11 @@ variable "hash_key" {
   description = "The attribute to use as the hash (partition) key. Must also be defined as an attribute"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.hash_key != null && var.hash_key != ""
+    error_message = "hash_key is required and cannot be empty."
+  }
 }
 
 variable "range_key" {
@@ -32,6 +37,11 @@ variable "billing_mode" {
   description = "Controls how you are billed for read/write throughput and how you manage capacity. The valid values are PROVISIONED or PAY_PER_REQUEST"
   type        = string
   default     = "PAY_PER_REQUEST"
+
+  validation {
+    condition     = contains(["PROVISIONED", "PAY_PER_REQUEST"], var.billing_mode)
+    error_message = "billing_mode must be PROVISIONED or PAY_PER_REQUEST."
+  }
 }
 
 variable "write_capacity" {
@@ -171,6 +181,11 @@ variable "table_class" {
   description = "The storage class of the table. Valid values are STANDARD and STANDARD_INFREQUENT_ACCESS"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.table_class == null || contains(["STANDARD", "STANDARD_INFREQUENT_ACCESS"], var.table_class)
+    error_message = "table_class must be STANDARD or STANDARD_INFREQUENT_ACCESS."
+  }
 }
 
 variable "deletion_protection_enabled" {

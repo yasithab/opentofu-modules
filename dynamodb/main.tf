@@ -544,3 +544,43 @@ resource "aws_dynamodb_table" "autoscaled_gsi_ignore" {
     ignore_changes = [global_secondary_index, read_capacity, write_capacity]
   }
 }
+
+################################################################################
+# OpenTofu Check Blocks
+################################################################################
+
+check "deletion_protection_enabled" {
+  assert {
+    condition = !var.enabled || try(
+      aws_dynamodb_table.this.deletion_protection_enabled,
+      aws_dynamodb_table.autoscaled.deletion_protection_enabled,
+      aws_dynamodb_table.autoscaled_gsi_ignore.deletion_protection_enabled,
+      false
+    )
+    error_message = "DynamoDB table should have deletion protection enabled for production use."
+  }
+}
+
+check "point_in_time_recovery_enabled" {
+  assert {
+    condition = !var.enabled || try(
+      aws_dynamodb_table.this.point_in_time_recovery[0].enabled,
+      aws_dynamodb_table.autoscaled.point_in_time_recovery[0].enabled,
+      aws_dynamodb_table.autoscaled_gsi_ignore.point_in_time_recovery[0].enabled,
+      false
+    )
+    error_message = "DynamoDB table should have point-in-time recovery enabled."
+  }
+}
+
+check "server_side_encryption_enabled" {
+  assert {
+    condition = !var.enabled || try(
+      aws_dynamodb_table.this.server_side_encryption[0].enabled,
+      aws_dynamodb_table.autoscaled.server_side_encryption[0].enabled,
+      aws_dynamodb_table.autoscaled_gsi_ignore.server_side_encryption[0].enabled,
+      false
+    )
+    error_message = "DynamoDB table should have server-side encryption enabled."
+  }
+}

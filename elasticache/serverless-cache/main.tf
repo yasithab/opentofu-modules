@@ -1,5 +1,5 @@
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -53,6 +53,6 @@ resource "aws_elasticache_serverless_cache" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }

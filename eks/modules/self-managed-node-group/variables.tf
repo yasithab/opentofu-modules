@@ -42,6 +42,11 @@ variable "cluster_ip_family" {
   description = "The IP family used to assign Kubernetes pod and service addresses. Valid values are `ipv4` (default) and `ipv6`"
   type        = string
   default     = "ipv4"
+
+  validation {
+    condition     = contains(["ipv4", "ipv6"], var.cluster_ip_family)
+    error_message = "The cluster_ip_family must be 'ipv4' or 'ipv6'."
+  }
 }
 
 variable "additional_cluster_dns_ips" {
@@ -158,6 +163,11 @@ variable "instance_initiated_shutdown_behavior" {
   description = "Shutdown behavior for the instance. Can be `stop` or `terminate`. (Default: `stop`)"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.instance_initiated_shutdown_behavior == null || contains(["stop", "terminate"], var.instance_initiated_shutdown_behavior)
+    error_message = "The instance_initiated_shutdown_behavior must be null, 'stop', or 'terminate'."
+  }
 }
 
 variable "kernel_id" {
@@ -254,18 +264,33 @@ variable "placement_group_strategy" {
   description = "The placement group strategy. Can be `cluster`, `partition`, or `spread`"
   type        = string
   default     = "cluster"
+
+  validation {
+    condition     = contains(["cluster", "partition", "spread"], var.placement_group_strategy)
+    error_message = "The placement_group_strategy must be 'cluster', 'partition', or 'spread'."
+  }
 }
 
 variable "placement_group_partition_count" {
   description = "The number of partitions to create in the placement group. Only valid when `placement_group_strategy` is `partition`. Must be between 1 and 7"
   type        = number
   default     = null
+
+  validation {
+    condition     = var.placement_group_partition_count == null || (var.placement_group_partition_count >= 1 && var.placement_group_partition_count <= 7)
+    error_message = "The placement_group_partition_count must be null or between 1 and 7."
+  }
 }
 
 variable "placement_group_spread_level" {
   description = "Determines how placement groups spread instances. Can only be used when `placement_group_strategy` is `spread`. Can be `host` or `rack`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.placement_group_spread_level == null || contains(["host", "rack"], var.placement_group_spread_level)
+    error_message = "The placement_group_spread_level must be null, 'host', or 'rack'."
+  }
 }
 
 variable "private_dns_name_options" {
@@ -463,24 +488,44 @@ variable "min_size" {
   description = "The minimum size of the autoscaling group"
   type        = number
   default     = 0
+
+  validation {
+    condition     = var.min_size >= 0
+    error_message = "The min_size must be non-negative."
+  }
 }
 
 variable "max_size" {
   description = "The maximum size of the autoscaling group"
   type        = number
   default     = 3
+
+  validation {
+    condition     = var.max_size >= 0
+    error_message = "The max_size must be non-negative."
+  }
 }
 
 variable "desired_size" {
   description = "The number of Amazon EC2 instances that should be running in the autoscaling group"
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.desired_size >= 0
+    error_message = "The desired_size must be non-negative."
+  }
 }
 
 variable "desired_size_type" {
   description = "The unit of measurement for the value specified for `desired_size`. Supported for attribute-based instance type selection only. Valid values: `units`, `vcpu`, `memory-mib`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.desired_size_type == null || contains(["units", "vcpu", "memory-mib"], var.desired_size_type)
+    error_message = "The desired_size_type must be null, 'units', 'vcpu', or 'memory-mib'."
+  }
 }
 
 variable "ignore_failed_scaling_activities" {
@@ -553,6 +598,11 @@ variable "health_check_type" {
   description = "`EC2` or `ELB`. Controls how health checking is done"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.health_check_type == null || contains(["EC2", "ELB"], var.health_check_type)
+    error_message = "The health_check_type must be null, 'EC2', or 'ELB'."
+  }
 }
 
 variable "health_check_grace_period" {
@@ -589,6 +639,11 @@ variable "max_instance_lifetime" {
   description = "The maximum amount of time, in seconds, that an instance can be in service, values must be either equal to 0 or between 604800 and 31536000 seconds"
   type        = number
   default     = null
+
+  validation {
+    condition     = var.max_instance_lifetime == null || var.max_instance_lifetime == 0 || (var.max_instance_lifetime >= 604800 && var.max_instance_lifetime <= 31536000)
+    error_message = "The max_instance_lifetime must be null, 0, or between 604800 and 31536000 seconds."
+  }
 }
 
 variable "enabled_metrics" {
@@ -607,6 +662,11 @@ variable "service_linked_role_arn" {
   description = "The ARN of the service-linked role that the ASG will use to call other AWS services"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.service_linked_role_arn == null || can(regex("^arn:", var.service_linked_role_arn))
+    error_message = "The service_linked_role_arn must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "initial_lifecycle_hooks" {
@@ -676,6 +736,11 @@ variable "iam_instance_profile_arn" {
   description = "Amazon Resource Name (ARN) of an existing IAM instance profile that provides permissions for the node group. Required if `create_iam_instance_profile` = `false`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_instance_profile_arn == null || can(regex("^arn:", var.iam_instance_profile_arn))
+    error_message = "The iam_instance_profile_arn must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_role_name" {
@@ -706,6 +771,11 @@ variable "iam_role_permissions_boundary" {
   description = "ARN of the policy that is used to set the permissions boundary for the IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_role_permissions_boundary == null || can(regex("^arn:", var.iam_role_permissions_boundary))
+    error_message = "The iam_role_permissions_boundary must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_role_attach_cni_policy" {
@@ -756,6 +826,11 @@ variable "iam_role_arn" {
   description = "ARN of the IAM role used by the instance profile. Required when `create_access_entry = true` and `create_iam_instance_profile = false`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_role_arn == null || can(regex("^arn:", var.iam_role_arn))
+    error_message = "The iam_role_arn must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "access_entry_kubernetes_groups" {

@@ -36,32 +36,33 @@ resource "aws_security_group" "this" {
   }
 }
 
-resource "aws_security_group_rule" "ingress" {
+resource "aws_vpc_security_group_ingress_rule" "this" {
   for_each = { for k, v in var.security_group_ingress_rules : k => v if local.create_security_group }
 
-  type                     = "ingress"
-  security_group_id        = aws_security_group.this.id
-  description              = try(each.value.description, null)
-  from_port                = each.value.from_port
-  to_port                  = each.value.to_port
-  protocol                 = each.value.protocol
-  cidr_blocks              = try(each.value.cidr_blocks, null)
-  ipv6_cidr_blocks         = try(each.value.ipv6_cidr_blocks, null)
-  source_security_group_id = try(each.value.source_security_group_id, null)
-  self                     = try(each.value.self, null)
+  security_group_id            = aws_security_group.this.id
+  description                  = try(each.value.description, null)
+  from_port                    = each.value.from_port
+  to_port                      = each.value.to_port
+  ip_protocol                  = each.value.protocol
+  cidr_ipv4                    = try(each.value.cidr_blocks[0], null)
+  cidr_ipv6                    = try(each.value.ipv6_cidr_blocks[0], null)
+  referenced_security_group_id = try(each.value.source_security_group_id, each.value.self ? aws_security_group.this.id : null, null)
+
+  tags = local.tags
 }
 
-resource "aws_security_group_rule" "egress" {
+resource "aws_vpc_security_group_egress_rule" "this" {
   for_each = { for k, v in var.security_group_egress_rules : k => v if local.create_security_group }
 
-  type              = "egress"
   security_group_id = aws_security_group.this.id
   description       = try(each.value.description, null)
   from_port         = each.value.from_port
   to_port           = each.value.to_port
-  protocol          = each.value.protocol
-  cidr_blocks       = try(each.value.cidr_blocks, null)
-  ipv6_cidr_blocks  = try(each.value.ipv6_cidr_blocks, null)
+  ip_protocol       = each.value.protocol
+  cidr_ipv4         = try(each.value.cidr_blocks[0], null)
+  cidr_ipv6         = try(each.value.ipv6_cidr_blocks[0], null)
+
+  tags = local.tags
 }
 
 ################################################################################
@@ -211,7 +212,7 @@ resource "aws_fsx_ontap_storage_virtual_machine" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.is_ontap && var.ontap_svm != null
+    enabled = local.is_ontap && nonsensitive(var.ontap_svm != null)
   }
 }
 
@@ -220,7 +221,7 @@ resource "aws_fsx_ontap_storage_virtual_machine" "this" {
 ################################################################################
 
 resource "aws_fsx_ontap_volume" "this" {
-  for_each = { for k, v in var.ontap_volumes : k => v if local.is_ontap && var.ontap_svm != null }
+  for_each = { for k, v in var.ontap_volumes : k => v if local.is_ontap && nonsensitive(var.ontap_svm != null) }
 
   name                       = each.value.name
   junction_path              = try(each.value.junction_path, "/${each.value.name}")

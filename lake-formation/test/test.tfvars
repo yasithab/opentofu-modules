@@ -1,1 +1,1 @@
-name = "terratest-plan"
+enabled = true

@@ -4,11 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region override. If null, the provider default region is used."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name of the MemoryDB cluster and used as a default for related resources."

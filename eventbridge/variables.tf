@@ -233,9 +233,10 @@ variable "permissions" {
 }
 
 variable "connections" {
-  description = "A map of objects with EventBridge Connection definitions."
+  description = "A map of objects with EventBridge Connection definitions. Note: auth_parameters passwords will be stored in state as the provider does not support write_only for this field"
   type        = any
   default     = {}
+  sensitive   = true
 }
 
 variable "api_destinations" {
@@ -312,6 +313,11 @@ variable "role_permissions_boundary" {
   description = "The ARN of the policy that is used to set the permissions boundary for the IAM role used by EventBridge"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.role_permissions_boundary == null || can(regex("^arn:", var.role_permissions_boundary))
+    error_message = "role_permissions_boundary must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "role_tags" {
@@ -476,12 +482,22 @@ variable "number_of_policy_jsons" {
   description = "Number of policies JSON to attach to IAM role"
   type        = number
   default     = 0
+
+  validation {
+    condition     = var.number_of_policy_jsons >= 0
+    error_message = "number_of_policy_jsons must be >= 0."
+  }
 }
 
 variable "number_of_policies" {
   description = "Number of policies to attach to IAM role"
   type        = number
   default     = 0
+
+  validation {
+    condition     = var.number_of_policies >= 0
+    error_message = "number_of_policies must be >= 0."
+  }
 }
 
 variable "attach_policy_statements" {

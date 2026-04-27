@@ -30,6 +30,11 @@ variable "engine" {
   description = "The current supported value is `REDIS`"
   type        = string
   default     = "REDIS"
+
+  validation {
+    condition     = contains(["REDIS"], var.engine)
+    error_message = "The engine must be 'REDIS'."
+  }
 }
 
 variable "user_group_id" {

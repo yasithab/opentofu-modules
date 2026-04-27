@@ -20,6 +20,11 @@ variable "function_name" {
   description = "The name of the Lambda function to deploy"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.function_name == null || length(var.function_name) > 0
+    error_message = "function_name must not be empty when provided."
+  }
 }
 
 variable "current_version" {
@@ -38,12 +43,22 @@ variable "before_allow_traffic_hook_arn" {
   description = "ARN of Lambda function to execute before allow traffic during deployment. This function should be named CodeDeployHook_, to match the managed AWSCodeDeployForLambda policy, unless you're using a custom role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.before_allow_traffic_hook_arn == null || can(regex("^arn:", var.before_allow_traffic_hook_arn))
+    error_message = "before_allow_traffic_hook_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "after_allow_traffic_hook_arn" {
   description = "ARN of Lambda function to execute after allow traffic during deployment. This function should be named CodeDeployHook_, to match the managed AWSCodeDeployForLambda policy, unless you're using a custom role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.after_allow_traffic_hook_arn == null || can(regex("^arn:", var.after_allow_traffic_hook_arn))
+    error_message = "after_allow_traffic_hook_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "interpreter" {
@@ -112,6 +127,11 @@ variable "outdated_instances_strategy" {
   description = "Indicates what happens when new Amazon EC2 instances are launched mid-deployment and do not receive the deployed application revision. Valid values are UPDATE and IGNORE."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.outdated_instances_strategy == null || contains(["UPDATE", "IGNORE"], var.outdated_instances_strategy)
+    error_message = "outdated_instances_strategy must be either 'UPDATE' or 'IGNORE'."
+  }
 }
 
 variable "termination_hook_enabled" {
@@ -154,6 +174,11 @@ variable "alarms" {
   description = "A list of alarms configured for the deployment group. A maximum of 10 alarms can be added to a deployment group."
   type        = list(string)
   default     = []
+
+  validation {
+    condition     = length(var.alarms) <= 10
+    error_message = "alarms supports a maximum of 10 entries."
+  }
 }
 
 variable "alarm_ignore_poll_alarm_failure" {
@@ -246,4 +271,9 @@ variable "get_deployment_sleep_timer" {
   description = "Adds additional sleep time to get-deployment command to avoid the service throttling"
   type        = number
   default     = 5
+
+  validation {
+    condition     = var.get_deployment_sleep_timer >= 0
+    error_message = "get_deployment_sleep_timer must be 0 or a positive number."
+  }
 }

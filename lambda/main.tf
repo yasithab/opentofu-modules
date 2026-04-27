@@ -3,7 +3,7 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   archive_filename        = try(data.external.archive_prepare[0].result.filename, null)
   archive_filename_string = local.archive_filename != null ? local.archive_filename : ""
@@ -202,7 +202,7 @@ resource "aws_lambda_function" "this" {
   ]
 
   lifecycle {
-    enabled = local.create && var.create_function && !var.create_layer
+    enabled = local.enabled && var.create_function && !var.create_layer
   }
 }
 
@@ -225,7 +225,7 @@ resource "aws_lambda_layer_version" "this" {
   depends_on = [null_resource.archive, aws_s3_object.lambda_package]
 
   lifecycle {
-    enabled = local.create && var.create_layer
+    enabled = local.enabled && var.create_layer
   }
 }
 
@@ -254,12 +254,12 @@ resource "aws_s3_object" "lambda_package" {
   depends_on = [null_resource.archive]
 
   lifecycle {
-    enabled = local.create && var.store_on_s3 && var.create_package
+    enabled = local.enabled && var.store_on_s3 && var.create_package
   }
 }
 
 data "aws_cloudwatch_log_group" "lambda" {
-  count = local.create && var.create_function && !var.create_layer && var.use_existing_cloudwatch_log_group ? 1 : 0
+  count = local.enabled && var.create_function && !var.create_layer && var.use_existing_cloudwatch_log_group ? 1 : 0
 
   name = coalesce(var.logging_log_group, "/aws/lambda/${var.lambda_at_edge ? "us-east-1." : ""}${var.function_name}")
 }
@@ -275,7 +275,7 @@ resource "aws_cloudwatch_log_group" "lambda" {
   tags = merge(local.tags, var.cloudwatch_logs_tags)
 
   lifecycle {
-    enabled = local.create && var.create_function && !var.create_layer && !var.use_existing_cloudwatch_log_group
+    enabled = local.enabled && var.create_function && !var.create_layer && !var.use_existing_cloudwatch_log_group
   }
 }
 
@@ -287,7 +287,7 @@ resource "aws_lambda_provisioned_concurrency_config" "current_version" {
   skip_destroy                      = var.provisioned_concurrency_skip_destroy
 
   lifecycle {
-    enabled = local.create && var.create_function && !var.create_layer && var.provisioned_concurrent_executions > -1
+    enabled = local.enabled && var.create_function && !var.create_layer && var.provisioned_concurrent_executions > -1
   }
 }
 
@@ -296,7 +296,7 @@ locals {
 }
 
 resource "aws_lambda_function_event_invoke_config" "this" {
-  for_each = { for k, v in local.qualifiers : k => v if v != null && local.create && var.create_function && !var.create_layer && var.create_async_event_config }
+  for_each = { for k, v in local.qualifiers : k => v if v != null && local.enabled && var.create_function && !var.create_layer && var.create_async_event_config }
 
   function_name = aws_lambda_function.this.function_name
   qualifier     = each.key == "current_version" ? aws_lambda_function.this.version : null
@@ -325,7 +325,7 @@ resource "aws_lambda_function_event_invoke_config" "this" {
 }
 
 resource "aws_lambda_permission" "current_version_triggers" {
-  for_each = { for k, v in var.allowed_triggers : k => v if local.create && var.create_function && !var.create_layer && var.create_current_version_allowed_triggers }
+  for_each = { for k, v in var.allowed_triggers : k => v if local.enabled && var.create_function && !var.create_layer && var.create_current_version_allowed_triggers }
 
   function_name = aws_lambda_function.this.function_name
   qualifier     = aws_lambda_function.this.version
@@ -346,7 +346,7 @@ resource "aws_lambda_permission" "current_version_triggers" {
 
 # Error: Error adding new Lambda Permission for lambda: InvalidParameterValueException: We currently do not support adding policies for $LATEST.
 resource "aws_lambda_permission" "unqualified_alias_triggers" {
-  for_each = { for k, v in var.allowed_triggers : k => v if local.create && var.create_function && !var.create_layer && var.create_unqualified_alias_allowed_triggers }
+  for_each = { for k, v in var.allowed_triggers : k => v if local.enabled && var.create_function && !var.create_layer && var.create_unqualified_alias_allowed_triggers }
 
   function_name = aws_lambda_function.this.function_name
 
@@ -365,7 +365,7 @@ resource "aws_lambda_permission" "unqualified_alias_triggers" {
 }
 
 resource "aws_lambda_event_source_mapping" "this" {
-  for_each = { for k, v in var.event_source_mapping : k => v if local.create && var.create_function && !var.create_layer && try(v.enabled, true) }
+  for_each = { for k, v in var.event_source_mapping : k => v if local.enabled && var.create_function && !var.create_layer && try(v.enabled, true) }
 
   function_name = aws_lambda_function.this.arn
 
@@ -549,7 +549,7 @@ resource "aws_lambda_function_url" "this" {
   }
 
   lifecycle {
-    enabled = local.create && var.create_function && !var.create_layer && var.create_lambda_function_url
+    enabled = local.enabled && var.create_function && !var.create_layer && var.create_lambda_function_url
   }
 }
 
@@ -558,7 +558,7 @@ resource "aws_lambda_function_recursion_config" "this" {
   recursive_loop = var.recursive_loop
 
   lifecycle {
-    enabled = local.create && var.create_function && !var.create_layer && var.recursive_loop == "Allow"
+    enabled = local.enabled && var.create_function && !var.create_layer && var.recursive_loop == "Allow"
   }
 }
 
@@ -588,7 +588,7 @@ resource "null_resource" "sam_metadata_aws_lambda_function" {
   depends_on = [data.external.archive_prepare, null_resource.archive]
 
   lifecycle {
-    enabled = local.create && var.create_sam_metadata && var.create_package && var.create_function && !var.create_layer
+    enabled = local.enabled && var.create_sam_metadata && var.create_package && var.create_function && !var.create_layer
   }
 }
 
@@ -618,6 +618,6 @@ resource "null_resource" "sam_metadata_aws_lambda_layer_version" {
   depends_on = [data.external.archive_prepare, null_resource.archive]
 
   lifecycle {
-    enabled = local.create && var.create_sam_metadata && var.create_package && var.create_layer
+    enabled = local.enabled && var.create_sam_metadata && var.create_package && var.create_layer
   }
 }

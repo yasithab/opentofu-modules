@@ -2,7 +2,7 @@
 # Locals
 ###################################################
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -13,7 +13,7 @@ locals {
 # IP Sets
 ###################################################
 resource "aws_wafv2_ip_set" "this" {
-  for_each = local.create ? var.ip_sets : {}
+  for_each = local.enabled ? var.ip_sets : {}
 
   name               = each.key
   scope              = var.scope
@@ -28,7 +28,7 @@ resource "aws_wafv2_ip_set" "this" {
 # Regex Pattern Sets
 ###################################################
 resource "aws_wafv2_regex_pattern_set" "this" {
-  for_each = local.create ? var.regex_pattern_sets : {}
+  for_each = local.enabled ? var.regex_pattern_sets : {}
 
   name        = each.key
   scope       = var.scope
@@ -48,7 +48,7 @@ resource "aws_wafv2_regex_pattern_set" "this" {
 # Rule Groups
 ###################################################
 resource "aws_wafv2_rule_group" "this" {
-  for_each = local.create ? var.rule_groups : {}
+  for_each = local.enabled ? var.rule_groups : {}
 
   name        = each.key
   scope       = var.scope
@@ -343,7 +343,7 @@ resource "aws_wafv2_rule_group" "this" {
 # API Keys
 ###################################################
 resource "aws_wafv2_api_key" "this" {
-  for_each = local.create ? var.api_keys : {}
+  for_each = local.enabled ? var.api_keys : {}
 
   scope         = var.scope
   token_domains = each.value.token_domains
@@ -2200,7 +2200,7 @@ resource "aws_wafv2_web_acl" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
     # When rule_group_associations is used, rules are managed via
     # aws_wafv2_web_acl_rule_group_association and must be ignored here
     # to prevent Terraform from overwriting externally-managed rule entries.
@@ -2212,7 +2212,7 @@ resource "aws_wafv2_web_acl" "this" {
 # Web ACL Associations
 ###################################################
 resource "aws_wafv2_web_acl_association" "this" {
-  for_each = local.create ? var.associations : {}
+  for_each = local.enabled ? var.associations : {}
 
   resource_arn = each.value
   web_acl_arn  = aws_wafv2_web_acl.this.arn
@@ -2222,7 +2222,7 @@ resource "aws_wafv2_web_acl_association" "this" {
 # Web ACL Rule Group Associations
 ###################################################
 resource "aws_wafv2_web_acl_rule_group_association" "this" {
-  for_each = local.create ? var.rule_group_associations : {}
+  for_each = local.enabled ? var.rule_group_associations : {}
 
   web_acl_arn     = aws_wafv2_web_acl.this.arn
   priority        = each.value.priority
@@ -2363,6 +2363,6 @@ resource "aws_wafv2_web_acl_logging_configuration" "this" {
   }
 
   lifecycle {
-    enabled = local.create && length(var.logging_destination_arns) > 0
+    enabled = local.enabled && length(var.logging_destination_arns) > 0
   }
 }

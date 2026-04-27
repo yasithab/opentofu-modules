@@ -24,12 +24,22 @@ variable "cluster_ip_family" {
   description = "The IP family used to assign Kubernetes pod and service addresses. Valid values are `ipv4` (default) and `ipv6`"
   type        = string
   default     = "ipv4"
+
+  validation {
+    condition     = contains(["ipv4", "ipv6"], var.cluster_ip_family)
+    error_message = "The cluster_ip_family must be 'ipv4' or 'ipv6'."
+  }
 }
 
 variable "iam_role_arn" {
   description = "Existing IAM role ARN for the Fargate profile. Required if `create_iam_role` is set to `false`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_role_arn == null || can(regex("^arn:", var.iam_role_arn))
+    error_message = "The iam_role_arn must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_role_name" {
@@ -60,6 +70,11 @@ variable "iam_role_permissions_boundary" {
   description = "ARN of the policy that is used to set the permissions boundary for the IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_role_permissions_boundary == null || can(regex("^arn:", var.iam_role_permissions_boundary))
+    error_message = "The iam_role_permissions_boundary must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_role_attach_cni_policy" {

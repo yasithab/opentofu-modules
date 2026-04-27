@@ -4,15 +4,15 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region. If specified, overrides the provider's default region."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "The name of the IAM policy."
   type        = string
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "The name must not be empty."
+  }
 }
 
 variable "tags" {
@@ -37,6 +37,11 @@ variable "path" {
   description = "Path in which to create the policy. See IAM Identifiers for more information."
   type        = string
   default     = "/"
+
+  validation {
+    condition     = can(regex("^/", var.path))
+    error_message = "The path must begin with '/'."
+  }
 }
 
 variable "policy" {

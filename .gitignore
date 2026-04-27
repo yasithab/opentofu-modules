@@ -1,6 +1,6 @@
 # OpenTofu / Terraform
 **/.terraform/*
-**/.terraform.lock.hcl
+# Note: .terraform.lock.hcl files are committed for reproducible builds
 .terraform-plugin-cache/
 *.tfstate
 *.tfstate.*

@@ -4,15 +4,15 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region override. If null, the provider default region is used."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name of the Neptune cluster and used as a default for related resources."
   type        = string
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "The name must not be empty."
+  }
 }
 
 variable "tags" {
@@ -29,6 +29,11 @@ variable "engine" {
   description = "The name of the database engine. Valid values: neptune."
   type        = string
   default     = "neptune"
+
+  validation {
+    condition     = contains(["neptune"], var.engine)
+    error_message = "The engine must be 'neptune'."
+  }
 }
 
 variable "engine_version" {
@@ -38,9 +43,38 @@ variable "engine_version" {
 }
 
 variable "vpc_security_group_ids" {
-  description = "List of VPC security group IDs to associate with the cluster."
+  description = "List of additional VPC security group IDs to associate with the cluster."
   type        = list(string)
   default     = []
+}
+
+variable "create_security_group" {
+  description = "Whether to create a security group for the Neptune cluster."
+  type        = bool
+  default     = true
+}
+
+variable "vpc_id" {
+  description = "ID of the VPC where the security group will be created."
+  type        = string
+  default     = null
+}
+
+variable "security_group_rules" {
+  description = "Map of security group rules for the Neptune cluster."
+  type = map(object({
+    type                         = optional(string, "ingress")
+    ip_protocol                  = optional(string, "tcp")
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
+  }))
+  default = {}
 }
 
 variable "storage_encrypted" {
@@ -53,6 +87,11 @@ variable "kms_key_arn" {
   description = "ARN of the KMS key to use for storage encryption. If null, the default key is used."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.kms_key_arn == null || can(regex("^arn:", var.kms_key_arn))
+    error_message = "The kms_key_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_database_authentication_enabled" {
@@ -71,6 +110,11 @@ variable "backup_retention_period" {
   description = "Number of days to retain automated backups."
   type        = number
   default     = 7
+
+  validation {
+    condition     = var.backup_retention_period >= 1 && var.backup_retention_period <= 35
+    error_message = "The backup_retention_period must be between 1 and 35 days."
+  }
 }
 
 variable "preferred_backup_window" {
@@ -125,6 +169,11 @@ variable "storage_type" {
   description = "The storage type for the cluster. Valid values: standard, iopt1."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.storage_type == null || contains(["standard", "iopt1"], var.storage_type)
+    error_message = "The storage_type must be 'standard' or 'iopt1'."
+  }
 }
 
 variable "allow_major_version_upgrade" {
@@ -256,4 +305,49 @@ variable "instance_parameters" {
     apply_method = optional(string)
   }))
   default = []
+}
+
+################################################################################
+# CloudWatch Log Group
+################################################################################
+
+variable "create_cloudwatch_log_group" {
+  description = "Determines whether a CloudWatch log group is created for each `enable_cloudwatch_logs_exports`"
+  type        = bool
+  default     = false
+}
+
+variable "cloudwatch_log_group_retention_in_days" {
+  description = "The number of days to retain CloudWatch logs for the Neptune cluster"
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = contains([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.cloudwatch_log_group_retention_in_days)
+    error_message = "cloudwatch_log_group_retention_in_days must be one of the allowed CloudWatch Logs retention values."
+  }
+}
+
+variable "cloudwatch_log_group_kms_key_id" {
+  description = "The ARN of the KMS Key to use when encrypting log data"
+  type        = string
+  default     = null
+}
+
+variable "cloudwatch_log_group_skip_destroy" {
+  description = "Set to true if you do not wish the log group to be deleted at destroy time"
+  type        = bool
+  default     = null
+}
+
+variable "cloudwatch_log_group_class" {
+  description = "Specified the log class of the log group. Possible values are: STANDARD or INFREQUENT_ACCESS"
+  type        = string
+  default     = null
+}
+
+variable "cloudwatch_log_group_tags" {
+  description = "Additional tags for the CloudWatch log group(s)"
+  type        = map(string)
+  default     = {}
 }

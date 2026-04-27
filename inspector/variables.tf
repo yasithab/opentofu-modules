@@ -4,11 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region where Inspector resources will be created. If null, uses the provider default region"
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name prefix for Inspector resources used in naming and tagging"

@@ -15,6 +15,11 @@ variable "vpc_id" {
   description = "The ID of the VPC in which the endpoint will be used"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.vpc_id == null || can(regex("^vpc-", var.vpc_id))
+    error_message = "The vpc_id must start with 'vpc-'."
+  }
 }
 
 variable "endpoints" {
@@ -71,8 +76,19 @@ variable "security_group_description" {
 
 variable "security_group_rules" {
   description = "Security group rules to add to the security group created"
-  type        = any
-  default     = {}
+  type = map(object({
+    type                         = optional(string, "ingress")
+    ip_protocol                  = optional(string, "tcp")
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
+  }))
+  default = {}
 }
 
 variable "security_group_tags" {

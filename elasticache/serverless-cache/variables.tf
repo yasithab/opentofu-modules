@@ -45,12 +45,22 @@ variable "engine" {
   description = "Name of the cache engine to be used for this cache cluster. Valid values are `memcached` or `redis`."
   type        = string
   default     = "redis"
+
+  validation {
+    condition     = contains(["memcached", "redis"], var.engine)
+    error_message = "The engine must be 'memcached' or 'redis'."
+  }
 }
 
 variable "kms_key_id" {
   description = "ARN of the customer managed key for encrypting the data at rest. If no KMS key is provided, a default service key is used."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.kms_key_id == null || can(regex("^arn:", var.kms_key_id))
+    error_message = "The kms_key_id must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "major_engine_version" {
@@ -75,6 +85,11 @@ variable "snapshot_retention_limit" {
   description = "(Redis only) The number of snapshots that will be retained for the serverless cache that is being created."
   type        = number
   default     = null
+
+  validation {
+    condition     = var.snapshot_retention_limit == null || var.snapshot_retention_limit >= 0
+    error_message = "The snapshot_retention_limit must be null or a non-negative number."
+  }
 }
 
 variable "subnet_ids" {

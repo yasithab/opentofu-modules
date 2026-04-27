@@ -129,3 +129,21 @@ resource "aws_memorydb_cluster" "this" {
     aws_memorydb_acl.this,
   ]
 }
+
+################################################################################
+# OpenTofu Check Blocks
+################################################################################
+
+check "tls_enabled" {
+  assert {
+    condition     = !var.enabled || aws_memorydb_cluster.this.tls_enabled
+    error_message = "MemoryDB cluster must have TLS encryption enabled."
+  }
+}
+
+check "snapshot_retention_configured" {
+  assert {
+    condition     = !var.enabled || aws_memorydb_cluster.this.snapshot_retention_limit > 0
+    error_message = "MemoryDB cluster should have snapshot retention enabled for data protection."
+  }
+}

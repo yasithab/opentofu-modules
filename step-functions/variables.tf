@@ -5,15 +5,15 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region to deploy resources into. If null, uses the provider default."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name of the Step Functions state machine"
   type        = string
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "The name must not be empty."
+  }
 }
 
 variable "tags" {
@@ -29,24 +29,28 @@ variable "tags" {
 variable "definition" {
   description = "The Amazon States Language (ASL) definition of the state machine in JSON format"
   type        = string
+
+  validation {
+    condition     = length(var.definition) > 0
+    error_message = "The definition must not be empty."
+  }
 }
 
 variable "type" {
   description = "Type of the state machine. Valid values: `STANDARD`, `EXPRESS`."
   type        = string
   default     = "STANDARD"
+
+  validation {
+    condition     = contains(["STANDARD", "EXPRESS"], var.type)
+    error_message = "The type must be 'STANDARD' or 'EXPRESS'."
+  }
 }
 
 variable "publish" {
   description = "Whether to publish a version of the state machine during creation"
   type        = bool
   default     = false
-}
-
-variable "name_prefix" {
-  description = "Name prefix for the state machine (mutually exclusive with `name` in some contexts)"
-  type        = string
-  default     = null
 }
 
 ################################################################################
@@ -63,6 +67,11 @@ variable "role_arn" {
   description = "ARN of an existing IAM role to use. Required if `create_role` is false."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.role_arn == null || can(regex("^arn:", var.role_arn))
+    error_message = "The role_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "role_name" {
@@ -87,6 +96,11 @@ variable "role_permissions_boundary" {
   description = "ARN of the permissions boundary policy to attach to the IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.role_permissions_boundary == null || can(regex("^arn:", var.role_permissions_boundary))
+    error_message = "The role_permissions_boundary must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "role_force_detach_policies" {
@@ -133,6 +147,11 @@ variable "logging_level" {
   description = "Defines which category of execution history events are logged. Valid values: `ALL`, `ERROR`, `FATAL`, `OFF`."
   type        = string
   default     = "ALL"
+
+  validation {
+    condition     = contains(["ALL", "ERROR", "FATAL", "OFF"], var.logging_level)
+    error_message = "The logging_level must be 'ALL', 'ERROR', 'FATAL', or 'OFF'."
+  }
 }
 
 variable "logging_include_execution_data" {
@@ -169,6 +188,11 @@ variable "existing_log_group_arn" {
   description = "ARN of an existing CloudWatch log group. Used when `create_log_group` is false."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.existing_log_group_arn == null || can(regex("^arn:", var.existing_log_group_arn))
+    error_message = "The existing_log_group_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 ################################################################################
@@ -247,6 +271,11 @@ variable "event_role_arn" {
   description = "ARN of an existing IAM role for EventBridge to use when invoking the state machine. If not set, a role is created."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.event_role_arn == null || can(regex("^arn:", var.event_role_arn))
+    error_message = "The event_role_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "create_event_role" {

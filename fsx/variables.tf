@@ -4,11 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region. If null, uses the provider's region."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name prefix used for FSx file system and related resources"
@@ -29,6 +24,11 @@ variable "file_system_type" {
   description = "Type of FSx file system to create. One of: `LUSTRE`, `ONTAP`, `OPENZFS`, `WINDOWS`"
   type        = string
   default     = "LUSTRE"
+
+  validation {
+    condition     = contains(["LUSTRE", "ONTAP", "OPENZFS", "WINDOWS"], var.file_system_type)
+    error_message = "file_system_type must be one of: LUSTRE, ONTAP, OPENZFS, WINDOWS."
+  }
 }
 
 variable "subnet_ids" {
@@ -40,12 +40,22 @@ variable "subnet_ids" {
 variable "storage_capacity" {
   description = "Storage capacity in GiB"
   type        = number
+
+  validation {
+    condition     = var.storage_capacity > 0
+    error_message = "storage_capacity must be greater than 0."
+  }
 }
 
 variable "storage_type" {
   description = "Storage type. `SSD` or `HDD` (Lustre/Windows only)"
   type        = string
   default     = "SSD"
+
+  validation {
+    condition     = contains(["SSD", "HDD"], var.storage_type)
+    error_message = "storage_type must be one of: SSD, HDD."
+  }
 }
 
 variable "throughput_capacity" {
@@ -58,6 +68,11 @@ variable "kms_key_id" {
   description = "ARN of the KMS key to encrypt the file system at rest. If null, AWS-managed key is used."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.kms_key_id == null || can(regex("^arn:", var.kms_key_id))
+    error_message = "kms_key_id must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "security_group_ids" {
@@ -138,6 +153,11 @@ variable "automatic_backup_retention_days" {
   description = "Number of days to retain automatic backups (0 to disable)"
   type        = number
   default     = 7
+
+  validation {
+    condition     = var.automatic_backup_retention_days >= 0 && var.automatic_backup_retention_days <= 90
+    error_message = "automatic_backup_retention_days must be between 0 and 90."
+  }
 }
 
 variable "daily_automatic_backup_start_time" {
@@ -160,6 +180,11 @@ variable "lustre_deployment_type" {
   description = "Lustre deployment type: `SCRATCH_1`, `SCRATCH_2`, `PERSISTENT_1`, or `PERSISTENT_2`"
   type        = string
   default     = "SCRATCH_2"
+
+  validation {
+    condition     = contains(["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1", "PERSISTENT_2"], var.lustre_deployment_type)
+    error_message = "lustre_deployment_type must be one of: SCRATCH_1, SCRATCH_2, PERSISTENT_1, PERSISTENT_2."
+  }
 }
 
 variable "lustre_per_unit_storage_throughput" {
@@ -172,6 +197,11 @@ variable "lustre_data_compression_type" {
   description = "Data compression type for Lustre. `NONE` or `LZ4`"
   type        = string
   default     = "NONE"
+
+  validation {
+    condition     = contains(["NONE", "LZ4"], var.lustre_data_compression_type)
+    error_message = "lustre_data_compression_type must be one of: NONE, LZ4."
+  }
 }
 
 variable "lustre_import_path" {
@@ -196,12 +226,22 @@ variable "lustre_auto_import_policy" {
   description = "Auto-import policy for S3. `NONE`, `NEW`, `NEW_CHANGED`, or `NEW_CHANGED_DELETED`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.lustre_auto_import_policy == null || contains(["NONE", "NEW", "NEW_CHANGED", "NEW_CHANGED_DELETED"], var.lustre_auto_import_policy)
+    error_message = "lustre_auto_import_policy must be one of: NONE, NEW, NEW_CHANGED, NEW_CHANGED_DELETED."
+  }
 }
 
 variable "lustre_drive_cache_type" {
   description = "Type of drive cache for HDD storage. `NONE` or `READ`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.lustre_drive_cache_type == null || contains(["NONE", "READ"], var.lustre_drive_cache_type)
+    error_message = "lustre_drive_cache_type must be one of: NONE, READ."
+  }
 }
 
 variable "lustre_log_configuration" {
@@ -239,6 +279,11 @@ variable "ontap_deployment_type" {
   description = "ONTAP deployment type: `SINGLE_AZ_1`, `SINGLE_AZ_2`, `MULTI_AZ_1`, or `MULTI_AZ_2`"
   type        = string
   default     = "SINGLE_AZ_1"
+
+  validation {
+    condition     = contains(["SINGLE_AZ_1", "SINGLE_AZ_2", "MULTI_AZ_1", "MULTI_AZ_2"], var.ontap_deployment_type)
+    error_message = "ontap_deployment_type must be one of: SINGLE_AZ_1, SINGLE_AZ_2, MULTI_AZ_1, MULTI_AZ_2."
+  }
 }
 
 variable "ontap_preferred_subnet_id" {
@@ -251,6 +296,11 @@ variable "ontap_endpoint_ip_address_range" {
   description = "IP address range for ONTAP endpoints (CIDR format)"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.ontap_endpoint_ip_address_range == null || can(cidrnetmask(var.ontap_endpoint_ip_address_range))
+    error_message = "ontap_endpoint_ip_address_range must be a valid CIDR block."
+  }
 }
 
 variable "ontap_route_table_ids" {
@@ -275,7 +325,7 @@ variable "ontap_ha_pairs" {
 }
 
 variable "ontap_svm" {
-  description = "ONTAP Storage Virtual Machine (SVM) configuration"
+  description = "ONTAP Storage Virtual Machine (SVM) configuration. Note: svm_admin_password and active_directory password will be stored in state as the provider does not support write_only for these fields"
   type = object({
     name                       = string
     root_volume_security_style = optional(string, "UNIX")
@@ -289,7 +339,8 @@ variable "ontap_svm" {
       username                               = string
     }))
   })
-  default = null
+  default   = null
+  sensitive = true
 }
 
 variable "ontap_volumes" {
@@ -319,6 +370,11 @@ variable "openzfs_deployment_type" {
   description = "OpenZFS deployment type: `SINGLE_AZ_1`, `SINGLE_AZ_2`, or `MULTI_AZ_1`"
   type        = string
   default     = "SINGLE_AZ_1"
+
+  validation {
+    condition     = contains(["SINGLE_AZ_1", "SINGLE_AZ_2", "MULTI_AZ_1"], var.openzfs_deployment_type)
+    error_message = "openzfs_deployment_type must be one of: SINGLE_AZ_1, SINGLE_AZ_2, MULTI_AZ_1."
+  }
 }
 
 variable "openzfs_disk_iops_configuration" {
@@ -405,7 +461,7 @@ variable "windows_active_directory_id" {
 }
 
 variable "windows_self_managed_active_directory" {
-  description = "Self-managed Active Directory configuration for Windows"
+  description = "Self-managed Active Directory configuration for Windows. Note: password will be stored in state as the provider does not support write_only for this field"
   type = object({
     dns_ips                                = list(string)
     domain_name                            = string
@@ -414,7 +470,8 @@ variable "windows_self_managed_active_directory" {
     password                               = string
     username                               = string
   })
-  default = null
+  default   = null
+  sensitive = true
 }
 
 variable "windows_aliases" {

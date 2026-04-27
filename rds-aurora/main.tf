@@ -1,7 +1,7 @@
 data "aws_partition" "current" {}
 
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   port = coalesce(var.port, (var.engine == "aurora-postgresql" || var.engine == "postgres" ? 5432 : 3306))
 
@@ -34,7 +34,7 @@ resource "aws_db_subnet_group" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.create_db_subnet_group
+    enabled = local.enabled && var.create_db_subnet_group
   }
 }
 
@@ -158,7 +158,7 @@ resource "aws_rds_cluster" "this" {
   }
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
     ignore_changes = [
       # See https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/rds_cluster#replication_source_identifier
       # Since this is used either in read-replica clusters or global clusters, this should be acceptable to specify
@@ -177,7 +177,7 @@ resource "aws_rds_cluster" "this" {
 ################################################################################
 
 resource "aws_rds_cluster_instance" "this" {
-  for_each = { for k, v in var.instances : k => v if local.create && !local.is_serverless }
+  for_each = { for k, v in var.instances : k => v if local.enabled && !local.is_serverless }
 
   apply_immediately                     = try(each.value.apply_immediately, var.apply_immediately)
   auto_minor_version_upgrade            = try(each.value.auto_minor_version_upgrade, var.auto_minor_version_upgrade)
@@ -217,7 +217,7 @@ resource "aws_rds_cluster_instance" "this" {
 ################################################################################
 
 resource "aws_rds_cluster_endpoint" "this" {
-  for_each = { for k, v in var.endpoints : k => v if local.create && !local.is_serverless }
+  for_each = { for k, v in var.endpoints : k => v if local.enabled && !local.is_serverless }
 
   cluster_endpoint_identifier = each.value.identifier
   cluster_identifier          = aws_rds_cluster.this.id
@@ -236,7 +236,7 @@ resource "aws_rds_cluster_endpoint" "this" {
 ################################################################################
 
 resource "aws_rds_cluster_role_association" "this" {
-  for_each = { for k, v in var.iam_roles : k => v if local.create }
+  for_each = { for k, v in var.iam_roles : k => v if local.enabled }
 
   db_cluster_identifier = aws_rds_cluster.this.id
   feature_name          = each.value.feature_name
@@ -248,7 +248,7 @@ resource "aws_rds_cluster_role_association" "this" {
 ################################################################################
 
 locals {
-  create_monitoring_role = local.create && var.create_monitoring_role && (var.monitoring_interval > 0 || var.cluster_monitoring_interval > 0)
+  create_monitoring_role = local.enabled && var.create_monitoring_role && (var.monitoring_interval > 0 || var.cluster_monitoring_interval > 0)
 }
 
 data "aws_iam_policy_document" "monitoring_rds_assume_role" {
@@ -312,7 +312,7 @@ resource "aws_appautoscaling_target" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.autoscaling_enabled && !local.is_serverless
+    enabled = local.enabled && var.autoscaling_enabled && !local.is_serverless
     ignore_changes = [
       tags_all,
     ]
@@ -341,7 +341,7 @@ resource "aws_appautoscaling_policy" "this" {
   ]
 
   lifecycle {
-    enabled = local.create && var.autoscaling_enabled && !local.is_serverless
+    enabled = local.enabled && var.autoscaling_enabled && !local.is_serverless
   }
 }
 
@@ -358,13 +358,13 @@ resource "aws_security_group" "this" {
   tags = merge(local.tags, var.security_group_tags, { Name = local.security_group_name })
 
   lifecycle {
-    enabled               = local.create && var.create_security_group
+    enabled               = local.enabled && var.create_security_group
     create_before_destroy = true
   }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "this" {
-  for_each = { for k, v in var.security_group_rules : k => v if local.create && var.create_security_group && try(v.type, "ingress") == "ingress" }
+  for_each = { for k, v in var.security_group_rules : k => v if local.enabled && var.create_security_group && try(v.type, "ingress") == "ingress" }
 
   # Required
   security_group_id = aws_security_group.this.id
@@ -383,7 +383,7 @@ resource "aws_vpc_security_group_ingress_rule" "this" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "this" {
-  for_each = { for k, v in var.security_group_rules : k => v if local.create && var.create_security_group && try(v.type, "ingress") == "egress" }
+  for_each = { for k, v in var.security_group_rules : k => v if local.enabled && var.create_security_group && try(v.type, "ingress") == "egress" }
 
   # Required
   security_group_id = aws_security_group.this.id
@@ -422,7 +422,7 @@ resource "aws_rds_cluster_parameter_group" "this" {
   }
 
   lifecycle {
-    enabled               = local.create && var.create_db_cluster_parameter_group
+    enabled               = local.enabled && var.create_db_cluster_parameter_group
     create_before_destroy = true
   }
 
@@ -450,7 +450,7 @@ resource "aws_db_parameter_group" "this" {
   }
 
   lifecycle {
-    enabled               = local.create && var.create_db_parameter_group
+    enabled               = local.enabled && var.create_db_parameter_group
     create_before_destroy = true
   }
 
@@ -463,7 +463,7 @@ resource "aws_db_parameter_group" "this" {
 
 # Log groups will not be created if using a cluster identifier prefix
 resource "aws_cloudwatch_log_group" "this" {
-  for_each = toset([for log in var.enabled_cloudwatch_logs_exports : log if local.create && var.create_cloudwatch_log_group && !var.cluster_use_name_prefix])
+  for_each = toset([for log in var.enabled_cloudwatch_logs_exports : log if local.enabled && var.create_cloudwatch_log_group && !var.cluster_use_name_prefix])
 
   name              = "/aws/rds/cluster/${var.name}/${each.value}"
   retention_in_days = var.cloudwatch_log_group_retention_in_days
@@ -487,7 +487,7 @@ resource "aws_rds_cluster_activity_stream" "this" {
   depends_on = [aws_rds_cluster_instance.this]
 
   lifecycle {
-    enabled = local.create && var.create_db_cluster_activity_stream
+    enabled = local.enabled && var.create_db_cluster_activity_stream
   }
 }
 
@@ -512,7 +512,7 @@ resource "aws_secretsmanager_secret_rotation" "this" {
   }
 
   lifecycle {
-    enabled = local.create && var.manage_master_user_password && var.manage_master_user_password_rotation
+    enabled = local.enabled && var.manage_master_user_password && var.manage_master_user_password_rotation
   }
 }
 
@@ -536,7 +536,7 @@ resource "aws_rds_shard_group" "this" {
   }
 
   lifecycle {
-    enabled = local.create && var.create_shard_group
+    enabled = local.enabled && var.create_shard_group
   }
 }
 

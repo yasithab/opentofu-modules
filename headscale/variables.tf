@@ -7,6 +7,11 @@ variable "enabled" {
 variable "name" {
   description = "Name for all Headscale resources."
   type        = string
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "The name must not be empty."
+  }
 }
 
 variable "tags" {
@@ -61,12 +66,22 @@ variable "ebs_root_volume_size" {
   description = "Root EBS volume size in GB."
   type        = number
   default     = 8
+
+  validation {
+    condition     = var.ebs_root_volume_size >= 1 && var.ebs_root_volume_size <= 16384
+    error_message = "The ebs_root_volume_size must be between 1 and 16384 GB."
+  }
 }
 
 variable "ebs_data_volume_size" {
   description = "Data EBS volume size in GB for Headscale database and state. Set to 0 to disable."
   type        = number
   default     = 10
+
+  validation {
+    condition     = var.ebs_data_volume_size >= 0 && var.ebs_data_volume_size <= 16384
+    error_message = "The ebs_data_volume_size must be between 0 and 16384 GB."
+  }
 }
 
 variable "encryption" {
@@ -91,12 +106,22 @@ variable "snapshot_retention_days" {
   description = "Number of days to retain daily EBS snapshots."
   type        = number
   default     = 7
+
+  validation {
+    condition     = var.snapshot_retention_days >= 1
+    error_message = "The snapshot_retention_days must be at least 1."
+  }
 }
 
 variable "snapshot_time" {
   description = "UTC time to take daily snapshots in HH:MM format (e.g., '03:00')."
   type        = string
   default     = "03:00"
+
+  validation {
+    condition     = can(regex("^([01]\\d|2[0-3]):[0-5]\\d$", var.snapshot_time))
+    error_message = "The snapshot_time must be in HH:MM format (e.g., '03:00')."
+  }
 }
 
 ################################################################################
@@ -112,6 +137,11 @@ variable "headscale_version" {
 variable "server_url" {
   description = "Public URL for Headscale (e.g., 'https://headscale.example.com'). Clients use this to connect."
   type        = string
+
+  validation {
+    condition     = can(regex("^https?://", var.server_url))
+    error_message = "The server_url must start with 'http://' or 'https://'."
+  }
 }
 
 variable "base_domain" {
@@ -136,6 +166,11 @@ variable "derp_stun_port" {
   description = "STUN port for the built-in DERP server."
   type        = number
   default     = 3478
+
+  validation {
+    condition     = var.derp_stun_port >= 1 && var.derp_stun_port <= 65535
+    error_message = "The derp_stun_port must be between 1 and 65535."
+  }
 }
 
 variable "oidc" {
@@ -158,6 +193,11 @@ variable "secrets_manager_arn" {
   description = "ARN of a Secrets Manager secret containing a JSON object with sensitive values. The module reads specific keys at boot. Leave empty to use inline values instead."
   type        = string
   default     = ""
+
+  validation {
+    condition     = var.secrets_manager_arn == "" || can(regex("^arn:", var.secrets_manager_arn))
+    error_message = "The secrets_manager_arn must be empty or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "secrets_manager_oidc_key" {
@@ -214,6 +254,11 @@ variable "route53_record_ttl" {
   description = "TTL in seconds for the Route53 DNS record."
   type        = number
   default     = 300
+
+  validation {
+    condition     = var.route53_record_ttl >= 0 && var.route53_record_ttl <= 2147483647
+    error_message = "The route53_record_ttl must be between 0 and 2147483647 seconds."
+  }
 }
 
 ################################################################################
@@ -224,6 +269,11 @@ variable "acm_certificate_arn" {
   description = "ACM certificate ARN for HTTPS. When empty, Headscale uses built-in Let's Encrypt (requires port 80 open)."
   type        = string
   default     = ""
+
+  validation {
+    condition     = var.acm_certificate_arn == "" || can(regex("^arn:", var.acm_certificate_arn))
+    error_message = "The acm_certificate_arn must be empty or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "letsencrypt_email" {
@@ -280,6 +330,11 @@ variable "alarm_sns_topic_arn" {
   description = "SNS topic ARN for CloudWatch alarms (ASG health). Leave empty to create a new topic."
   type        = string
   default     = ""
+
+  validation {
+    condition     = var.alarm_sns_topic_arn == "" || can(regex("^arn:", var.alarm_sns_topic_arn))
+    error_message = "The alarm_sns_topic_arn must be empty or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "alarm_enabled" {
@@ -302,6 +357,11 @@ variable "cloudwatch_logs_retention_days" {
   description = "Number of days to retain CloudWatch logs."
   type        = number
   default     = 30
+
+  validation {
+    condition     = contains([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653], var.cloudwatch_logs_retention_days)
+    error_message = "The cloudwatch_logs_retention_days must be a valid CloudWatch Logs retention value (0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, or 3653)."
+  }
 }
 
 ################################################################################
@@ -312,6 +372,11 @@ variable "metrics_port" {
   description = "Port for Headscale Prometheus metrics endpoint (bound to 127.0.0.1)."
   type        = number
   default     = 9090
+
+  validation {
+    condition     = var.metrics_port >= 1 && var.metrics_port <= 65535
+    error_message = "The metrics_port must be between 1 and 65535."
+  }
 }
 
 ################################################################################

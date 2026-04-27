@@ -35,6 +35,11 @@ variable "secondary_cidr_blocks" {
   description = "List of secondary CIDR blocks to associate with the VPC to extend the IP Address pool"
   type        = list(string)
   default     = []
+
+  validation {
+    condition     = alltrue([for cidr in var.secondary_cidr_blocks : can(cidrnetmask(cidr))])
+    error_message = "All secondary_cidr_blocks must be valid IPv4 CIDR blocks."
+  }
 }
 
 variable "instance_tenancy" {
@@ -83,6 +88,11 @@ variable "ipv4_netmask_length" {
   description = "(Optional) The netmask length of the IPv4 CIDR you want to allocate to this VPC. Requires specifying a ipv4_ipam_pool_id"
   type        = number
   default     = null
+
+  validation {
+    condition     = var.ipv4_netmask_length == null || (var.ipv4_netmask_length >= 16 && var.ipv4_netmask_length <= 28)
+    error_message = "ipv4_netmask_length must be between 16 and 28."
+  }
 }
 
 variable "enable_ipv6" {
@@ -107,6 +117,11 @@ variable "ipv6_netmask_length" {
   description = "(Optional) Netmask length to request from IPAM Pool. Conflicts with `ipv6_cidr_block`. This can be omitted if IPAM pool as a `allocation_default_netmask_length` set. Valid values: `56`"
   type        = number
   default     = null
+
+  validation {
+    condition     = var.ipv6_netmask_length == null || var.ipv6_netmask_length == 56
+    error_message = "ipv6_netmask_length must be 56 (the only value supported by AWS VPCs)."
+  }
 }
 
 variable "ipv6_cidr_block_network_border_group" {

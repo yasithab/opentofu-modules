@@ -14,12 +14,11 @@ variable "requestor_vpc_id" {
   type        = string
   description = "Requestor VPC ID"
   default     = null
-}
 
-variable "requestor_vpc_tags" {
-  type        = map(string)
-  description = "Requestor VPC tags"
-  default     = {}
+  validation {
+    condition     = var.requestor_vpc_id == null || can(regex("^vpc-", var.requestor_vpc_id))
+    error_message = "The requestor_vpc_id must start with 'vpc-'."
+  }
 }
 
 variable "requestor_route_table_tags" {
@@ -44,6 +43,11 @@ variable "acceptor_vpc_id" {
   type        = string
   description = "Acceptor VPC ID"
   default     = null
+
+  validation {
+    condition     = var.acceptor_vpc_id == null || can(regex("^vpc-", var.acceptor_vpc_id))
+    error_message = "The acceptor_vpc_id must start with 'vpc-'."
+  }
 }
 
 variable "acceptor_cidr_blocks" {

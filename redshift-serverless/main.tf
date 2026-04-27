@@ -1,11 +1,11 @@
 locals {
-  create              = var.enabled
-  is_serverless       = var.engine_mode == "serverless"
-  has_policy_arn      = try(nonsensitive(var.policy_arn != null), var.policy_arn != null)
-  create_role_policy  = nonsensitive(local.create && local.is_serverless && var.policy_enabled && var.iam_role_enabled && !local.has_policy_arn)
-  attach_role_policy  = nonsensitive(local.create && local.is_serverless && var.policy_enabled && var.iam_role_enabled && local.has_policy_arn)
-  admin_password      = local.create && !var.manage_admin_password ? (var.create_random_password ? random_password.master_password.result : var.admin_password) : null
-  port                = var.port
+  enabled            = var.enabled
+  is_serverless      = var.engine_mode == "serverless"
+  has_policy_arn     = try(nonsensitive(var.policy_arn != null), var.policy_arn != null)
+  create_role_policy = nonsensitive(local.enabled && local.is_serverless && var.policy_enabled && var.iam_role_enabled && !local.has_policy_arn)
+  attach_role_policy = nonsensitive(local.enabled && local.is_serverless && var.policy_enabled && var.iam_role_enabled && local.has_policy_arn)
+  admin_password     = local.enabled && !var.manage_admin_password ? (var.create_random_password ? random_password.master_password.result : var.admin_password) : null
+  port               = var.port
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -27,7 +27,7 @@ resource "random_password" "master_password" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 
   lifecycle {
-    enabled = local.create && !var.manage_admin_password && var.create_random_password
+    enabled = local.enabled && !var.manage_admin_password && var.create_random_password
   }
 }
 
@@ -36,7 +36,7 @@ resource "random_password" "master_password" {
 ###############################################################################################################
 
 resource "aws_iam_role" "serverless" {
-  name               = var.iam_role_name
+  name = var.iam_role_name
   assume_role_policy = coalesce(var.assume_role_policy, jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -49,7 +49,7 @@ resource "aws_iam_role" "serverless" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && local.is_serverless && var.iam_role_enabled
+    enabled = local.enabled && local.is_serverless && var.iam_role_enabled
   }
 }
 
@@ -85,7 +85,7 @@ resource "aws_kms_key" "serverless" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && local.is_serverless && var.kms_enabled
+    enabled = local.enabled && local.is_serverless && var.kms_enabled
   }
 }
 
@@ -94,7 +94,7 @@ resource "aws_kms_alias" "serverless" {
   target_key_id = try(aws_kms_key.serverless.key_id, "")
 
   lifecycle {
-    enabled = local.create && local.is_serverless && var.kms_enabled
+    enabled = local.enabled && local.is_serverless && var.kms_enabled
   }
 }
 
@@ -115,7 +115,7 @@ resource "aws_redshiftserverless_namespace" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && local.is_serverless
+    enabled = local.enabled && local.is_serverless
   }
 }
 
@@ -150,7 +150,7 @@ resource "aws_redshiftserverless_workgroup" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && local.is_serverless
+    enabled = local.enabled && local.is_serverless
   }
 }
 
@@ -162,7 +162,7 @@ resource "aws_redshiftserverless_usage_limit" "this" {
   period        = var.usage_period
 
   lifecycle {
-    enabled = local.create && local.is_serverless && var.usage_limit_enabled
+    enabled = local.enabled && local.is_serverless && var.usage_limit_enabled
   }
 }
 
@@ -180,7 +180,7 @@ resource "aws_redshiftserverless_endpoint_access" "this" {
   subnet_ids             = var.subnet_ids
 
   lifecycle {
-    enabled = local.create && local.is_serverless && var.endpoint_enabled
+    enabled = local.enabled && local.is_serverless && var.endpoint_enabled
   }
 }
 
@@ -190,7 +190,7 @@ resource "aws_redshiftserverless_snapshot" "this" {
   retention_period = var.snapshot_retention_period
 
   lifecycle {
-    enabled = local.create && local.is_serverless && var.snapshot_enabled
+    enabled = local.enabled && local.is_serverless && var.snapshot_enabled
   }
 }
 
@@ -199,7 +199,7 @@ resource "aws_redshiftserverless_resource_policy" "this" {
   policy       = var.snapshot_policy
 
   lifecycle {
-    enabled = local.create && local.is_serverless && var.snapshot_policy_enabled
+    enabled = local.enabled && local.is_serverless && var.snapshot_policy_enabled
   }
 }
 
@@ -210,7 +210,7 @@ resource "aws_redshiftserverless_custom_domain_association" "this" {
   custom_domain_certificate_arn = var.custom_domain_certificate_arn
 
   lifecycle {
-    enabled = local.create && local.is_serverless && var.custom_domain_enabled
+    enabled = local.enabled && local.is_serverless && var.custom_domain_enabled
   }
 }
 
@@ -219,7 +219,7 @@ resource "aws_redshiftserverless_custom_domain_association" "this" {
 ################################################################################
 
 locals {
-  create_security_group = local.create && var.create_security_group
+  create_security_group = local.enabled && var.create_security_group
   security_group_name   = try(coalesce(var.security_group_name, var.name), "")
 }
 
@@ -273,6 +273,17 @@ resource "aws_vpc_security_group_egress_rule" "this" {
   to_port                      = try(each.value.to_port, null)
 
   tags = merge(local.tags, var.security_group_tags, try(each.value.tags, {}))
+}
+
+################################################################################
+# OpenTofu Check Blocks
+################################################################################
+
+check "namespace_encryption_enabled" {
+  assert {
+    condition     = !var.enabled || try(aws_redshiftserverless_namespace.this.kms_key_id, "") != ""
+    error_message = "Redshift Serverless namespace should use a customer-managed KMS key for encryption."
+  }
 }
 
 ################################################################################

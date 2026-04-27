@@ -44,6 +44,11 @@ variable "docker_file_path" {
   description = "Path to Dockerfile in source package"
   type        = string
   default     = "Dockerfile"
+
+  validation {
+    condition     = length(var.docker_file_path) > 0
+    error_message = "docker_file_path must not be empty."
+  }
 }
 
 
@@ -51,6 +56,11 @@ variable "image_tag_mutability" {
   description = "The tag mutability setting for the repository. Must be one of: `MUTABLE`, `IMMUTABLE`, `MUTABLE_WITH_EXCLUSION`, or `IMMUTABLE_WITH_EXCLUSION`"
   type        = string
   default     = "MUTABLE"
+
+  validation {
+    condition     = contains(["MUTABLE", "IMMUTABLE", "MUTABLE_WITH_EXCLUSION", "IMMUTABLE_WITH_EXCLUSION"], var.image_tag_mutability)
+    error_message = "image_tag_mutability must be one of: 'MUTABLE', 'IMMUTABLE', 'MUTABLE_WITH_EXCLUSION', 'IMMUTABLE_WITH_EXCLUSION'."
+  }
 }
 
 variable "encryption_configuration" {

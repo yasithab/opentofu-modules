@@ -27,6 +27,11 @@ variable "iam_role_permissions_boundary" {
   description = "ARN of the policy that is used to set the permissions boundary for the role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_role_permissions_boundary == null || can(regex("^arn:", var.iam_role_permissions_boundary))
+    error_message = "The iam_role_permissions_boundary must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_role_tags" {
@@ -89,6 +94,11 @@ variable "repl_instance_allocated_storage" {
   description = "The amount of storage (in gigabytes) to be initially allocated for the replication instance. Min: 5, Max: 6144, Default: 50"
   type        = number
   default     = null
+
+  validation {
+    condition     = var.repl_instance_allocated_storage == null || (var.repl_instance_allocated_storage >= 5 && var.repl_instance_allocated_storage <= 6144)
+    error_message = "The repl_instance_allocated_storage must be between 5 and 6144 gigabytes."
+  }
 }
 
 variable "repl_instance_auto_minor_version_upgrade" {
@@ -125,6 +135,11 @@ variable "repl_instance_kms_key_arn" {
   description = "The Amazon Resource Name (ARN) for the KMS key that will be used to encrypt the connection parameters"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.repl_instance_kms_key_arn == null || can(regex("^arn:", var.repl_instance_kms_key_arn))
+    error_message = "The repl_instance_kms_key_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "repl_instance_multi_az" {
@@ -137,6 +152,11 @@ variable "repl_instance_network_type" {
   description = "The type of IP address protocol used by a replication instance. Valid values: IPV4, DUAL"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.repl_instance_network_type == null || contains(["IPV4", "DUAL"], var.repl_instance_network_type)
+    error_message = "The repl_instance_network_type must be 'IPV4' or 'DUAL'."
+  }
 }
 
 variable "repl_instance_preferred_maintenance_window" {
@@ -309,6 +329,11 @@ variable "access_iam_role_permissions_boundary" {
   description = "ARN of the policy that is used to set the permissions boundary for the IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.access_iam_role_permissions_boundary == null || can(regex("^arn:", var.access_iam_role_permissions_boundary))
+    error_message = "The access_iam_role_permissions_boundary must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "access_iam_role_tags" {

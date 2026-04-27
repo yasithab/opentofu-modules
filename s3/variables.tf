@@ -98,6 +98,11 @@ variable "bucket" {
   description = "(Optional, Forces new resource) The name of the bucket. If omitted, Terraform will assign a random, unique name."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.bucket == null || can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.bucket))
+    error_message = "bucket must be 3-63 characters, lowercase letters, numbers, hyphens, and periods only. Must start and end with a letter or number."
+  }
 }
 
 variable "bucket_prefix" {

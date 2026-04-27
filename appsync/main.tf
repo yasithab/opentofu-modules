@@ -1,5 +1,4 @@
 data "aws_partition" "current" {}
-data "aws_caller_identity" "current" {}
 
 locals {
   enabled = var.enabled
@@ -8,8 +7,7 @@ locals {
     ManagedBy = "opentofu"
   })
 
-  account_id = data.aws_caller_identity.current.account_id
-  partition  = data.aws_partition.current.partition
+  partition = data.aws_partition.current.partition
 }
 
 ################################################################################

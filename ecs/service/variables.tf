@@ -30,6 +30,11 @@ variable "availability_zone_rebalancing" {
   description = "ECS automatically redistributes tasks within a service across Availability Zones (AZs) to mitigate the risk of impaired application availability due to underlying infrastructure failures and task lifecycle activities. Valid values: ENABLED, DISABLED"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.availability_zone_rebalancing == null || contains(["ENABLED", "DISABLED"], var.availability_zone_rebalancing)
+    error_message = "availability_zone_rebalancing must be either 'ENABLED' or 'DISABLED'."
+  }
 }
 
 variable "vpc_lattice_configurations" {
@@ -58,6 +63,11 @@ variable "cluster_arn" {
   description = "ARN of the ECS cluster where the resources will be provisioned"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.cluster_arn == null || can(regex("^arn:", var.cluster_arn))
+    error_message = "cluster_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "deployment_circuit_breaker" {
@@ -82,18 +92,33 @@ variable "deployment_maximum_percent" {
   description = "Upper limit (as a percentage of the service's `desired_count`) of the number of running tasks that can be running in a service during a deployment"
   type        = number
   default     = 200
+
+  validation {
+    condition     = var.deployment_maximum_percent >= 0 && var.deployment_maximum_percent <= 400
+    error_message = "deployment_maximum_percent must be between 0 and 400."
+  }
 }
 
 variable "deployment_minimum_healthy_percent" {
   description = "Lower limit (as a percentage of the service's `desired_count`) of the number of running tasks that must remain running and healthy in a service during a deployment"
   type        = number
   default     = 66
+
+  validation {
+    condition     = var.deployment_minimum_healthy_percent >= 0 && var.deployment_minimum_healthy_percent <= 200
+    error_message = "deployment_minimum_healthy_percent must be between 0 and 200."
+  }
 }
 
 variable "desired_count" {
   description = "Number of instances of the task definition to place and keep running"
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.desired_count >= 0
+    error_message = "desired_count must be 0 or a positive number."
+  }
 }
 
 variable "enable_ecs_managed_tags" {
@@ -112,6 +137,11 @@ variable "firehose_delivery_stream_arn" {
   description = "Existing Firehose delivery stream ARN for FireLens"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.firehose_delivery_stream_arn == null || can(regex("^arn:", var.firehose_delivery_stream_arn))
+    error_message = "firehose_delivery_stream_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "force_new_deployment" {
@@ -136,6 +166,11 @@ variable "launch_type" {
   description = "Launch type on which to run your service. The valid values are `EC2`, `FARGATE`, and `EXTERNAL`. Defaults to `FARGATE`"
   type        = string
   default     = "FARGATE"
+
+  validation {
+    condition     = contains(["EC2", "FARGATE", "EXTERNAL"], var.launch_type)
+    error_message = "launch_type must be one of: 'EC2', 'FARGATE', 'EXTERNAL'."
+  }
 }
 
 variable "load_balancer" {
@@ -190,12 +225,22 @@ variable "propagate_tags" {
   description = "Specifies whether to propagate the tags from the task definition or the service to the tasks. The valid values are `SERVICE` and `TASK_DEFINITION`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.propagate_tags == null || contains(["SERVICE", "TASK_DEFINITION"], var.propagate_tags)
+    error_message = "propagate_tags must be either 'SERVICE' or 'TASK_DEFINITION'."
+  }
 }
 
 variable "scheduling_strategy" {
   description = "Scheduling strategy to use for the service. The valid values are `REPLICA` and `DAEMON`. Defaults to `REPLICA`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.scheduling_strategy == null || contains(["REPLICA", "DAEMON"], var.scheduling_strategy)
+    error_message = "scheduling_strategy must be either 'REPLICA' or 'DAEMON'."
+  }
 }
 
 variable "service_connect_configuration" {
@@ -296,6 +341,11 @@ variable "iam_role_arn" {
   description = "Existing IAM role ARN"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_role_arn == null || can(regex("^arn:", var.iam_role_arn))
+    error_message = "iam_role_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_role_name" {
@@ -326,6 +376,11 @@ variable "iam_role_permissions_boundary" {
   description = "ARN of the policy that is used to set the permissions boundary for the IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_role_permissions_boundary == null || can(regex("^arn:", var.iam_role_permissions_boundary))
+    error_message = "iam_role_permissions_boundary must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_role_tags" {
@@ -354,6 +409,11 @@ variable "task_definition_arn" {
   description = "Existing task definition ARN. Required when `create_task_definition` is `false`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.task_definition_arn == null || can(regex("^arn:", var.task_definition_arn))
+    error_message = "task_definition_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "container_definitions" {
@@ -390,6 +450,11 @@ variable "ipc_mode" {
   description = "IPC resource namespace to be used for the containers in the task The valid values are `host`, `task`, and `none`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.ipc_mode == null || contains(["host", "task", "none"], var.ipc_mode)
+    error_message = "ipc_mode must be one of: 'host', 'task', 'none'."
+  }
 }
 
 variable "memory" {
@@ -402,12 +467,22 @@ variable "network_mode" {
   description = "Docker networking mode to use for the containers in the task. Valid values are `none`, `bridge`, `awsvpc`, and `host`"
   type        = string
   default     = "awsvpc"
+
+  validation {
+    condition     = contains(["none", "bridge", "awsvpc", "host"], var.network_mode)
+    error_message = "network_mode must be one of: 'none', 'bridge', 'awsvpc', 'host'."
+  }
 }
 
 variable "pid_mode" {
   description = "Process namespace to use for the containers in the task. The valid values are `host` and `task`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.pid_mode == null || contains(["host", "task"], var.pid_mode)
+    error_message = "pid_mode must be either 'host' or 'task'."
+  }
 }
 
 variable "task_definition_placement_constraints" {
@@ -475,6 +550,11 @@ variable "infrastructure_iam_role_arn" {
   description = "Existing IAM role ARN to use as the infrastructure role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.infrastructure_iam_role_arn == null || can(regex("^arn:", var.infrastructure_iam_role_arn))
+    error_message = "infrastructure_iam_role_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "infrastructure_iam_role_name" {
@@ -505,6 +585,11 @@ variable "infrastructure_iam_role_permissions_boundary" {
   description = "ARN of the policy used as permissions boundary for the infrastructure IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.infrastructure_iam_role_permissions_boundary == null || can(regex("^arn:", var.infrastructure_iam_role_permissions_boundary))
+    error_message = "infrastructure_iam_role_permissions_boundary must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "infrastructure_iam_role_tags" {
@@ -562,6 +647,11 @@ variable "task_exec_iam_role_arn" {
   description = "Existing IAM role ARN"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.task_exec_iam_role_arn == null || can(regex("^arn:", var.task_exec_iam_role_arn))
+    error_message = "task_exec_iam_role_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "task_exec_iam_role_name" {
@@ -592,6 +682,11 @@ variable "task_exec_iam_role_permissions_boundary" {
   description = "ARN of the policy that is used to set the permissions boundary for the IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.task_exec_iam_role_permissions_boundary == null || can(regex("^arn:", var.task_exec_iam_role_permissions_boundary))
+    error_message = "task_exec_iam_role_permissions_boundary must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "task_exec_iam_role_tags" {
@@ -651,6 +746,11 @@ variable "tasks_iam_role_arn" {
   description = "Existing IAM role ARN"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.tasks_iam_role_arn == null || can(regex("^arn:", var.tasks_iam_role_arn))
+    error_message = "tasks_iam_role_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "tasks_iam_role_name" {
@@ -681,6 +781,11 @@ variable "tasks_iam_role_permissions_boundary" {
   description = "ARN of the policy that is used to set the permissions boundary for the IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.tasks_iam_role_permissions_boundary == null || can(regex("^arn:", var.tasks_iam_role_permissions_boundary))
+    error_message = "tasks_iam_role_permissions_boundary must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "tasks_iam_role_tags" {
@@ -749,12 +854,22 @@ variable "autoscaling_min_capacity" {
   description = "Minimum number of tasks to run in your service"
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.autoscaling_min_capacity >= 0
+    error_message = "autoscaling_min_capacity must be 0 or a positive number."
+  }
 }
 
 variable "autoscaling_max_capacity" {
   description = "Maximum number of tasks to run in your service"
   type        = number
   default     = 10
+
+  validation {
+    condition     = var.autoscaling_max_capacity >= 1
+    error_message = "autoscaling_max_capacity must be at least 1."
+  }
 }
 
 variable "autoscaling_policies" {
@@ -792,6 +907,11 @@ variable "autoscaling_role_arn" {
   description = "The ARN of the IAM role that allows Application AutoScaling to modify the scalable target on your behalf. Only required when using a service-linked role is not possible"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.autoscaling_role_arn == null || can(regex("^arn:", var.autoscaling_role_arn))
+    error_message = "autoscaling_role_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "autoscaling_suspended_state" {
@@ -830,8 +950,19 @@ variable "security_group_description" {
 
 variable "security_group_rules" {
   description = "Security group rules to add to the security group created"
-  type        = any
-  default     = {}
+  type = map(object({
+    type                         = optional(string, "ingress")
+    ip_protocol                  = optional(string, "tcp")
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
+  }))
+  default = {}
 }
 
 variable "security_group_tags" {

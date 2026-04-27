@@ -1,3 +1,3 @@
-alarm_name = "terratest-alarm"
+alarm_name          = "terratest-alarm"
 comparison_operator = "GreaterThanThreshold"
-evaluation_periods = 1
+evaluation_periods  = 1

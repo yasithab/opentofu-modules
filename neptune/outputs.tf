@@ -49,6 +49,7 @@ output "cluster_hosted_zone_id" {
 output "cluster_instances" {
   description = "Map of cluster instances and their attributes."
   value       = aws_neptune_cluster_instance.this
+  sensitive   = true
 }
 
 ################################################################################
@@ -91,4 +92,22 @@ output "instance_parameter_group_arn" {
 output "instance_parameter_group_id" {
   description = "The name (ID) of the Neptune instance parameter group."
   value       = try(aws_neptune_parameter_group.this.id, "")
+}
+
+################################################################################
+# Security Group
+################################################################################
+
+output "security_group_id" {
+  description = "The ID of the security group created for the Neptune cluster."
+  value       = try(aws_security_group.this.id, "")
+}
+
+################################################################################
+# CloudWatch Log Group
+################################################################################
+
+output "cloudwatch_log_group_arns" {
+  description = "Map of CloudWatch log group names to ARNs."
+  value       = { for k, v in aws_cloudwatch_log_group.this : k => v.arn }
 }

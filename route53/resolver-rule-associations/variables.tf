@@ -15,6 +15,11 @@ variable "vpc_id" {
   description = "Default VPC ID for all the Route53 Resolver rule associations"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.vpc_id == null || can(regex("^vpc-[a-z0-9]+$", var.vpc_id))
+    error_message = "vpc_id must be a valid VPC ID starting with 'vpc-' followed by alphanumeric characters."
+  }
 }
 
 variable "resolver_rules" {

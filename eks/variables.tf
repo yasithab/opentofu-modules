@@ -30,6 +30,11 @@ variable "cluster_version" {
   description = "Kubernetes `<major>.<minor>` version to use for the EKS cluster (i.e.: `1.27`)"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.cluster_version == null || can(regex("^\\d+\\.\\d+$", var.cluster_version))
+    error_message = "cluster_version must be in the format 'major.minor' (e.g., '1.30')."
+  }
 }
 
 variable "cluster_enabled_log_types" {
@@ -126,12 +131,22 @@ variable "cluster_ip_family" {
   description = "The IP family used to assign Kubernetes pod and service addresses. Valid values are `ipv4` (default) and `ipv6`. You can only specify an IP family when you create a cluster, changing this value will force a new cluster to be created"
   type        = string
   default     = "ipv4"
+
+  validation {
+    condition     = var.cluster_ip_family == null || contains(["ipv4", "ipv6"], var.cluster_ip_family)
+    error_message = "cluster_ip_family must be either 'ipv4' or 'ipv6'."
+  }
 }
 
 variable "cluster_service_ipv4_cidr" {
   description = "The CIDR block to assign Kubernetes service IP addresses from. If you don't specify a block, Kubernetes assigns addresses from either the 10.100.0.0/16 or 172.20.0.0/16 CIDR blocks"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.cluster_service_ipv4_cidr == null || can(cidrnetmask(var.cluster_service_ipv4_cidr))
+    error_message = "cluster_service_ipv4_cidr must be a valid IPv4 CIDR block."
+  }
 }
 
 variable "cluster_service_ipv6_cidr" {

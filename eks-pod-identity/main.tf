@@ -10,8 +10,6 @@ locals {
   role_arn    = local.create_role ? aws_iam_role.this.arn : var.existing_role_arn
 }
 
-data "aws_caller_identity" "current" {}
-data "aws_partition" "current" {}
 
 ################################################################################
 # IAM Role - EKS Pod Identity Trust Policy

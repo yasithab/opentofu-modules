@@ -1,12 +1,12 @@
 locals {
-  create = var.enabled
+  enabled = var.enabled
 }
 
 # -- Account-level Conformance Pack -------------------------------------------
 
 resource "aws_config_conformance_pack" "this" {
   lifecycle {
-    enabled = local.create && !var.create_organization_conformance_pack
+    enabled = local.enabled && !var.create_organization_conformance_pack
   }
 
   name                   = var.name
@@ -28,7 +28,7 @@ resource "aws_config_conformance_pack" "this" {
 
 resource "aws_config_organization_conformance_pack" "this" {
   lifecycle {
-    enabled = local.create && var.create_organization_conformance_pack
+    enabled = local.enabled && var.create_organization_conformance_pack
   }
 
   name                   = var.name

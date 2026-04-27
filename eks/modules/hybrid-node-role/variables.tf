@@ -24,6 +24,11 @@ variable "path" {
   description = "Path of the IAM role"
   type        = string
   default     = "/"
+
+  validation {
+    condition     = can(regex("^/", var.path))
+    error_message = "The path must begin with '/'."
+  }
 }
 
 variable "description" {
@@ -36,12 +41,22 @@ variable "max_session_duration" {
   description = "Maximum API session duration in seconds between 3600 and 43200"
   type        = number
   default     = null
+
+  validation {
+    condition     = var.max_session_duration == null || (var.max_session_duration >= 3600 && var.max_session_duration <= 43200)
+    error_message = "The max_session_duration must be null or between 3600 and 43200 seconds."
+  }
 }
 
 variable "permissions_boundary_arn" {
   description = "Permissions boundary ARN to use for the IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.permissions_boundary_arn == null || can(regex("^arn:", var.permissions_boundary_arn))
+    error_message = "The permissions_boundary_arn must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "tags" {
@@ -82,6 +97,11 @@ variable "policy_path" {
   description = "Path of the IAM policy"
   type        = string
   default     = "/"
+
+  validation {
+    condition     = can(regex("^/", var.policy_path))
+    error_message = "The policy_path must begin with '/'."
+  }
 }
 
 variable "policy_description" {
@@ -186,6 +206,11 @@ variable "ira_trust_anchor_acm_pca_arn" {
   description = "The ARN of the ACM PCA that issued the trust anchor certificate"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.ira_trust_anchor_acm_pca_arn == null || can(regex("^arn:", var.ira_trust_anchor_acm_pca_arn))
+    error_message = "The ira_trust_anchor_acm_pca_arn must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "ira_trust_anchor_x509_certificate_data" {
@@ -220,6 +245,11 @@ variable "intermediate_role_path" {
   description = "Path of the IAM role"
   type        = string
   default     = "/"
+
+  validation {
+    condition     = can(regex("^/", var.intermediate_role_path))
+    error_message = "The intermediate_role_path must begin with '/'."
+  }
 }
 
 variable "intermediate_role_description" {

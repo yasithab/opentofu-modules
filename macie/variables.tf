@@ -4,11 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region where Macie resources will be created. If null, uses the provider default region"
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name prefix for Macie resources used in naming and tagging"
@@ -86,23 +81,6 @@ variable "custom_data_identifiers" {
     ignore_words           = optional(list(string))
     maximum_match_distance = optional(number)
     description            = optional(string)
-  }))
-  default = {}
-}
-
-################################################################################
-# Allow Lists
-################################################################################
-
-variable "allow_lists" {
-  description = "Map of allow list configurations. Each key is the allow list name. Specify either s3_words_list or regex, not both"
-  type = map(object({
-    description = optional(string)
-    s3_words_list = optional(object({
-      bucket_name = string
-      object_key  = string
-    }))
-    regex = optional(string)
   }))
   default = {}
 }

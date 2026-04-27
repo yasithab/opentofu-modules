@@ -1,2 +1,2 @@
-name                   = "terratest-plan"
-create_dlq             = false
+name       = "terratest-plan"
+create_dlq = false

@@ -127,12 +127,22 @@ variable "signature_version" {
   description = "If SignatureVersion should be 1 (SHA1) or 2 (SHA256). The signature version corresponds to the hashing algorithm used while creating the signature of the notifications, subscription confirmations, or unsubscribe confirmation messages sent by Amazon SNS."
   type        = number
   default     = null
+
+  validation {
+    condition     = var.signature_version == null || contains([1, 2], var.signature_version)
+    error_message = "The signature_version must be 1 (SHA1) or 2 (SHA256)."
+  }
 }
 
 variable "tracing_config" {
   description = "Tracing mode of an Amazon SNS topic. Valid values: PassThrough, Active."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.tracing_config == null || contains(["PassThrough", "Active"], var.tracing_config)
+    error_message = "The tracing_config must be 'PassThrough' or 'Active'."
+  }
 }
 
 variable "archive_policy" {
@@ -145,6 +155,11 @@ variable "fifo_throughput_scope" {
   description = "Specifies the throughput scope for a FIFO topic. Valid values: Topic, MessageGroup. Only applies when fifo_topic is true."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.fifo_throughput_scope == null || contains(["Topic", "MessageGroup"], var.fifo_throughput_scope)
+    error_message = "The fifo_throughput_scope must be 'Topic' or 'MessageGroup'."
+  }
 }
 
 ################################################################################

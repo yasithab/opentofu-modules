@@ -1,6 +1,5 @@
 locals {
   enabled = var.enabled
-  tags    = merge(var.tags, { ManagedBy = "opentofu" })
 }
 
 # -----------------------------------------------------------------------------

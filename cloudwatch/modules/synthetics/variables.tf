@@ -4,15 +4,15 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "Region where resources will be managed. Defaults to the Region set in the provider configuration."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name prefix used for naming resources (IAM role, S3 bucket, etc.)."
   type        = string
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "name must not be empty."
+  }
 }
 
 variable "tags" {
@@ -76,12 +76,22 @@ variable "default_success_retention_period" {
   description = "Default number of days to retain successful canary run data."
   type        = number
   default     = 31
+
+  validation {
+    condition     = var.default_success_retention_period >= 1 && var.default_success_retention_period <= 455
+    error_message = "default_success_retention_period must be between 1 and 455 days."
+  }
 }
 
 variable "default_failure_retention_period" {
   description = "Default number of days to retain failed canary run data."
   type        = number
   default     = 31
+
+  validation {
+    condition     = var.default_failure_retention_period >= 1 && var.default_failure_retention_period <= 455
+    error_message = "default_failure_retention_period must be between 1 and 455 days."
+  }
 }
 
 ################################################################################
@@ -128,12 +138,22 @@ variable "artifact_s3_kms_key_arn" {
   description = "ARN of a KMS key to use for encrypting canary artifacts in S3. Defaults to AES256 if not set."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.artifact_s3_kms_key_arn == null || can(regex("^arn:", var.artifact_s3_kms_key_arn))
+    error_message = "artifact_s3_kms_key_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "artifact_s3_expiration_days" {
   description = "Number of days after which canary artifacts in S3 are automatically deleted. Set to 0 to disable."
   type        = number
   default     = 90
+
+  validation {
+    condition     = var.artifact_s3_expiration_days >= 0
+    error_message = "artifact_s3_expiration_days must be 0 (disabled) or a positive number of days."
+  }
 }
 
 ################################################################################

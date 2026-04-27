@@ -60,6 +60,11 @@ variable "client_keep_alive" {
   description = "Client keep alive value in seconds. The valid range is 60-604800 seconds. The default is 3600 seconds."
   type        = number
   default     = null
+
+  validation {
+    condition     = var.client_keep_alive == null || (var.client_keep_alive >= 60 && var.client_keep_alive <= 604800)
+    error_message = "The client_keep_alive must be between 60 and 604800 seconds."
+  }
 }
 
 variable "customer_owned_ipv4_pool" {
@@ -72,12 +77,22 @@ variable "desync_mitigation_mode" {
   description = "Determines how the load balancer handles requests that might pose a security risk to an application due to HTTP desync. Valid values are `monitor`, `defensive` (default), `strictest`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.desync_mitigation_mode == null || contains(["monitor", "defensive", "strictest"], var.desync_mitigation_mode)
+    error_message = "The desync_mitigation_mode must be 'monitor', 'defensive', or 'strictest'."
+  }
 }
 
 variable "dns_record_client_routing_policy" {
   description = "Indicates how traffic is distributed among the load balancer Availability Zones. Possible values are any_availability_zone (default), availability_zone_affinity, or partial_availability_zone_affinity. Only valid for network type load balancers."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.dns_record_client_routing_policy == null || contains(["any_availability_zone", "availability_zone_affinity", "partial_availability_zone_affinity"], var.dns_record_client_routing_policy)
+    error_message = "The dns_record_client_routing_policy must be 'any_availability_zone', 'availability_zone_affinity', or 'partial_availability_zone_affinity'."
+  }
 }
 
 variable "drop_invalid_header_fields" {
@@ -144,18 +159,33 @@ variable "ip_address_type" {
   description = "The type of IP addresses used by the subnets for your load balancer. Possible values are `ipv4`, `dualstack`, and `dualstack-without-public-ipv4`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.ip_address_type == null || contains(["ipv4", "dualstack", "dualstack-without-public-ipv4"], var.ip_address_type)
+    error_message = "The ip_address_type must be 'ipv4', 'dualstack', or 'dualstack-without-public-ipv4'."
+  }
 }
 
 variable "load_balancer_type" {
   description = "The type of load balancer to create. Possible values are `application`, `gateway`, or `network`. The default value is `application`"
   type        = string
   default     = "application"
+
+  validation {
+    condition     = contains(["application", "gateway", "network"], var.load_balancer_type)
+    error_message = "The load_balancer_type must be 'application', 'gateway', or 'network'."
+  }
 }
 
 variable "enforce_security_group_inbound_rules_on_private_link_traffic" {
   description = "Indicates whether inbound security group rules are enforced for traffic originating from a PrivateLink. Only valid for Load Balancers of type network. The possible values are on and off."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.enforce_security_group_inbound_rules_on_private_link_traffic == null || contains(["on", "off"], var.enforce_security_group_inbound_rules_on_private_link_traffic)
+    error_message = "The enforce_security_group_inbound_rules_on_private_link_traffic must be 'on' or 'off'."
+  }
 }
 
 # variable "name" {
@@ -198,6 +228,11 @@ variable "xff_header_processing_mode" {
   description = "Determines how the load balancer modifies the X-Forwarded-For header in the HTTP request before sending the request to the target. The possible values are `append`, `preserve`, and `remove`. Only valid for Load Balancers of type `application`. The default is `append`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.xff_header_processing_mode == null || contains(["append", "preserve", "remove"], var.xff_header_processing_mode)
+    error_message = "The xff_header_processing_mode must be 'append', 'preserve', or 'remove'."
+  }
 }
 
 variable "timeouts" {
@@ -214,6 +249,11 @@ variable "default_port" {
   description = "Default port used across the listener and target group"
   type        = number
   default     = 80
+
+  validation {
+    condition     = var.default_port >= 1 && var.default_port <= 65535
+    error_message = "The default_port must be between 1 and 65535."
+  }
 }
 
 variable "default_protocol" {
@@ -276,6 +316,11 @@ variable "vpc_id" {
   description = "Identifier of the VPC where the security group will be created"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.vpc_id == null || can(regex("^vpc-", var.vpc_id))
+    error_message = "The vpc_id must start with 'vpc-'."
+  }
 }
 
 variable "security_group_ingress_rules" {
@@ -320,6 +365,11 @@ variable "web_acl_arn" {
   description = "Web Application Firewall (WAF) ARN of the resource to associate with the load balancer"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.web_acl_arn == null || can(regex("^arn:", var.web_acl_arn))
+    error_message = "The web_acl_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 ################################################################################

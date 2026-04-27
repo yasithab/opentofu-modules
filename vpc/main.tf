@@ -20,7 +20,7 @@ locals {
   # Use `local.vpc_id` to give a hint to Terraform that subnets should be deleted before secondary CIDR blocks can be free!
   vpc_id = try(aws_vpc_ipv4_cidr_block_association.this[0].vpc_id, aws_vpc.this.id, "")
 
-  create = var.enabled
+  enabled = var.enabled
 
   nat_type = var.nat_gateway_type
 
@@ -52,12 +52,12 @@ resource "aws_vpc" "this" {
   tags = merge(local.tags, var.vpc_tags, { "Name" = local.name })
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
 resource "aws_vpc_ipv4_cidr_block_association" "this" {
-  count = local.create && length(var.secondary_cidr_blocks) > 0 ? length(var.secondary_cidr_blocks) : 0
+  count = local.enabled && length(var.secondary_cidr_blocks) > 0 ? length(var.secondary_cidr_blocks) : 0
 
   # Do not turn this into `local.vpc_id`
   vpc_id = aws_vpc.this.id
@@ -69,12 +69,12 @@ resource "aws_vpc_block_public_access_options" "this" {
   internet_gateway_block_mode = try(var.vpc_block_public_access_options["internet_gateway_block_mode"], null)
 
   lifecycle {
-    enabled = local.create && length(keys(var.vpc_block_public_access_options)) > 0
+    enabled = local.enabled && length(keys(var.vpc_block_public_access_options)) > 0
   }
 }
 
 resource "aws_vpc_block_public_access_exclusion" "this" {
-  for_each = { for k, v in var.vpc_block_public_access_exclusions : k => v if local.create }
+  for_each = { for k, v in var.vpc_block_public_access_exclusions : k => v if local.enabled }
 
   vpc_id = lookup(each.value, "exclude_vpc", false) ? local.vpc_id : null
 
@@ -112,7 +112,7 @@ resource "aws_vpc_dhcp_options" "this" {
   tags = merge(local.tags, var.dhcp_options_tags, { "Name" = local.name })
 
   lifecycle {
-    enabled = local.create && var.enable_dhcp_options
+    enabled = local.enabled && var.enable_dhcp_options
   }
 }
 
@@ -121,7 +121,7 @@ resource "aws_vpc_dhcp_options_association" "this" {
   dhcp_options_id = aws_vpc_dhcp_options.this.id
 
   lifecycle {
-    enabled = local.create && var.enable_dhcp_options
+    enabled = local.enabled && var.enable_dhcp_options
   }
 }
 
@@ -130,7 +130,7 @@ resource "aws_vpc_dhcp_options_association" "this" {
 ################################################################################
 
 locals {
-  create_public_subnets = local.create && local.len_public_subnets > 0
+  create_public_subnets = local.enabled && local.len_public_subnets > 0
 }
 
 resource "aws_subnet" "public" {
@@ -255,7 +255,7 @@ resource "aws_network_acl_rule" "public_outbound" {
 ################################################################################
 
 locals {
-  create_private_subnets = local.create && local.len_private_subnets > 0
+  create_private_subnets = local.enabled && local.len_private_subnets > 0
 }
 
 resource "aws_subnet" "private" {
@@ -367,7 +367,7 @@ resource "aws_network_acl_rule" "private_outbound" {
 ################################################################################
 
 locals {
-  create_database_subnets     = local.create && local.len_database_subnets > 0
+  create_database_subnets     = local.enabled && local.len_database_subnets > 0
   create_database_route_table = local.create_database_subnets && var.create_database_subnet_route_table
 }
 
@@ -568,7 +568,7 @@ resource "aws_network_acl_rule" "database_outbound" {
 ################################################################################
 
 locals {
-  create_redshift_subnets     = local.create && local.len_redshift_subnets > 0
+  create_redshift_subnets     = local.enabled && local.len_redshift_subnets > 0
   create_redshift_route_table = local.create_redshift_subnets && var.create_redshift_subnet_route_table
 }
 
@@ -695,7 +695,7 @@ resource "aws_network_acl_rule" "redshift_outbound" {
 ################################################################################
 
 locals {
-  create_elasticache_subnets     = local.create && local.len_elasticache_subnets > 0
+  create_elasticache_subnets     = local.enabled && local.len_elasticache_subnets > 0
   create_elasticache_route_table = local.create_elasticache_subnets && var.create_elasticache_subnet_route_table
 }
 
@@ -815,7 +815,7 @@ resource "aws_network_acl_rule" "elasticache_outbound" {
 ################################################################################
 
 locals {
-  create_intra_subnets = local.create && local.len_intra_subnets > 0
+  create_intra_subnets = local.enabled && local.len_intra_subnets > 0
 }
 
 resource "aws_subnet" "intra" {
@@ -923,7 +923,7 @@ resource "aws_network_acl_rule" "intra_outbound" {
 ################################################################################
 
 locals {
-  create_outpost_subnets = local.create && local.len_outpost_subnets > 0
+  create_outpost_subnets = local.enabled && local.len_outpost_subnets > 0
 }
 
 resource "aws_subnet" "outpost" {
@@ -1034,12 +1034,12 @@ resource "aws_egress_only_internet_gateway" "this" {
   tags = merge(local.tags, { "Name" = local.name }, var.igw_tags)
 
   lifecycle {
-    enabled = local.create && var.create_egress_only_igw && var.enable_ipv6 && local.max_subnet_length > 0
+    enabled = local.enabled && var.create_egress_only_igw && var.enable_ipv6 && local.max_subnet_length > 0
   }
 }
 
 resource "aws_route" "private_ipv6_egress" {
-  count = local.create && var.create_egress_only_igw && var.enable_ipv6 && local.len_private_subnets > 0 ? local.num_private_route_tables : 0
+  count = local.enabled && var.create_egress_only_igw && var.enable_ipv6 && local.len_private_subnets > 0 ? local.num_private_route_tables : 0
 
   route_table_id              = element(aws_route_table.private[*].id, count.index)
   destination_ipv6_cidr_block = "::/0"
@@ -1060,7 +1060,7 @@ locals {
 }
 
 resource "aws_eip" "nat" {
-  count = local.create && var.enable_nat_gateway && !var.reuse_nat_ips ? local.nat_gateway_count : 0
+  count = local.enabled && var.enable_nat_gateway && !var.reuse_nat_ips ? local.nat_gateway_count : 0
 
   domain = "vpc"
 
@@ -1075,7 +1075,7 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "this" {
-  count = local.create && var.enable_nat_gateway ? local.nat_gateway_count : 0
+  count = local.enabled && var.enable_nat_gateway ? local.nat_gateway_count : 0
 
   allocation_id = var.nat_gateway_connectivity_type == "public" ? element(
     local.nat_gateway_ips,
@@ -1102,7 +1102,7 @@ resource "aws_nat_gateway" "this" {
 }
 
 resource "aws_nat_gateway" "regional" {
-  count = local.create && var.enable_nat_gateway && local.nat_type == "regional" ? 1 : 0
+  count = local.enabled && var.enable_nat_gateway && local.nat_type == "regional" ? 1 : 0
 
   availability_mode = "regional"
   vpc_id            = local.vpc_id
@@ -1115,7 +1115,7 @@ resource "aws_nat_gateway" "regional" {
 }
 
 resource "aws_route" "private_nat_gateway" {
-  count = local.create && var.enable_nat_gateway && var.create_private_nat_gateway_route && local.nat_type != "regional" ? local.num_private_route_tables : 0
+  count = local.enabled && var.enable_nat_gateway && var.create_private_nat_gateway_route && local.nat_type != "regional" ? local.num_private_route_tables : 0
 
   route_table_id         = element(aws_route_table.private[*].id, count.index)
   destination_cidr_block = var.nat_gateway_destination_cidr_block
@@ -1127,7 +1127,7 @@ resource "aws_route" "private_nat_gateway" {
 }
 
 resource "aws_route" "private_regional_nat_gateway" {
-  count = local.create && var.enable_nat_gateway && local.nat_type == "regional" && var.create_private_nat_gateway_route ? local.num_private_route_tables : 0
+  count = local.enabled && var.enable_nat_gateway && local.nat_type == "regional" && var.create_private_nat_gateway_route ? local.num_private_route_tables : 0
 
   route_table_id         = element(aws_route_table.private[*].id, count.index)
   destination_cidr_block = var.nat_gateway_destination_cidr_block
@@ -1139,7 +1139,7 @@ resource "aws_route" "private_regional_nat_gateway" {
 }
 
 resource "aws_route" "private_dns64_nat_gateway" {
-  count = local.create && var.enable_nat_gateway && var.enable_ipv6 && var.private_subnet_enable_dns64 && local.nat_type != "regional" ? local.num_private_route_tables : 0
+  count = local.enabled && var.enable_nat_gateway && var.enable_ipv6 && var.private_subnet_enable_dns64 && local.nat_type != "regional" ? local.num_private_route_tables : 0
 
   route_table_id              = element(aws_route_table.private[*].id, count.index)
   destination_ipv6_cidr_block = "64:ff9b::/96"
@@ -1151,7 +1151,7 @@ resource "aws_route" "private_dns64_nat_gateway" {
 }
 
 resource "aws_route" "private_dns64_regional_nat_gateway" {
-  count = local.create && var.enable_nat_gateway && local.nat_type == "regional" && var.enable_ipv6 && var.private_subnet_enable_dns64 ? local.num_private_route_tables : 0
+  count = local.enabled && var.enable_nat_gateway && local.nat_type == "regional" && var.enable_ipv6 && var.private_subnet_enable_dns64 ? local.num_private_route_tables : 0
 
   route_table_id              = element(aws_route_table.private[*].id, count.index)
   destination_ipv6_cidr_block = "64:ff9b::/96"
@@ -1193,7 +1193,7 @@ resource "aws_vpn_gateway" "this" {
   tags = merge(local.tags, { "Name" = local.name }, var.vpn_gateway_tags)
 
   lifecycle {
-    enabled = local.create && var.enable_vpn_gateway
+    enabled = local.enabled && var.enable_vpn_gateway
   }
 }
 
@@ -1207,7 +1207,7 @@ resource "aws_vpn_gateway_attachment" "this" {
 }
 
 resource "aws_vpn_gateway_route_propagation" "public" {
-  count = local.create && var.propagate_public_route_tables_vgw && (var.enable_vpn_gateway || var.vpn_gateway_id != null) ? local.len_public_subnets : 0
+  count = local.enabled && var.propagate_public_route_tables_vgw && (var.enable_vpn_gateway || var.vpn_gateway_id != null) ? local.len_public_subnets : 0
 
   route_table_id = element(aws_route_table.public[*].id, count.index)
   vpn_gateway_id = element(
@@ -1220,7 +1220,7 @@ resource "aws_vpn_gateway_route_propagation" "public" {
 }
 
 resource "aws_vpn_gateway_route_propagation" "private" {
-  count = local.create && var.propagate_private_route_tables_vgw && (var.enable_vpn_gateway || var.vpn_gateway_id != null) ? local.len_private_subnets : 0
+  count = local.enabled && var.propagate_private_route_tables_vgw && (var.enable_vpn_gateway || var.vpn_gateway_id != null) ? local.len_private_subnets : 0
 
   route_table_id = element(aws_route_table.private[*].id, count.index)
   vpn_gateway_id = element(
@@ -1233,7 +1233,7 @@ resource "aws_vpn_gateway_route_propagation" "private" {
 }
 
 resource "aws_vpn_gateway_route_propagation" "intra" {
-  count = local.create && var.propagate_intra_route_tables_vgw && (var.enable_vpn_gateway || var.vpn_gateway_id != null) ? local.len_intra_subnets : 0
+  count = local.enabled && var.propagate_intra_route_tables_vgw && (var.enable_vpn_gateway || var.vpn_gateway_id != null) ? local.len_intra_subnets : 0
 
   route_table_id = element(aws_route_table.intra[*].id, count.index)
   vpn_gateway_id = element(
@@ -1297,7 +1297,7 @@ resource "aws_default_security_group" "this" {
   tags = merge(local.tags, { "Name" = coalesce(var.default_security_group_name, "${local.name}-default") }, var.default_security_group_tags)
 
   lifecycle {
-    enabled = local.create && var.manage_default_security_group
+    enabled = local.enabled && var.manage_default_security_group
   }
 }
 
@@ -1344,7 +1344,7 @@ resource "aws_default_network_acl" "this" {
   tags = merge(local.tags, { "Name" = coalesce(var.default_network_acl_name, "${local.name}-default") }, var.default_network_acl_tags)
 
   lifecycle {
-    enabled        = local.create && var.manage_default_network_acl
+    enabled        = local.enabled && var.manage_default_network_acl
     ignore_changes = [subnet_ids]
   }
 }
@@ -1384,6 +1384,17 @@ resource "aws_default_route_table" "default" {
   tags = merge(local.tags, { "Name" = coalesce(var.default_route_table_name, "${local.name}-default") }, var.default_route_table_tags)
 
   lifecycle {
-    enabled = local.create && var.manage_default_route_table
+    enabled = local.enabled && var.manage_default_route_table
+  }
+}
+
+################################################################################
+# OpenTofu Check Blocks
+################################################################################
+
+check "flow_logs_enabled" {
+  assert {
+    condition     = !var.enabled || var.enable_flow_log
+    error_message = "VPC should have flow logs enabled for network monitoring and security auditing."
   }
 }

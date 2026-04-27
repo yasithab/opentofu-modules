@@ -4,15 +4,15 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region override. Uses provider region when null."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name used as a prefix for all Batch resources."
   type        = string
+
+  validation {
+    condition     = length(var.name) >= 1
+    error_message = "name must not be empty."
+  }
 }
 
 variable "tags" {
@@ -29,12 +29,22 @@ variable "compute_environment_type" {
   description = "Type of the compute environment. Valid values: `MANAGED`, `UNMANAGED`."
   type        = string
   default     = "MANAGED"
+
+  validation {
+    condition     = contains(["MANAGED", "UNMANAGED"], var.compute_environment_type)
+    error_message = "compute_environment_type must be one of: MANAGED, UNMANAGED."
+  }
 }
 
 variable "compute_environment_state" {
   description = "State of the compute environment. Valid values: `ENABLED`, `DISABLED`."
   type        = string
   default     = "ENABLED"
+
+  validation {
+    condition     = contains(["ENABLED", "DISABLED"], var.compute_environment_state)
+    error_message = "compute_environment_state must be one of: ENABLED, DISABLED."
+  }
 }
 
 variable "compute_resources" {
@@ -106,7 +116,18 @@ variable "vpc_id" {
 
 variable "security_group_rules" {
   description = "Map of security group rules for the Batch compute environment. Use `type` key with value `ingress` or `egress`."
-  type        = any
+  type = map(object({
+    type                         = optional(string, "ingress")
+    ip_protocol                  = optional(string, "tcp")
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
+  }))
   default = {
     egress_all = {
       type        = "egress"

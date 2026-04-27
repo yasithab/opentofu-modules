@@ -98,6 +98,11 @@ variable "http_version" {
   description = "The maximum HTTP version to support on the distribution. Allowed values are http1.1, http2, http2and3, and http3. The default is http2."
   type        = string
   default     = "http2"
+
+  validation {
+    condition     = contains(["http1.1", "http2", "http2and3", "http3"], var.http_version)
+    error_message = "http_version must be one of: http1.1, http2, http2and3, http3."
+  }
 }
 
 variable "is_ipv6_enabled" {
@@ -110,6 +115,11 @@ variable "price_class" {
   description = "The price class for this distribution. One of PriceClass_All, PriceClass_200, PriceClass_100"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.price_class == null || contains(["PriceClass_All", "PriceClass_200", "PriceClass_100"], var.price_class)
+    error_message = "price_class must be one of: PriceClass_All, PriceClass_200, PriceClass_100."
+  }
 }
 
 variable "retain_on_delete" {
@@ -197,6 +207,11 @@ variable "realtime_metrics_subscription_status" {
   description = "A flag that indicates whether additional CloudWatch metrics are enabled for a given CloudFront distribution. Valid values are `Enabled` and `Disabled`."
   type        = string
   default     = "Enabled"
+
+  validation {
+    condition     = contains(["Enabled", "Disabled"], var.realtime_metrics_subscription_status)
+    error_message = "realtime_metrics_subscription_status must be one of: Enabled, Disabled."
+  }
 }
 
 variable "create_vpc_origin" {

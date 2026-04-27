@@ -67,6 +67,7 @@ output "cluster_master_username" {
 output "cluster_master_user_secret" {
   description = "The generated database master user secret when `manage_master_user_password` is set to `true`"
   value       = try(aws_rds_cluster.this.master_user_secret, null)
+  sensitive   = true
 }
 
 output "cluster_hosted_zone_id" {
@@ -91,6 +92,7 @@ output "cluster_ca_certificate_valid_till" {
 output "cluster_instances" {
   description = "A map of cluster instances and their attributes"
   value       = aws_rds_cluster_instance.this
+  sensitive   = true
 }
 
 ################################################################################

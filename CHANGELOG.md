@@ -8,7 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- New modules and improvements
+- **OPA policy guardrails** - `policy/deny_public_s3.rego`, `policy/require_encryption.rego`, `policy/require_deletion_protection.rego` for plan-level enforcement via Conftest
+- **OpenTofu check blocks** - runtime security assertions in `elasticache`, `dynamodb`, `s3`, `redshift`, `redshift-serverless`, `mq`, `msk`, `memorydb`, `eks`, `vpc`, `cdk-bootstrap`
+- **CloudWatch log groups** for `neptune` and `documentdb` modules
+- **Security group support** for `neptune` module (standalone rules)
+- `task policy` command in Taskfile for OPA/Conftest policy checks
+
+### Changed
+- **cdk-bootstrap** - complete rewrite from `null_resource` + `local-exec` anti-pattern to native OpenTofu resources (S3, ECR, KMS, 5 IAM roles, SSM parameter)
+- **Provider constraints** - standardized all modules to `>= 6.38, < 7.0` (was exact pin `6.38.0` in most modules)
+- **Standalone security group rules** - migrated `headscale`, `headscale/subnet-router`, and `fsx` from deprecated inline rules / `aws_security_group_rule` to `aws_vpc_security_group_ingress_rule` / `aws_vpc_security_group_egress_rule`
+- **Type-narrowed `security_group_rules`** - replaced `type = any` with typed `map(object({...}))` using `optional()` defaults across 14 modules: `documentdb`, `neptune`, `opensearch`, `mq`, `elasticache`, `rds`, `rds-aurora`, `redshift`, `redshift-serverless`, `efs`, `batch`, `ecs/service`, `ecs/cluster`, `vpc/vpc-endpoints`
+- **Sensitive markers** - added `sensitive = true` to `secret-manager` secret values, `rds` and `rds-aurora` master user secrets, and `fsx` ONTAP SVM config
+- **Deprecated attribute fix** - replaced `data.aws_region.*.name` with `data.aws_region.*.region` in `cdk-bootstrap` and `cloudwatch/modules/synthetics`
+- **Description fix** - corrected `rds-aurora` `deletion_protection` default description from "false" to "true"
+- Added missing `tls` provider constraint to `key-pair/providers.tf`
+
+### Removed
+- Removed unused `variable "region"` from 28 modules
+- Removed unused data sources (`aws_region`, `aws_caller_identity`, `aws_partition`) from 7 modules
+- Removed unused locals (`tags`, `name`, `account_id`, `has_domain`, `has_custom_domain`) from 8 modules
+- Removed unused variables (`allow_lists`, `key_type`, `name_prefix`, `customer_algorithm`, `customer_key`, `requestor_vpc_tags`) from 5 modules
+- Removed cascading unused `variable "tags"` from 5 modules and `variable "name"` from 4 modules where resources don't support them
+- Removed `hashicorp/null` provider dependency from `cdk-bootstrap`
 
 ## [v1.0.14] - 2026-03-31
 

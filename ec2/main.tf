@@ -1,7 +1,7 @@
 data "aws_partition" "current" {}
 
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   is_t_instance_type = replace(var.instance_type, "/^t(2|3|3a|4g){1}\\..*$/", "1") == "1" ? true : false
 
@@ -13,7 +13,7 @@ locals {
 }
 
 data "aws_ssm_parameter" "this" {
-  count = local.create && var.ami == null ? 1 : 0
+  count = local.enabled && var.ami == null ? 1 : 0
 
   name = var.ami_ssm_parameter
 }
@@ -245,7 +245,7 @@ resource "aws_instance" "this" {
   tags = merge(local.tags, { "Name" = var.instance_name }, var.instance_tags)
 
   lifecycle {
-    enabled = local.create && !var.ignore_ami_changes && !var.create_spot_instance
+    enabled = local.enabled && !var.ignore_ami_changes && !var.create_spot_instance
   }
 }
 
@@ -476,7 +476,7 @@ resource "aws_instance" "ignore_ami" {
   tags = merge(local.tags, { "Name" = var.instance_name }, var.instance_tags)
 
   lifecycle {
-    enabled = local.create && var.ignore_ami_changes && !var.create_spot_instance
+    enabled = local.enabled && var.ignore_ami_changes && !var.create_spot_instance
     ignore_changes = [
       ami
     ]
@@ -690,7 +690,7 @@ resource "aws_spot_instance_request" "this" {
   tags = merge(local.tags, { "Name" = var.instance_name }, var.instance_tags)
 
   lifecycle {
-    enabled = local.create && var.create_spot_instance
+    enabled = local.enabled && var.create_spot_instance
   }
 }
 
@@ -778,6 +778,6 @@ resource "aws_eip" "this" {
   tags = merge(local.tags, merge(var.tags, var.eip_tags))
 
   lifecycle {
-    enabled = local.create && var.create_eip && !var.create_spot_instance
+    enabled = local.enabled && var.create_eip && !var.create_spot_instance
   }
 }

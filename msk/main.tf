@@ -221,3 +221,14 @@ resource "aws_msk_scram_secret_association" "this" {
     enabled = local.enabled && !var.serverless_enabled && length(var.scram_secret_arns) > 0
   }
 }
+
+################################################################################
+# OpenTofu Check Blocks
+################################################################################
+
+check "encryption_in_transit_enabled" {
+  assert {
+    condition     = !var.enabled || var.serverless_enabled || aws_msk_cluster.this.encryption_info[0].encryption_in_transit[0].in_cluster
+    error_message = "MSK cluster must have in-cluster encryption in transit enabled."
+  }
+}

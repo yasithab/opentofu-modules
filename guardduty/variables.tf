@@ -4,17 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region where GuardDuty resources will be created. If null, uses the provider default region"
-  type        = string
-  default     = null
-}
-
-variable "name" {
-  description = "Name prefix for GuardDuty resources used in naming and tagging"
-  type        = string
-}
-
 variable "tags" {
   description = "Map of tags to apply to all GuardDuty resources"
   type        = map(string)

@@ -1,14 +1,12 @@
 data "aws_region" "current" {}
 
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
   })
 
-  has_domain        = var.custom_domain != "" || var.domain != ""
-  has_custom_domain = var.custom_domain != ""
 }
 
 ################################################################################
@@ -69,7 +67,7 @@ resource "aws_cognito_user_pool" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -82,7 +80,7 @@ resource "aws_cognito_user_pool_domain" "prefix" {
   user_pool_id = aws_cognito_user_pool.this.id
 
   lifecycle {
-    enabled = local.create && var.domain != "" && var.custom_domain == ""
+    enabled = local.enabled && var.domain != "" && var.custom_domain == ""
   }
 }
 
@@ -92,7 +90,7 @@ resource "aws_cognito_user_pool_domain" "custom" {
   certificate_arn = var.custom_domain_certificate_arn
 
   lifecycle {
-    enabled = local.create && var.custom_domain != ""
+    enabled = local.enabled && var.custom_domain != ""
   }
 }
 
@@ -101,7 +99,7 @@ resource "aws_cognito_user_pool_domain" "custom" {
 ################################################################################
 
 resource "aws_cognito_identity_provider" "this" {
-  for_each = { for k, v in var.identity_providers : k => v if local.create }
+  for_each = { for k, v in var.identity_providers : k => v if local.enabled }
 
   user_pool_id  = aws_cognito_user_pool.this.id
   provider_name = each.key
@@ -116,7 +114,7 @@ resource "aws_cognito_identity_provider" "this" {
 ################################################################################
 
 resource "aws_cognito_user_pool_client" "this" {
-  for_each = { for k, v in var.clients : k => v if local.create }
+  for_each = { for k, v in var.clients : k => v if local.enabled }
 
   name         = each.key
   user_pool_id = aws_cognito_user_pool.this.id

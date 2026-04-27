@@ -39,7 +39,7 @@ resource "time_sleep" "this" {
   }
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -49,7 +49,7 @@ resource "time_sleep" "this" {
 ################################################################################
 
 data "aws_iam_policy_document" "cni_ipv6_policy" {
-  count = local.create && var.create_cni_ipv6_iam_policy ? 1 : 0
+  count = local.enabled && var.create_cni_ipv6_iam_policy ? 1 : 0
 
   statement {
     sid = "AssignDescribe"
@@ -80,7 +80,7 @@ resource "aws_iam_policy" "cni_ipv6_policy" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.create_cni_ipv6_iam_policy
+    enabled = local.enabled && var.create_cni_ipv6_iam_policy
   }
 }
 
@@ -92,7 +92,7 @@ resource "aws_iam_policy" "cni_ipv6_policy" {
 
 locals {
   node_sg_name   = coalesce(var.node_security_group_name, "${var.cluster_name}-node")
-  create_node_sg = local.create && var.create_node_security_group
+  create_node_sg = local.enabled && var.create_node_security_group
 
   node_security_group_id = local.create_node_sg ? aws_security_group.node.id : var.node_security_group_id
 
@@ -280,7 +280,7 @@ resource "aws_vpc_security_group_egress_rule" "node" {
 module "fargate_profile" {
   source = "./modules/fargate-profile"
 
-  for_each = { for k, v in var.fargate_profiles : k => v if local.create && !local.create_outposts_local_cluster }
+  for_each = { for k, v in var.fargate_profiles : k => v if local.enabled && !local.create_outposts_local_cluster }
 
   enabled = try(each.value.create, true)
 
@@ -318,7 +318,7 @@ module "fargate_profile" {
 module "eks_managed_node_group" {
   source = "./modules/eks-managed-node-group"
 
-  for_each = { for k, v in var.eks_managed_node_groups : k => v if local.create && !local.create_outposts_local_cluster }
+  for_each = { for k, v in var.eks_managed_node_groups : k => v if local.enabled && !local.create_outposts_local_cluster }
 
   enabled = try(each.value.create, true)
 
@@ -436,7 +436,7 @@ module "eks_managed_node_group" {
 module "self_managed_node_group" {
   source = "./modules/self-managed-node-group"
 
-  for_each = { for k, v in var.self_managed_node_groups : k => v if local.create }
+  for_each = { for k, v in var.self_managed_node_groups : k => v if local.enabled }
 
   enabled = try(each.value.create, true)
 

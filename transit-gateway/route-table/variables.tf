@@ -24,6 +24,11 @@ variable "transit_gateway_id" {
   description = "The ID of the EC2 Transit Gateway"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.transit_gateway_id == null || can(regex("^tgw-", var.transit_gateway_id))
+    error_message = "The transit_gateway_id must start with 'tgw-'."
+  }
 }
 
 variable "associations" {

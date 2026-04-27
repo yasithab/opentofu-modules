@@ -18,7 +18,7 @@ locals {
 ################################################################################
 
 locals {
-  create_iam_role        = var.create && var.create_iam_role
+  create_iam_role        = var.enabled && var.create_iam_role
   irsa_oidc_provider_url = replace(var.irsa_oidc_provider_arn, "/^(.*provider/)/", "")
 }
 
@@ -148,7 +148,7 @@ resource "aws_eks_pod_identity_association" "karpenter" {
 ################################################################################
 
 locals {
-  enable_spot_termination = var.create && var.enable_spot_termination
+  enable_spot_termination = var.enabled && var.enable_spot_termination
 
   queue_name = coalesce(var.queue_name, "Karpenter-${var.cluster_name}")
 }
@@ -290,7 +290,7 @@ resource "aws_cloudwatch_event_target" "this" {
 ################################################################################
 
 locals {
-  create_node_iam_role = var.create && var.create_node_iam_role
+  create_node_iam_role = var.enabled && var.create_node_iam_role
 
   node_iam_role_name          = coalesce(var.node_iam_role_name, "Karpenter-${var.cluster_name}")
   node_iam_role_policy_prefix = "arn:${local.partition}:iam::aws:policy"
@@ -374,7 +374,7 @@ resource "aws_eks_access_entry" "node" {
   ]
 
   lifecycle {
-    enabled = var.create && var.create_access_entry
+    enabled = var.enabled && var.create_access_entry
   }
 }
 
@@ -398,6 +398,6 @@ resource "aws_iam_instance_profile" "this" {
   tags = merge(local.tags, var.node_iam_role_tags)
 
   lifecycle {
-    enabled = var.create && var.create_instance_profile
+    enabled = var.enabled && var.create_instance_profile
   }
 }

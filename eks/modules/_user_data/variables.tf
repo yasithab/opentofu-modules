@@ -8,6 +8,11 @@ variable "platform" {
   description = "Identifies the OS platform as `bottlerocket`, `linux`, `al2023`, or `windows`. Used as a fallback when ami_type cannot be determined."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.platform == null || contains(["bottlerocket", "linux", "al2023", "windows"], var.platform)
+    error_message = "The platform must be null or one of 'bottlerocket', 'linux', 'al2023', or 'windows'."
+  }
 }
 
 variable "ami_type" {
@@ -44,6 +49,11 @@ variable "cluster_ip_family" {
   description = "The IP family used to assign Kubernetes pod and service addresses."
   type        = string
   default     = "ipv4"
+
+  validation {
+    condition     = contains(["ipv4", "ipv6"], var.cluster_ip_family)
+    error_message = "The cluster_ip_family must be 'ipv4' or 'ipv6'."
+  }
 }
 
 variable "cluster_service_cidr" {

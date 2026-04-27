@@ -78,6 +78,19 @@ tasks:
           --skip-dirs ".git,.github,.terrateam" \
           .
 
+  policy:
+    desc: Run Conftest OPA policy checks (requires plan JSON)
+    cmds:
+      - |
+        if ! command -v conftest &> /dev/null; then
+          echo "conftest is not installed."
+          echo "  macOS:  brew install conftest"
+          echo "  Linux:  https://www.conftest.dev/install/"
+          exit 1
+        fi
+        echo "OPA policies available in policy/ directory."
+        echo "Usage: tofu plan -out=plan.bin && tofu show -json plan.bin | conftest test --policy policy/ -"
+
   ci:
     desc: Run all CI tasks (format + validate + lint + test + security)
     deps: [format, validate, lint, test, security]

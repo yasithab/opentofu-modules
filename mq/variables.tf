@@ -192,72 +192,49 @@ variable "security_groups" {
 
 variable "security_group_name" {
   type        = string
-  description = "Name for the created security group (auto-generated if not provided)"
+  description = "Name to use on security group created"
   default     = null
 }
 
-variable "security_group_name_prefix" {
-  type        = string
-  description = "Name prefix for the created security group (auto-generated if not provided)"
-  default     = null
+variable "security_group_use_name_prefix" {
+  type        = bool
+  description = "Determines whether the security group name is used as a prefix"
+  default     = true
 }
 
 variable "security_group_description" {
   type        = string
-  description = "Description for the created security group"
-  default     = "Security group for AWS MQ broker"
+  description = "Description of the security group created"
+  default     = null
 }
 
 variable "security_group_tags" {
   type        = map(string)
-  description = "Additional tags for the security group"
+  description = "A map of additional tags to add to the security group created"
   default     = {}
 }
 
 variable "vpc_id" {
   type        = string
-  description = "ID of the VPC where to create security group"
+  description = "Identifier of the VPC where the security group will be created"
   default     = null
 }
 
-variable "ingress_rules" {
-  type = list(object({
-    description      = optional(string)
-    from_port        = number
-    to_port          = number
-    protocol         = string
-    cidr_blocks      = optional(list(string))
-    ipv6_cidr_blocks = optional(list(string))
-    prefix_list_ids  = optional(list(string))
-    security_groups  = optional(list(string))
-    self             = optional(bool)
+variable "security_group_rules" {
+  description = "Security group ingress and egress rules to add to the security group created"
+  type = map(object({
+    type                         = optional(string, "ingress")
+    ip_protocol                  = optional(string, "tcp")
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
   }))
-  description = "List of ingress rules to add to the security group"
-  default     = null
-}
-
-variable "egress_rules" {
-  type = list(object({
-    description      = optional(string)
-    from_port        = number
-    to_port          = number
-    protocol         = string
-    cidr_blocks      = optional(list(string))
-    ipv6_cidr_blocks = optional(list(string))
-    prefix_list_ids  = optional(list(string))
-    security_groups  = optional(list(string))
-    self             = optional(bool)
-  }))
-  description = "List of egress rules to add to the security group"
-  default = [
-    {
-      description = "All outbound traffic"
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
-    }
-  ]
+  default = {}
 }
 
 ################################################################################

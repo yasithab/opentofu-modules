@@ -7,6 +7,11 @@ variable "enabled" {
 variable "name" {
   description = "Name for all subnet router resources."
   type        = string
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "The name must not be empty."
+  }
 }
 
 variable "tags" {
@@ -55,6 +60,11 @@ variable "ebs_root_volume_size" {
   description = "Root EBS volume size in GB."
   type        = number
   default     = 8
+
+  validation {
+    condition     = var.ebs_root_volume_size >= 1 && var.ebs_root_volume_size <= 16384
+    error_message = "The ebs_root_volume_size must be between 1 and 16384 GB."
+  }
 }
 
 variable "encryption" {
@@ -76,6 +86,11 @@ variable "kms_key_id" {
 variable "headscale_server_url" {
   description = "Headscale server URL (e.g., 'https://headscale.example.com')."
   type        = string
+
+  validation {
+    condition     = can(regex("^https?://", var.headscale_server_url))
+    error_message = "The headscale_server_url must start with 'http://' or 'https://'."
+  }
 }
 
 variable "headscale_auth_key" {
@@ -89,6 +104,11 @@ variable "secrets_manager_arn" {
   description = "ARN of a Secrets Manager secret containing a JSON object with sensitive values. The module reads the auth key from the key specified by secrets_manager_auth_key_field."
   type        = string
   default     = ""
+
+  validation {
+    condition     = var.secrets_manager_arn == "" || can(regex("^arn:", var.secrets_manager_arn))
+    error_message = "The secrets_manager_arn must be empty or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "secrets_manager_auth_key_field" {
@@ -154,6 +174,11 @@ variable "alarm_sns_topic_arn" {
   description = "SNS topic ARN for CloudWatch alarms. Leave empty to create a new topic."
   type        = string
   default     = ""
+
+  validation {
+    condition     = var.alarm_sns_topic_arn == "" || can(regex("^arn:", var.alarm_sns_topic_arn))
+    error_message = "The alarm_sns_topic_arn must be empty or a valid ARN starting with 'arn:'."
+  }
 }
 
 ################################################################################
@@ -170,6 +195,11 @@ variable "cloudwatch_logs_retention_days" {
   description = "Number of days to retain CloudWatch logs."
   type        = number
   default     = 30
+
+  validation {
+    condition     = contains([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653], var.cloudwatch_logs_retention_days)
+    error_message = "The cloudwatch_logs_retention_days must be a valid CloudWatch Logs retention value (0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, or 3653)."
+  }
 }
 
 ################################################################################

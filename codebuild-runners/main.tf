@@ -1,5 +1,5 @@
 locals {
-  create    = var.enabled
+  enabled   = var.enabled
   workspace = var.env_name != null ? var.env_name : terraform.workspace
 
   tags = merge(var.tags, {
@@ -22,7 +22,7 @@ data "aws_iam_policy_document" "assume_role_policy_codebuild_runners" {
 }
 
 data "aws_iam_role" "role_codebuild_runners" {
-  count = local.create && !var.create_iam_role ? 1 : 0
+  count = local.enabled && !var.create_iam_role ? 1 : 0
   name  = try(var.iam_role_name, "codebuild-${var.repository_name}")
 }
 
@@ -32,7 +32,7 @@ resource "aws_iam_role" "role_codebuild_runners" {
   assume_role_policy = data.aws_iam_policy_document.assume_role_policy_codebuild_runners.json
 
   lifecycle {
-    enabled = local.create && var.create_iam_role
+    enabled = local.enabled && var.create_iam_role
   }
 }
 
@@ -43,13 +43,13 @@ resource "aws_iam_role_policy" "policy_codebuild_runners" {
   policy = var.codebuild_iam_policy
 
   lifecycle {
-    enabled = local.create && var.create_iam_role
+    enabled = local.enabled && var.create_iam_role
   }
 }
 
 
 data "aws_vpc" "vpc" {
-  count = local.create && var.vpc_id != null ? 1 : 0
+  count = local.enabled && var.vpc_id != null ? 1 : 0
 
   filter {
     name   = "vpc-id"
@@ -59,7 +59,7 @@ data "aws_vpc" "vpc" {
 
 # Creating Codebuild Project
 data "aws_ecr_repository" "codebuild_runner" {
-  count = local.create && var.codebuild_runner_repository_url == null ? 1 : 0
+  count = local.enabled && var.codebuild_runner_repository_url == null ? 1 : 0
   name  = var.codebuild_runner_repository_name
 }
 
@@ -67,7 +67,7 @@ data "aws_ecr_repository" "codebuild_runner" {
 # Security Group for Codebuild
 #######################################################################################################################
 data "aws_security_group" "codebuild_runners_sg" {
-  count = local.create && !var.create_security_group ? 1 : 0
+  count = local.enabled && !var.create_security_group ? 1 : 0
 
   filter {
     name   = "tag:Name"
@@ -87,7 +87,7 @@ resource "aws_security_group" "codebuild_runners" {
   tags = merge(local.tags, { Name = "codebuild-runners-${local.workspace}-security-group" })
 
   lifecycle {
-    enabled = local.create && var.create_security_group
+    enabled = local.enabled && var.create_security_group
   }
 }
 
@@ -98,7 +98,7 @@ resource "aws_vpc_security_group_ingress_rule" "codebuild_runners" {
   ip_protocol                  = "-1"
 
   lifecycle {
-    enabled = local.create && var.create_security_group
+    enabled = local.enabled && var.create_security_group
   }
 }
 
@@ -110,7 +110,7 @@ resource "aws_vpc_security_group_egress_rule" "codebuild_runners" {
   ip_protocol       = "-1"
 
   lifecycle {
-    enabled = local.create && var.create_security_group
+    enabled = local.enabled && var.create_security_group
   }
 }
 
@@ -129,7 +129,7 @@ resource "aws_cloudwatch_log_group" "codebuild_runners" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.create_cloudwatch_log_group
+    enabled = local.enabled && var.create_cloudwatch_log_group
   }
 }
 
@@ -349,7 +349,7 @@ resource "aws_codebuild_project" "codebuild_build_runner" {
   tags = merge(local.tags, { Name = "${lower(var.repository_name)}-build" })
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -386,7 +386,7 @@ resource "aws_codebuild_webhook" "codebuild_build_runner" {
   }
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -610,7 +610,7 @@ resource "aws_codebuild_project" "codebuild_deployment_runner" {
   tags = merge(local.tags, { Name = "${lower(var.repository_name)}-deploy" })
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -647,7 +647,7 @@ resource "aws_codebuild_webhook" "codebuild_deployment_runner" {
   }
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 

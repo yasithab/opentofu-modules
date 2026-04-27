@@ -51,6 +51,11 @@ variable "max_session_duration" {
   type        = number
   default     = 3600
   description = "The maximum session duration (in seconds) for the role. Can have a value from 1 hour to 12 hours"
+
+  validation {
+    condition     = var.max_session_duration == null || (var.max_session_duration >= 3600 && var.max_session_duration <= 43200)
+    error_message = "max_session_duration must be between 3600 (1 hour) and 43200 (12 hours) seconds."
+  }
 }
 
 variable "permissions_boundary" {
@@ -120,6 +125,11 @@ variable "path" {
   type        = string
   description = "Path to the role and policy. See [IAM Identifiers](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html) for more information."
   default     = "/"
+
+  validation {
+    condition     = can(regex("^/", var.path))
+    error_message = "path must start with a forward slash (/)."
+  }
 }
 
 variable "tags_enabled" {

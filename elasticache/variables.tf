@@ -66,6 +66,11 @@ variable "engine" {
   description = "Name of the cache engine to be used for this cache cluster. Valid values are `memcached`, `redis`, or `valkey`"
   type        = string
   default     = "redis"
+
+  validation {
+    condition     = var.engine == null || contains(["redis", "memcached", "valkey"], var.engine)
+    error_message = "engine must be one of: redis, memcached, valkey."
+  }
 }
 
 variable "engine_version" {
@@ -125,6 +130,11 @@ variable "num_cache_nodes" {
   description = "The initial number of cache nodes that the cache cluster will have. For Redis, this value must be 1. For Memcached, this value must be between 1 and 40. If this number is reduced on subsequent runs, the highest numbered nodes will be removed"
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.num_cache_nodes == null || var.num_cache_nodes >= 1
+    error_message = "num_cache_nodes must be at least 1."
+  }
 }
 
 variable "outpost_mode" {
@@ -140,7 +150,7 @@ variable "port" {
 
   validation {
     condition     = var.port == null || (var.port >= 1 && var.port <= 65535)
-    error_message = "Port must be between 1 and 65535."
+    error_message = "port must be between 1 and 65535."
   }
 }
 
@@ -212,6 +222,7 @@ variable "auth_token" {
   description = "The password used to access a password protected server. Can be specified only if `transit_encryption_enabled = true`"
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "auth_token_update_strategy" {
@@ -430,8 +441,19 @@ variable "vpc_id" {
 
 variable "security_group_rules" {
   description = "Security group ingress and egress rules to add to the security group created"
-  type        = any
-  default     = {}
+  type = map(object({
+    type                         = optional(string, "ingress")
+    ip_protocol                  = optional(string, "tcp")
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
+  }))
+  default = {}
 }
 
 variable "security_group_tags" {

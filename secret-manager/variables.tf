@@ -115,6 +115,7 @@ variable "secret_string" {
   description = "Specifies text data that you want to encrypt and store in this version of the secret. This is required if `secret_binary` or `secret_string_wo` is not set"
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "secret_string_wo" {
@@ -134,6 +135,7 @@ variable "secret_binary" {
   description = "Specifies binary data that you want to encrypt and store in this version of the secret. This is required if `secret_string` is not set. Needs to be encoded to base64"
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "version_stages" {

@@ -1,7 +1,7 @@
 data "aws_partition" "current" {}
 
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   port = coalesce(var.port, (
     var.engine == "postgres" ? 5432 :
@@ -35,7 +35,7 @@ resource "aws_db_subnet_group" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.create_db_subnet_group
+    enabled = local.enabled && var.create_db_subnet_group
   }
 }
 
@@ -144,7 +144,7 @@ resource "aws_db_instance" "this" {
   }
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
     ignore_changes = [
       snapshot_identifier,
     ]
@@ -158,7 +158,7 @@ resource "aws_db_instance" "this" {
 ################################################################################
 
 resource "aws_db_instance" "read_replica" {
-  for_each = { for k, v in var.read_replicas : k => v if local.create }
+  for_each = { for k, v in var.read_replicas : k => v if local.enabled }
 
   replicate_source_db = aws_db_instance.this.identifier
 
@@ -216,7 +216,7 @@ resource "aws_db_instance" "read_replica" {
 ################################################################################
 
 locals {
-  create_monitoring_role = local.create && var.create_monitoring_role && var.monitoring_interval > 0
+  create_monitoring_role = local.enabled && var.create_monitoring_role && var.monitoring_interval > 0
 }
 
 data "aws_iam_policy_document" "monitoring_rds_assume_role" {
@@ -279,13 +279,13 @@ resource "aws_security_group" "this" {
   tags = merge(local.tags, var.security_group_tags, { Name = local.security_group_name })
 
   lifecycle {
-    enabled               = local.create && var.create_security_group
+    enabled               = local.enabled && var.create_security_group
     create_before_destroy = true
   }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "this" {
-  for_each = { for k, v in var.security_group_rules : k => v if local.create && var.create_security_group && try(v.type, "ingress") == "ingress" }
+  for_each = { for k, v in var.security_group_rules : k => v if local.enabled && var.create_security_group && try(v.type, "ingress") == "ingress" }
 
   # Required
   security_group_id = aws_security_group.this.id
@@ -304,7 +304,7 @@ resource "aws_vpc_security_group_ingress_rule" "this" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "this" {
-  for_each = { for k, v in var.security_group_rules : k => v if local.create && var.create_security_group && try(v.type, "ingress") == "egress" }
+  for_each = { for k, v in var.security_group_rules : k => v if local.enabled && var.create_security_group && try(v.type, "ingress") == "egress" }
 
   # Required
   security_group_id = aws_security_group.this.id
@@ -355,7 +355,7 @@ resource "aws_db_option_group" "this" {
   }
 
   lifecycle {
-    enabled               = local.create && var.create_db_option_group
+    enabled               = local.enabled && var.create_db_option_group
     create_before_destroy = true
   }
 
@@ -383,7 +383,7 @@ resource "aws_db_parameter_group" "this" {
   }
 
   lifecycle {
-    enabled               = local.create && var.create_db_parameter_group
+    enabled               = local.enabled && var.create_db_parameter_group
     create_before_destroy = true
   }
 
@@ -395,7 +395,7 @@ resource "aws_db_parameter_group" "this" {
 ################################################################################
 
 resource "aws_cloudwatch_log_group" "this" {
-  for_each = toset([for log in var.enabled_cloudwatch_logs_exports : log if local.create && var.create_cloudwatch_log_group && !var.use_identifier_prefix])
+  for_each = toset([for log in var.enabled_cloudwatch_logs_exports : log if local.enabled && var.create_cloudwatch_log_group && !var.use_identifier_prefix])
 
   name              = "/aws/rds/instance/${var.name}/${each.value}"
   retention_in_days = var.cloudwatch_log_group_retention_in_days
@@ -421,7 +421,7 @@ resource "aws_secretsmanager_secret_rotation" "this" {
   }
 
   lifecycle {
-    enabled = local.create && var.manage_master_user_password && var.manage_master_user_password_rotation
+    enabled = local.enabled && var.manage_master_user_password && var.manage_master_user_password_rotation
   }
 }
 

@@ -1,5 +1,5 @@
 locals {
-  create_iam_role = local.create && var.create_iam_role
+  create_iam_role = local.enabled && var.create_iam_role
   iam_role_name   = coalesce(var.iam_role_name, "${local.recorder_name}-config-role")
 
   # A dedicated org aggregator role is needed for organization_aggregation_source.

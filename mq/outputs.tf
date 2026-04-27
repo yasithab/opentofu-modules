@@ -15,6 +15,7 @@ output "id" {
 output "instances" {
   description = "List of information about allocated brokers (if deployment_mode is CLUSTER_MULTI_AZ)"
   value       = aws_mq_broker.this.instances
+  sensitive   = true
 }
 
 output "primary_ip_address" {
@@ -53,17 +54,17 @@ output "security_groups" {
 
 output "security_group_id" {
   description = "ID of the created security group (if created)"
-  value       = var.create_security_group ? aws_security_group.this.id : null
+  value       = try(aws_security_group.this.id, null)
 }
 
 output "security_group_arn" {
   description = "ARN of the created security group (if created)"
-  value       = var.create_security_group ? aws_security_group.this.arn : null
+  value       = try(aws_security_group.this.arn, null)
 }
 
 output "security_group_name" {
   description = "Name of the created security group (if created)"
-  value       = var.create_security_group ? aws_security_group.this.name : null
+  value       = try(aws_security_group.this.name, null)
 }
 
 ################################################################################

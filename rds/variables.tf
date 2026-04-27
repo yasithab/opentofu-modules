@@ -52,6 +52,11 @@ variable "allocated_storage" {
   description = "The allocated storage in gibibytes (GiB)"
   type        = number
   default     = null
+
+  validation {
+    condition     = var.allocated_storage == null || var.allocated_storage >= 20
+    error_message = "allocated_storage must be at least 20 GB."
+  }
 }
 
 variable "max_allocated_storage" {
@@ -88,6 +93,11 @@ variable "backup_retention_period" {
   description = "The days to retain backups for. Must be between 0 and 35"
   type        = number
   default     = 7
+
+  validation {
+    condition     = var.backup_retention_period == null || (var.backup_retention_period >= 0 && var.backup_retention_period <= 35)
+    error_message = "backup_retention_period must be between 0 and 35 days."
+  }
 }
 
 variable "backup_window" {
@@ -166,6 +176,11 @@ variable "engine" {
   description = "The database engine to use. Valid values: mysql, postgres, mariadb, oracle-ee, oracle-se2, sqlserver-ee, sqlserver-se, sqlserver-ex, sqlserver-web"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.engine == null || contains(["mysql", "postgres", "mariadb", "oracle-ee", "oracle-se2", "oracle-se2-cdb", "sqlserver-ee", "sqlserver-se", "sqlserver-ex", "sqlserver-web"], var.engine)
+    error_message = "engine must be a valid RDS engine."
+  }
 }
 
 variable "engine_version" {
@@ -603,8 +618,19 @@ variable "vpc_id" {
 
 variable "security_group_rules" {
   description = "Map of security group rules to add to the security group created"
-  type        = any
-  default     = {}
+  type = map(object({
+    type                         = optional(string, "ingress")
+    ip_protocol                  = optional(string, "tcp")
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
+  }))
+  default = {}
 }
 
 variable "security_group_tags" {

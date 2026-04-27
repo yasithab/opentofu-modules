@@ -15,6 +15,11 @@ variable "repository_type" {
   description = "The type of repository to create. Either `public` or `private`"
   type        = string
   default     = "private"
+
+  validation {
+    condition     = contains(["public", "private"], var.repository_type)
+    error_message = "repository_type must be one of: public, private."
+  }
 }
 
 ################################################################################
@@ -37,6 +42,11 @@ variable "repository_image_tag_mutability" {
   description = "The tag mutability setting for the repository. Must be one of: `MUTABLE`, `IMMUTABLE`, `IMMUTABLE_WITH_EXCLUSION`, or `MUTABLE_WITH_EXCLUSION`. Defaults to `IMMUTABLE`"
   type        = string
   default     = "IMMUTABLE"
+
+  validation {
+    condition     = contains(["MUTABLE", "IMMUTABLE", "IMMUTABLE_WITH_EXCLUSION", "MUTABLE_WITH_EXCLUSION"], var.repository_image_tag_mutability)
+    error_message = "repository_image_tag_mutability must be one of: MUTABLE, IMMUTABLE, IMMUTABLE_WITH_EXCLUSION, MUTABLE_WITH_EXCLUSION."
+  }
 }
 
 variable "repository_image_tag_mutability_exclusion_filters" {
@@ -49,6 +59,11 @@ variable "repository_encryption_type" {
   description = "The encryption type for the repository. Must be one of: `KMS` or `AES256`. Defaults to `AES256`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.repository_encryption_type == null || contains(["KMS", "AES256"], var.repository_encryption_type)
+    error_message = "repository_encryption_type must be one of: KMS, AES256."
+  }
 }
 
 variable "repository_kms_key" {
@@ -181,6 +196,11 @@ variable "registry_scan_type" {
   description = "the scanning type to set for the registry. Can be either `ENHANCED` or `BASIC`"
   type        = string
   default     = "ENHANCED"
+
+  validation {
+    condition     = contains(["ENHANCED", "BASIC"], var.registry_scan_type)
+    error_message = "registry_scan_type must be one of: ENHANCED, BASIC."
+  }
 }
 
 variable "registry_scan_rules" {

@@ -1,11 +1,11 @@
 output "configuration_recorder_id" {
   description = "The name (ID) of the AWS Config configuration recorder."
-  value       = local.create ? aws_config_configuration_recorder.this.id : null
+  value       = local.enabled ? aws_config_configuration_recorder.this.id : null
 }
 
 output "delivery_channel_id" {
   description = "The name (ID) of the AWS Config delivery channel."
-  value       = local.create && var.delivery_channel_s3_bucket_name != null ? aws_config_delivery_channel.this.id : null
+  value       = local.enabled && var.delivery_channel_s3_bucket_name != null ? aws_config_delivery_channel.this.id : null
 }
 
 output "iam_role_arn" {
@@ -35,12 +35,12 @@ output "custom_policy_config_rule_arns" {
 
 output "configuration_aggregator_arn" {
   description = "ARN of the configuration aggregator. Null when create_aggregator is false."
-  value       = local.create && var.create_aggregator ? aws_config_configuration_aggregator.this.arn : null
+  value       = local.enabled && var.create_aggregator ? aws_config_configuration_aggregator.this.arn : null
 }
 
 output "configuration_aggregator_id" {
   description = "ID of the configuration aggregator. Null when create_aggregator is false."
-  value       = local.create && var.create_aggregator ? aws_config_configuration_aggregator.this.id : null
+  value       = local.enabled && var.create_aggregator ? aws_config_configuration_aggregator.this.id : null
 }
 
 output "configuration_aggregator_authorization_id" {

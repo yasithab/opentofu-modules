@@ -1,7 +1,7 @@
 data "aws_region" "current" {}
 
 locals {
-  create        = var.enabled
+  enabled       = var.enabled
   recorder_name = coalesce(var.recorder_name, var.name, "default")
 
   tags = merge(var.tags, {
@@ -55,7 +55,7 @@ locals {
 
   # -- Aggregation --------------------------------------------------------------
 
-  create_aggregator_auth = local.create && var.create_aggregator_authorization
+  create_aggregator_auth = local.enabled && var.create_aggregator_authorization
 
   # Resolved role ARN for organization_aggregation_source.
   # Preference order: caller-supplied role_arn -> auto-created org aggregator role.
@@ -71,7 +71,7 @@ locals {
 
 resource "aws_config_configuration_recorder" "this" {
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 
   name     = local.recorder_name
@@ -120,7 +120,7 @@ resource "aws_config_configuration_recorder" "this" {
 
 resource "aws_config_delivery_channel" "this" {
   lifecycle {
-    enabled = local.create && var.delivery_channel_s3_bucket_name != null
+    enabled = local.enabled && var.delivery_channel_s3_bucket_name != null
   }
 
   name           = local.recorder_name
@@ -149,7 +149,7 @@ resource "aws_config_delivery_channel" "this" {
 
 resource "terraform_data" "config_ordering" {
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 
   depends_on = [
@@ -162,7 +162,7 @@ resource "terraform_data" "config_ordering" {
 
 resource "aws_config_configuration_recorder_status" "this" {
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 
   name       = aws_config_configuration_recorder.this.name
@@ -175,7 +175,7 @@ resource "aws_config_configuration_recorder_status" "this" {
 
 resource "aws_config_config_rule" "managed" {
   # Filter out entries with enabled = false; absent key defaults to true via lookup.
-  for_each = local.create ? {
+  for_each = local.enabled ? {
     for k, v in local.all_managed_rules : k => v if lookup(v, "enabled", true)
   } : {}
 
@@ -228,7 +228,7 @@ resource "aws_config_config_rule" "managed" {
 
 resource "aws_config_config_rule" "custom" {
   # custom_rules is a typed map(object) - use direct attribute access throughout.
-  for_each = local.create ? {
+  for_each = local.enabled ? {
     for k, v in var.custom_rules : k => v if v.enabled
   } : {}
 
@@ -281,7 +281,7 @@ resource "aws_config_config_rule" "custom" {
 
 resource "aws_config_config_rule" "custom_policy" {
   # custom_policy_rules uses CUSTOM_POLICY owner with inline Guard policy text.
-  for_each = local.create ? {
+  for_each = local.enabled ? {
     for k, v in var.custom_policy_rules : k => v if v.enabled
   } : {}
 
@@ -339,7 +339,7 @@ resource "aws_config_config_rule" "custom_policy" {
 
 resource "aws_config_retention_configuration" "this" {
   lifecycle {
-    enabled = local.create && var.retention_period_in_days != null
+    enabled = local.enabled && var.retention_period_in_days != null
   }
 
   retention_period_in_days = coalesce(var.retention_period_in_days, 2557)
@@ -350,7 +350,7 @@ resource "aws_config_retention_configuration" "this" {
 # trivy:ignore:AVD-AWS-0019 - all_regions is caller-controlled via var.aggregator_accounts.all_aws_regions
 resource "aws_config_configuration_aggregator" "this" {
   lifecycle {
-    enabled = local.create && var.create_aggregator
+    enabled = local.enabled && var.create_aggregator
   }
 
   name = coalesce(var.aggregator_name, "${local.recorder_name}-aggregator")

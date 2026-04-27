@@ -15,12 +15,22 @@ variable "ram_resource_share_name" {
   type        = string
   description = "(Required) The name of the resource share"
   nullable    = false
+
+  validation {
+    condition     = length(var.ram_resource_share_name) > 0
+    error_message = "The ram_resource_share_name must not be empty."
+  }
 }
 
 variable "ram_resource_arn" {
   type        = string
   description = "(Required) Amazon Resource Name (ARN) of the resource to associate with the RAM Resource Share"
   nullable    = false
+
+  validation {
+    condition     = can(regex("^arn:", var.ram_resource_arn))
+    error_message = "The ram_resource_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "ram_principals" {

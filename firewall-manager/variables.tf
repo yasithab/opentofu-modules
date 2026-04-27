@@ -28,6 +28,11 @@ variable "admin_account_id" {
   description = "AWS account ID to associate as the FMS administrator. Defaults to the current account when null."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.admin_account_id == null || can(regex("^[0-9]{12}$", var.admin_account_id))
+    error_message = "admin_account_id must be a 12-digit AWS account ID."
+  }
 }
 
 ################################################################################
@@ -38,6 +43,11 @@ variable "firehose_arn" {
   description = "ARN of the Kinesis Firehose delivery stream for WAF logging (used when firehose_enabled is false)."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.firehose_arn == null || can(regex("^arn:", var.firehose_arn))
+    error_message = "firehose_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "firehose_kinesis_id" {

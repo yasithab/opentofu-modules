@@ -30,6 +30,11 @@ variable "vpc_id" {
   description = "ID of the VPC where to create security group"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.vpc_id == null || can(regex("^vpc-", var.vpc_id))
+    error_message = "The vpc_id must start with 'vpc-'."
+  }
 }
 
 variable "use_name_prefix" {
@@ -168,6 +173,11 @@ variable "number_of_computed_ingress_rules" {
   description = "Number of computed ingress rules to create by name"
   type        = number
   default     = 0
+
+  validation {
+    condition     = var.number_of_computed_ingress_rules >= 0
+    error_message = "The number_of_computed_ingress_rules must be non-negative."
+  }
 }
 
 variable "number_of_computed_ingress_with_self" {
@@ -306,6 +316,11 @@ variable "number_of_computed_egress_rules" {
   description = "Number of computed egress rules to create by name"
   type        = number
   default     = 0
+
+  validation {
+    condition     = var.number_of_computed_egress_rules >= 0
+    error_message = "The number_of_computed_egress_rules must be non-negative."
+  }
 }
 
 variable "number_of_computed_egress_with_self" {

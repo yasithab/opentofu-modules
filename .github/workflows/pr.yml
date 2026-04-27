@@ -134,7 +134,7 @@ jobs:
     - name: Setup tflint
       uses: terraform-linters/setup-tflint@v6
       with:
-        tflint_version: latest
+        tflint_version: v0.55.1
 
     - name: Cache tflint plugins
       uses: actions/cache@v5

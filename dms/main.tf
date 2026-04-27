@@ -3,13 +3,13 @@ data "aws_partition" "current" {}
 data "aws_caller_identity" "current" {}
 
 locals {
-  create     = var.enabled
+  enabled    = var.enabled
   account_id = data.aws_caller_identity.current.account_id
   dns_suffix = data.aws_partition.current.dns_suffix
   partition  = data.aws_partition.current.partition
   region     = data.aws_region.current.region
 
-  subnet_group_id = local.create && var.create_repl_subnet_group ? aws_dms_replication_subnet_group.this.id : var.repl_instance_subnet_group_id
+  subnet_group_id = local.enabled && var.create_repl_subnet_group ? aws_dms_replication_subnet_group.this.id : var.repl_instance_subnet_group_id
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -23,7 +23,7 @@ locals {
 ################################################################################
 
 data "aws_iam_policy_document" "dms_assume_role" {
-  count = local.create && var.create_iam_roles ? 1 : 0
+  count = local.enabled && var.create_iam_roles ? 1 : 0
 
   statement {
     actions = [
@@ -52,7 +52,7 @@ data "aws_iam_policy_document" "dms_assume_role" {
 }
 
 data "aws_iam_policy_document" "dms_assume_role_redshift" {
-  count = local.create && var.create_iam_roles ? 1 : 0
+  count = local.enabled && var.create_iam_roles ? 1 : 0
 
   source_policy_documents = [data.aws_iam_policy_document.dms_assume_role[0].json]
 
@@ -81,7 +81,7 @@ resource "time_sleep" "wait_for_dependency_resources" {
   destroy_duration = "10s"
 
   lifecycle {
-    enabled = local.create && var.create_iam_roles
+    enabled = local.enabled && var.create_iam_roles
   }
 }
 
@@ -96,7 +96,7 @@ resource "aws_iam_role" "dms_access_for_endpoint" {
   tags = merge(local.tags, var.iam_role_tags)
 
   lifecycle {
-    enabled = local.create && var.create_iam_roles
+    enabled = local.enabled && var.create_iam_roles
   }
 }
 
@@ -105,7 +105,7 @@ resource "aws_iam_role_policy_attachment" "dms_access_for_endpoint" {
   policy_arn = "arn:${local.partition}:iam::aws:policy/service-role/AmazonDMSRedshiftS3Role"
 
   lifecycle {
-    enabled = local.create && var.create_iam_roles
+    enabled = local.enabled && var.create_iam_roles
   }
 }
 
@@ -120,7 +120,7 @@ resource "aws_iam_role" "dms_cloudwatch_logs_role" {
   tags = merge(local.tags, var.iam_role_tags)
 
   lifecycle {
-    enabled = local.create && var.create_iam_roles
+    enabled = local.enabled && var.create_iam_roles
   }
 }
 
@@ -129,7 +129,7 @@ resource "aws_iam_role_policy_attachment" "dms_cloudwatch_logs_role" {
   policy_arn = "arn:${local.partition}:iam::aws:policy/service-role/AmazonDMSCloudWatchLogsRole"
 
   lifecycle {
-    enabled = local.create && var.create_iam_roles
+    enabled = local.enabled && var.create_iam_roles
   }
 }
 
@@ -144,7 +144,7 @@ resource "aws_iam_role" "dms_vpc_role" {
   tags = merge(local.tags, var.iam_role_tags)
 
   lifecycle {
-    enabled = local.create && var.create_iam_roles
+    enabled = local.enabled && var.create_iam_roles
   }
 }
 
@@ -153,7 +153,7 @@ resource "aws_iam_role_policy_attachment" "dms_vpc_role" {
   policy_arn = "arn:${local.partition}:iam::aws:policy/service-role/AmazonDMSVPCManagementRole"
 
   lifecycle {
-    enabled = local.create && var.create_iam_roles
+    enabled = local.enabled && var.create_iam_roles
   }
 }
 
@@ -171,7 +171,7 @@ resource "aws_dms_replication_subnet_group" "this" {
   depends_on = [time_sleep.wait_for_dependency_resources]
 
   lifecycle {
-    enabled = local.create && var.create_repl_subnet_group
+    enabled = local.enabled && var.create_repl_subnet_group
   }
 }
 
@@ -218,7 +218,7 @@ resource "aws_dms_replication_instance" "this" {
   depends_on = [time_sleep.wait_for_dependency_resources]
 
   lifecycle {
-    enabled = local.create && var.create_repl_instance
+    enabled = local.enabled && var.create_repl_instance
   }
 }
 
@@ -227,7 +227,7 @@ resource "aws_dms_replication_instance" "this" {
 ################################################################################
 
 resource "aws_dms_endpoint" "this" {
-  for_each = { for k, v in var.endpoints : k => v if local.create }
+  for_each = { for k, v in var.endpoints : k => v if local.enabled }
 
   certificate_arn = try(aws_dms_certificate.this[each.value.certificate_key].certificate_arn, null)
   database_name   = lookup(each.value, "database_name", null)
@@ -450,7 +450,7 @@ resource "aws_dms_endpoint" "this" {
 ################################################################################
 
 resource "aws_dms_s3_endpoint" "this" {
-  for_each = { for k, v in var.s3_endpoints : k => v if local.create }
+  for_each = { for k, v in var.s3_endpoints : k => v if local.enabled }
 
   # https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Source.S3.html
   # https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Target.S3.html
@@ -511,7 +511,7 @@ resource "aws_dms_s3_endpoint" "this" {
 ################################################################################
 
 resource "aws_dms_replication_task" "this" {
-  for_each = { for k, v in var.replication_tasks : k => v if local.create && !contains(keys(v), "serverless_config") }
+  for_each = { for k, v in var.replication_tasks : k => v if local.enabled && !contains(keys(v), "serverless_config") }
 
   cdc_start_position        = try(each.value.cdc_start_position, null)
   cdc_start_time            = try(each.value.cdc_start_time, null)
@@ -532,7 +532,7 @@ resource "aws_dms_replication_task" "this" {
 # Replication Task - Serverless
 ################################################################################
 resource "aws_dms_replication_config" "this" {
-  for_each = { for k, v in var.replication_tasks : k => v if local.create && contains(keys(v), "serverless_config") }
+  for_each = { for k, v in var.replication_tasks : k => v if local.enabled && contains(keys(v), "serverless_config") }
 
   replication_config_identifier = each.value.replication_task_id
   resource_identifier           = each.value.replication_task_id
@@ -574,7 +574,7 @@ resource "aws_dms_replication_config" "this" {
 ################################################################################
 
 resource "aws_dms_event_subscription" "this" {
-  for_each = { for k, v in var.event_subscriptions : k => v if local.create && try(v.enabled, true) }
+  for_each = { for k, v in var.event_subscriptions : k => v if local.enabled && try(v.enabled, true) }
 
   enabled          = try(each.value.enabled, null)
   event_categories = try(each.value.event_categories, null)
@@ -605,7 +605,7 @@ resource "aws_dms_event_subscription" "this" {
 ################################################################################
 
 resource "aws_dms_certificate" "this" {
-  for_each = { for k, v in var.certificates : k => v if local.create }
+  for_each = { for k, v in var.certificates : k => v if local.enabled }
 
   certificate_id     = each.value.certificate_id
   certificate_pem    = lookup(each.value, "certificate_pem", null)
@@ -620,7 +620,7 @@ resource "aws_dms_certificate" "this" {
 
 locals {
   access_iam_role_name   = try(coalesce(var.access_iam_role_name, var.repl_instance_id), "")
-  create_access_iam_role = local.create && var.create_access_iam_role
+  create_access_iam_role = local.enabled && var.create_access_iam_role
   create_access_policy   = local.create_access_iam_role && var.create_access_policy
 
   access_iam_role = try(aws_iam_role.access.arn, null)

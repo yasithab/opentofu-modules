@@ -5,15 +5,15 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region to deploy resources into. If null, uses the provider default."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name of the AppConfig application"
   type        = string
+
+  validation {
+    condition     = length(var.name) >= 1 && length(var.name) <= 64
+    error_message = "Name must be between 1 and 64 characters."
+  }
 }
 
 variable "tags" {

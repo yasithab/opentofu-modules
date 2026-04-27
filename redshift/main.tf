@@ -1,6 +1,6 @@
 locals {
-  create = var.enabled
-  port   = var.port
+  enabled = var.enabled
+  port    = var.port
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -23,7 +23,7 @@ resource "random_password" "master_password" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 
   lifecycle {
-    enabled = local.create && var.create_random_password
+    enabled = local.enabled && var.create_random_password
   }
 }
 
@@ -32,10 +32,10 @@ resource "random_password" "master_password" {
 ################################################################################
 
 locals {
-  subnet_group_name    = local.create && var.create_subnet_group ? aws_redshift_subnet_group.this.name : var.subnet_group_name
-  parameter_group_name = local.create && var.create_parameter_group ? aws_redshift_parameter_group.this.id : var.parameter_group_name
+  subnet_group_name    = local.enabled && var.create_subnet_group ? aws_redshift_subnet_group.this.name : var.subnet_group_name
+  parameter_group_name = local.enabled && var.create_parameter_group ? aws_redshift_parameter_group.this.id : var.parameter_group_name
 
-  master_password = local.create && var.create_random_password ? random_password.master_password.result : var.master_password
+  master_password = local.enabled && var.create_random_password ? random_password.master_password.result : var.master_password
 }
 
 resource "aws_redshift_cluster" "this" {
@@ -90,7 +90,7 @@ resource "aws_redshift_cluster" "this" {
   }
 
   lifecycle {
-    enabled        = local.create
+    enabled        = local.enabled
     ignore_changes = [master_password]
   }
 
@@ -107,7 +107,7 @@ resource "aws_redshift_cluster_iam_roles" "this" {
   default_iam_role_arn = var.default_iam_role_arn
 
   lifecycle {
-    enabled = local.create && length(var.iam_role_arns) > 0
+    enabled = local.enabled && length(var.iam_role_arns) > 0
   }
 }
 
@@ -131,7 +131,7 @@ resource "aws_redshift_parameter_group" "this" {
   tags = merge(local.tags, var.parameter_group_tags)
 
   lifecycle {
-    enabled = local.create && var.create_parameter_group
+    enabled = local.enabled && var.create_parameter_group
   }
 }
 
@@ -147,7 +147,7 @@ resource "aws_redshift_subnet_group" "this" {
   tags = merge(local.tags, var.subnet_group_tags)
 
   lifecycle {
-    enabled = local.create && var.create_subnet_group
+    enabled = local.enabled && var.create_subnet_group
   }
 }
 
@@ -165,7 +165,7 @@ resource "aws_redshift_snapshot_schedule" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.create_snapshot_schedule
+    enabled = local.enabled && var.create_snapshot_schedule
   }
 }
 
@@ -174,7 +174,7 @@ resource "aws_redshift_snapshot_schedule_association" "this" {
   schedule_identifier = aws_redshift_snapshot_schedule.this.id
 
   lifecycle {
-    enabled = local.create && var.create_snapshot_schedule
+    enabled = local.enabled && var.create_snapshot_schedule
   }
 }
 
@@ -187,7 +187,7 @@ locals {
 }
 
 resource "aws_redshift_scheduled_action" "this" {
-  for_each = { for k, v in var.scheduled_actions : k => v if local.create }
+  for_each = { for k, v in var.scheduled_actions : k => v if local.enabled }
 
   name        = each.value.name
   description = try(each.value.description, null)
@@ -229,7 +229,7 @@ resource "aws_redshift_scheduled_action" "this" {
 }
 
 data "aws_iam_policy_document" "scheduled_action_assume" {
-  count = local.create && var.create_scheduled_action_iam_role ? 1 : 0
+  count = local.enabled && var.create_scheduled_action_iam_role ? 1 : 0
 
   statement {
     sid     = "ScheduleActionAssume"
@@ -255,12 +255,12 @@ resource "aws_iam_role" "scheduled_action" {
   tags = merge(local.tags, var.iam_role_tags)
 
   lifecycle {
-    enabled = local.create && var.create_scheduled_action_iam_role
+    enabled = local.enabled && var.create_scheduled_action_iam_role
   }
 }
 
 data "aws_iam_policy_document" "scheduled_action" {
-  count = local.create && var.create_scheduled_action_iam_role ? 1 : 0
+  count = local.enabled && var.create_scheduled_action_iam_role ? 1 : 0
 
   statement {
     sid = "ModifyCluster"
@@ -283,7 +283,7 @@ resource "aws_iam_role_policy" "scheduled_action" {
   policy = data.aws_iam_policy_document.scheduled_action[0].json
 
   lifecycle {
-    enabled = local.create && var.create_scheduled_action_iam_role
+    enabled = local.enabled && var.create_scheduled_action_iam_role
   }
 }
 
@@ -300,7 +300,7 @@ resource "aws_redshift_endpoint_access" "this" {
   vpc_security_group_ids = try([aws_security_group.this.id], var.endpoint_vpc_security_group_ids)
 
   lifecycle {
-    enabled = local.create && var.create_endpoint_access
+    enabled = local.enabled && var.create_endpoint_access
   }
 }
 
@@ -309,7 +309,7 @@ resource "aws_redshift_endpoint_access" "this" {
 ################################################################################
 
 resource "aws_redshift_usage_limit" "this" {
-  for_each = { for k, v in var.usage_limits : k => v if local.create }
+  for_each = { for k, v in var.usage_limits : k => v if local.enabled }
 
   cluster_identifier = aws_redshift_cluster.this.id
 
@@ -327,7 +327,7 @@ resource "aws_redshift_usage_limit" "this" {
 ################################################################################
 
 resource "aws_redshift_authentication_profile" "this" {
-  for_each = { for k, v in var.authentication_profiles : k => v if local.create }
+  for_each = { for k, v in var.authentication_profiles : k => v if local.enabled }
 
   authentication_profile_name    = try(each.value.name, each.key)
   authentication_profile_content = jsonencode(each.value.content)
@@ -345,7 +345,7 @@ resource "aws_redshift_logging" "this" {
   s3_key_prefix        = try(var.logging.s3_key_prefix, null)
 
   lifecycle {
-    enabled = local.create && length(var.logging) > 0
+    enabled = local.enabled && length(var.logging) > 0
   }
 }
 
@@ -361,7 +361,7 @@ resource "aws_redshift_snapshot_copy" "this" {
   snapshot_copy_grant_name         = try(var.snapshot_copy.grant_name, null)
 
   lifecycle {
-    enabled = local.create && length(var.snapshot_copy) > 0
+    enabled = local.enabled && length(var.snapshot_copy) > 0
   }
 }
 
@@ -370,7 +370,7 @@ resource "aws_redshift_snapshot_copy" "this" {
 ################################################################################
 
 resource "aws_cloudwatch_log_group" "this" {
-  for_each = toset([for log in try(var.logging.log_exports, []) : log if local.create && var.create_cloudwatch_log_group])
+  for_each = toset([for log in try(var.logging.log_exports, []) : log if local.enabled && var.create_cloudwatch_log_group])
 
   name              = "/aws/redshift/cluster/${var.cluster_identifier}/${each.value}"
   retention_in_days = var.cloudwatch_log_group_retention_in_days
@@ -396,7 +396,7 @@ resource "aws_secretsmanager_secret_rotation" "this" {
   }
 
   lifecycle {
-    enabled = local.create && var.manage_master_password && var.manage_master_password_rotation
+    enabled = local.enabled && var.manage_master_password && var.manage_master_password_rotation
   }
 }
 
@@ -405,7 +405,7 @@ resource "aws_secretsmanager_secret_rotation" "this" {
 ################################################################################
 
 locals {
-  create_security_group = local.create && var.create_security_group
+  create_security_group = local.enabled && var.create_security_group
   security_group_name   = try(coalesce(var.security_group_name, var.name), "")
 }
 
@@ -459,6 +459,24 @@ resource "aws_vpc_security_group_egress_rule" "this" {
   to_port                      = try(each.value.to_port, null)
 
   tags = merge(local.tags, var.security_group_tags, try(each.value.tags, {}))
+}
+
+################################################################################
+# OpenTofu Check Blocks
+################################################################################
+
+check "encryption_enabled" {
+  assert {
+    condition     = !var.enabled || aws_redshift_cluster.this.encrypted
+    error_message = "Redshift cluster must have encryption at rest enabled."
+  }
+}
+
+check "logging_enabled" {
+  assert {
+    condition     = !var.enabled || length(var.logging) > 0
+    error_message = "Redshift cluster should have audit logging enabled."
+  }
 }
 
 ################################################################################

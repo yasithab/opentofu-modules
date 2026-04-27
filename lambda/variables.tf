@@ -72,6 +72,11 @@ variable "runtime" {
   description = "Lambda Function runtime"
   type        = string
   default     = ""
+
+  validation {
+    condition     = var.runtime == null || can(regex("^(nodejs|python|java|dotnet|ruby|go|provided)", var.runtime))
+    error_message = "runtime must be a valid AWS Lambda runtime (e.g., nodejs20.x, python3.12, java21, dotnet8, ruby3.3, provided.al2023)."
+  }
 }
 
 variable "lambda_role" {
@@ -102,6 +107,11 @@ variable "architectures" {
   description = "Instruction set architecture for your Lambda function. Valid values are [\"x86_64\"] and [\"arm64\"]."
   type        = list(string)
   default     = null
+
+  validation {
+    condition     = var.architectures == null || alltrue([for a in var.architectures : contains(["x86_64", "arm64"], a)])
+    error_message = "architectures must be one of: x86_64, arm64."
+  }
 }
 
 variable "kms_key_arn" {
@@ -114,6 +124,11 @@ variable "memory_size" {
   description = "Amount of memory in MB your Lambda Function can use at runtime. Valid value between 128 MB to 10,240 MB (10 GB), in 64 MB increments."
   type        = number
   default     = 128
+
+  validation {
+    condition     = var.memory_size == null || (var.memory_size >= 128 && var.memory_size <= 10240 && var.memory_size % 64 == 0)
+    error_message = "memory_size must be between 128 and 10240 MB in 64 MB increments."
+  }
 }
 
 variable "ephemeral_storage_size" {
@@ -138,6 +153,11 @@ variable "timeout" {
   description = "The amount of time your Lambda Function has to run in seconds."
   type        = number
   default     = 3
+
+  validation {
+    condition     = var.timeout == null || (var.timeout >= 1 && var.timeout <= 900)
+    error_message = "timeout must be between 1 and 900 seconds."
+  }
 }
 
 variable "dead_letter_target_arn" {

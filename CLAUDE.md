@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Collection of 128+ reusable OpenTofu modules for AWS infrastructure. All modules target OpenTofu >= 1.11.0 and AWS provider >= 6.34.
+Collection of 128+ reusable OpenTofu modules for AWS infrastructure. All modules target OpenTofu >= 1.11.0 and AWS provider >= 6.38, < 7.0.
 
 ## Commands
 
@@ -56,6 +56,14 @@ locals {
 **Outputs** use `try()` for safe extraction with empty string defaults. Expose all useful resource attributes for composability.
 
 
+### Derived locals naming
+
+Modules that conditionally create sub-resources use `local.create_<thing>` derived locals (e.g., `local.create_security_group = local.enabled && var.create_security_group`). The base toggle is always `local.enabled`; the `create_` prefix is reserved for sub-resource flags only.
+
+### Known intentional patterns
+
+- **DynamoDB 3-copy table**: `dynamodb/main.tf` has three `aws_dynamodb_table` resources (`this`, `autoscaled`, `autoscaled_gsi_ignore`) differentiated only by `lifecycle { ignore_changes }`. This is the correct workaround for OpenTofu's limitation that `ignore_changes` cannot be dynamic. Do not consolidate.
+
 ### Complex modules
 
 Some modules have submodules under `modules/` (e.g., `eks/modules/`, `cloudwatch/modules/`, `iam/`). Some have `wrappers/` directories for multi-instance patterns using `for_each` with defaults merging via `try()`.
@@ -82,7 +90,9 @@ Commit message prefix determines version bump on merge to `master`:
 - `[MINOR]` - new feature (v1.0.0 -> v1.1.0)
 - No prefix - patch (v1.0.0 -> v1.0.1)
 
-Versions in `providers.tf` must be updated manually when upgrading OpenTofu or AWS provider versions.
+Versions in `providers.tf` use bounded floor constraints (`>= 6.38, < 7.0`) for the AWS provider — never exact pins in reusable modules. Update manually when raising the minimum provider version.
+
+`.terraform.lock.hcl` files are committed to ensure reproducible builds. Regenerate with `tofu init -upgrade` when bumping provider constraints.
 
 ## Security Defaults
 
@@ -93,6 +103,8 @@ Modules ship with secure defaults. Key ones to preserve when editing:
 - EKS public access CIDRs default to `[]`
 - DynamoDB point-in-time recovery enabled
 - CloudWatch log retention enforced
+- Password/secret variables marked `sensitive = true`
+- Outputs exposing full resource objects (e.g., `cluster_instances`) marked `sensitive = true`
 
 ## Key Rules
 

@@ -4,23 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region override. If not specified, the provider default region is used"
-  type        = string
-  default     = null
-}
-
-variable "name" {
-  description = "Name prefix for Lake Formation resources"
-  type        = string
-}
-
-variable "tags" {
-  description = "A map of tags to add to all resources"
-  type        = map(string)
-  default     = {}
-}
-
 ################################################################################
 # Data Lake Settings
 ################################################################################

@@ -1,7 +1,7 @@
 data "aws_partition" "current" {}
 
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -101,7 +101,7 @@ resource "aws_lb" "this" {
   }
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
     ignore_changes = [
       tags["elasticbeanstalk:shared-elb-environment-count"]
     ]
@@ -113,7 +113,7 @@ resource "aws_lb" "this" {
 ################################################################################
 
 resource "aws_lb_listener" "this" {
-  for_each = { for k, v in var.listeners : k => v if local.create }
+  for_each = { for k, v in var.listeners : k => v if local.enabled }
 
   alpn_policy     = try(each.value.alpn_policy, null)
   certificate_arn = try(each.value.certificate_arn, null)
@@ -301,7 +301,7 @@ locals {
 }
 
 resource "aws_lb_listener_rule" "this" {
-  for_each = { for v in local.listener_rules : "${v.listener_key}/${v.rule_key}" => v if local.create }
+  for_each = { for v in local.listener_rules : "${v.listener_key}/${v.rule_key}" => v if local.enabled }
 
   listener_arn = try(each.value.listener_arn, aws_lb_listener.this[each.value.listener_key].arn)
   priority     = try(each.value.priority, null)
@@ -595,7 +595,7 @@ locals {
 }
 
 resource "aws_lb_listener_certificate" "this" {
-  for_each = { for k, v in local.additional_certs : k => v if local.create }
+  for_each = { for k, v in local.additional_certs : k => v if local.enabled }
 
   listener_arn    = aws_lb_listener.this[each.value.listener_key].arn
   certificate_arn = each.value.certificate_arn
@@ -606,7 +606,7 @@ resource "aws_lb_listener_certificate" "this" {
 ################################################################################
 
 resource "aws_lb_target_group" "this" {
-  for_each = { for k, v in var.target_groups : k => v if local.create }
+  for_each = { for k, v in var.target_groups : k => v if local.enabled }
 
   connection_termination = try(each.value.connection_termination, null)
   deregistration_delay   = try(each.value.deregistration_delay, null)
@@ -710,7 +710,7 @@ resource "aws_lb_target_group" "this" {
 ################################################################################
 
 resource "aws_lb_target_group_attachment" "this" {
-  for_each = { for k, v in var.target_groups : k => v if local.create && lookup(v, "create_attachment", true) }
+  for_each = { for k, v in var.target_groups : k => v if local.enabled && lookup(v, "create_attachment", true) }
 
   target_group_arn  = aws_lb_target_group.this[each.key].arn
   target_id         = each.value.target_id
@@ -722,7 +722,7 @@ resource "aws_lb_target_group_attachment" "this" {
 }
 
 resource "aws_lb_target_group_attachment" "additional" {
-  for_each = { for k, v in var.additional_target_group_attachments : k => v if local.create }
+  for_each = { for k, v in var.additional_target_group_attachments : k => v if local.enabled }
 
   target_group_arn  = aws_lb_target_group.this[each.value.target_group_key].arn
   target_id         = each.value.target_id
@@ -751,7 +751,7 @@ locals {
 }
 
 resource "aws_lambda_permission" "this" {
-  for_each = { for k, v in local.lambda_target_groups : k => v if local.create }
+  for_each = { for k, v in local.lambda_target_groups : k => v if local.enabled }
 
   function_name = each.value.lambda_function_name
   qualifier     = try(each.value.lambda_qualifier, null)
@@ -769,7 +769,7 @@ resource "aws_lambda_permission" "this" {
 ################################################################################
 
 locals {
-  create_security_group = local.create && var.create_security_group
+  create_security_group = local.enabled && var.create_security_group
   security_group_name   = try(coalesce(var.security_group_name, var.name, var.name_prefix), "")
 }
 
@@ -862,7 +862,7 @@ resource "aws_wafv2_web_acl_association" "this" {
 ################################################################################
 
 resource "aws_lb_trust_store" "this" {
-  for_each = { for k, v in var.trust_stores : k => v if local.create }
+  for_each = { for k, v in var.trust_stores : k => v if local.enabled }
 
   ca_certificates_bundle_s3_bucket         = each.value.ca_certificates_bundle_s3_bucket
   ca_certificates_bundle_s3_key            = each.value.ca_certificates_bundle_s3_key
@@ -874,7 +874,7 @@ resource "aws_lb_trust_store" "this" {
 }
 
 resource "aws_lb_trust_store_revocation" "this" {
-  for_each = { for k, v in var.trust_store_revocations : k => v if local.create }
+  for_each = { for k, v in var.trust_store_revocations : k => v if local.enabled }
 
   trust_store_arn               = try(each.value.trust_store_arn, aws_lb_trust_store.this[each.value.trust_store_key].arn)
   revocations_s3_bucket         = each.value.revocations_s3_bucket

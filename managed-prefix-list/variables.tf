@@ -24,6 +24,11 @@ variable "prefix_lists" {
     tags           = optional(map(string), {})
   }))
   default = null
+
+  validation {
+    condition     = var.prefix_lists == null || alltrue([for k, v in var.prefix_lists : contains(["IPv4", "IPv6"], v.address_family)])
+    error_message = "Each prefix list address_family must be 'IPv4' or 'IPv6'."
+  }
 }
 
 ################################################################################

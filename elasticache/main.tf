@@ -1,5 +1,5 @@
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   in_replication_group = var.replication_group_id != null
 
@@ -49,7 +49,7 @@ resource "aws_elasticache_cluster" "this" {
   port                         = local.in_replication_group ? null : coalesce(var.port, local.port)
   preferred_availability_zones = var.preferred_availability_zones
   preferred_outpost_arn        = var.preferred_outpost_arn
-  replication_group_id         = local.create && var.create_replication_group ? aws_elasticache_replication_group.this.id : var.replication_group_id
+  replication_group_id         = local.enabled && var.create_replication_group ? aws_elasticache_replication_group.this.id : var.replication_group_id
   security_group_ids           = local.in_replication_group ? null : local.security_group_ids
   snapshot_arns                = local.in_replication_group ? null : var.snapshot_arns
   snapshot_name                = local.in_replication_group ? null : var.snapshot_name
@@ -61,7 +61,7 @@ resource "aws_elasticache_cluster" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.create_cluster
+    enabled = local.enabled && var.create_cluster
   }
 }
 
@@ -142,7 +142,7 @@ resource "aws_elasticache_replication_group" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.create_replication_group && !local.create_global_replication_group
+    enabled = local.enabled && var.create_replication_group && !local.create_global_replication_group
   }
 }
 
@@ -170,7 +170,7 @@ resource "aws_elasticache_global_replication_group" "this" {
   parameter_group_name                 = local.parameter_group_name_result
 
   lifecycle {
-    enabled = local.create && var.create_replication_group && var.create_primary_global_replication_group
+    enabled = local.enabled && var.create_replication_group && var.create_primary_global_replication_group
   }
 }
 
@@ -230,7 +230,7 @@ resource "aws_elasticache_replication_group" "global" {
   tags = local.tags
 
   lifecycle {
-    enabled        = local.create && var.create_replication_group && local.create_global_replication_group
+    enabled        = local.enabled && var.create_replication_group && local.create_global_replication_group
     ignore_changes = [engine_version]
   }
 }
@@ -240,7 +240,7 @@ resource "aws_elasticache_replication_group" "global" {
 ################################################################################
 
 locals {
-  create_cloudwatch_log_group = local.create && var.engine != "memcached"
+  create_cloudwatch_log_group = local.enabled && var.engine != "memcached"
 }
 
 resource "aws_cloudwatch_log_group" "this" {
@@ -263,14 +263,14 @@ resource "random_id" "this" {
   byte_length = 8
 
   lifecycle {
-    enabled = local.create && var.create_parameter_group
+    enabled = local.enabled && var.create_parameter_group
   }
 }
 
 locals {
   inter_parameter_group_name  = "${try(coalesce(var.cluster_id, var.replication_group_id), "")}-${replace(var.parameter_group_family, ".", "-")}-${try(random_id.this.hex, "")}"
   parameter_group_name        = coalesce(var.parameter_group_name, local.inter_parameter_group_name)
-  parameter_group_name_result = local.create && var.create_parameter_group ? aws_elasticache_parameter_group.this.id : var.parameter_group_name
+  parameter_group_name_result = local.enabled && var.create_parameter_group ? aws_elasticache_parameter_group.this.id : var.parameter_group_name
 
   parameters = var.cluster_mode_enabled ? concat([{ name = "cluster-enabled", value = "yes" }], var.parameters) : var.parameters
 }
@@ -294,7 +294,7 @@ resource "aws_elasticache_parameter_group" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled               = local.create && var.create_parameter_group
+    enabled               = local.enabled && var.create_parameter_group
     create_before_destroy = true
   }
 }
@@ -305,7 +305,7 @@ resource "aws_elasticache_parameter_group" "this" {
 
 locals {
   inter_subnet_group_name = try(coalesce(var.subnet_group_name, var.cluster_id, var.replication_group_id), "")
-  subnet_group_name       = local.create && var.create_subnet_group ? aws_elasticache_subnet_group.this.name : var.subnet_group_name
+  subnet_group_name       = local.enabled && var.create_subnet_group ? aws_elasticache_subnet_group.this.name : var.subnet_group_name
 }
 
 resource "aws_elasticache_subnet_group" "this" {
@@ -318,7 +318,7 @@ resource "aws_elasticache_subnet_group" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.create_subnet_group
+    enabled = local.enabled && var.create_subnet_group
   }
 }
 
@@ -327,7 +327,7 @@ resource "aws_elasticache_subnet_group" "this" {
 ################################################################################
 
 locals {
-  create_security_group = local.create && var.create_security_group
+  create_security_group = local.enabled && var.create_security_group
   security_group_name   = try(coalesce(var.security_group_name, var.cluster_id, var.replication_group_id), "")
 }
 
@@ -381,4 +381,22 @@ resource "aws_vpc_security_group_egress_rule" "this" {
   to_port                      = try(each.value.to_port, null)
 
   tags = merge(local.tags, var.security_group_tags, try(each.value.tags, {}))
+}
+
+################################################################################
+# OpenTofu Check Blocks
+################################################################################
+
+check "at_rest_encryption_enabled" {
+  assert {
+    condition     = !var.enabled || !var.create_replication_group || aws_elasticache_replication_group.this.at_rest_encryption_enabled
+    error_message = "ElastiCache replication group must have at-rest encryption enabled."
+  }
+}
+
+check "transit_encryption_enabled" {
+  assert {
+    condition     = !var.enabled || !var.create_replication_group || aws_elasticache_replication_group.this.transit_encryption_enabled
+    error_message = "ElastiCache replication group must have transit encryption enabled."
+  }
 }

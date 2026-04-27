@@ -293,8 +293,19 @@ variable "security_group_description" {
 
 variable "security_group_rules" {
   description = "Map of security group rule objects to add to the security group. Keys are rule names, values accept type (ingress/egress), ip_protocol, from_port, to_port, and cidr_ipv4/cidr_ipv6/referenced_security_group_id"
-  type        = any
-  default     = {}
+  type = map(object({
+    type                         = optional(string, "ingress")
+    ip_protocol                  = optional(string, "tcp")
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
+  }))
+  default = {}
 }
 
 variable "security_group_tags" {

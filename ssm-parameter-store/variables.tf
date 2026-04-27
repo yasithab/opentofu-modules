@@ -56,12 +56,22 @@ variable "type" {
   description = "Type of the parameter. Valid types are String, StringList and SecureString."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.type == null || contains(["String", "StringList", "SecureString"], var.type)
+    error_message = "The type must be 'String', 'StringList', or 'SecureString'."
+  }
 }
 
 variable "tier" {
   description = "Parameter tier to assign to the parameter. If not specified, will use the default parameter tier for the region. Valid tiers are Standard, Advanced, and Intelligent-Tiering. Downgrading an Advanced tier parameter to Standard will recreate the resource."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.tier == null || contains(["Standard", "Advanced", "Intelligent-Tiering"], var.tier)
+    error_message = "The tier must be 'Standard', 'Advanced', or 'Intelligent-Tiering'."
+  }
 }
 
 variable "key_id" {
@@ -93,4 +103,9 @@ variable "data_type" {
   description = "Data type of the parameter. Valid values: text, aws:ssm:integration and aws:ec2:image for AMI format."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.data_type == null || contains(["text", "aws:ssm:integration", "aws:ec2:image"], var.data_type)
+    error_message = "The data_type must be 'text', 'aws:ssm:integration', or 'aws:ec2:image'."
+  }
 }

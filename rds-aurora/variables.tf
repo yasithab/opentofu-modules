@@ -82,12 +82,22 @@ variable "backup_retention_period" {
   description = "The days to retain backups for"
   type        = number
   default     = 7
+
+  validation {
+    condition     = var.backup_retention_period == null || (var.backup_retention_period >= 1 && var.backup_retention_period <= 35)
+    error_message = "backup_retention_period must be between 1 and 35 days."
+  }
 }
 
 variable "backtrack_window" {
   description = "The target backtrack window, in seconds. Only available for `aurora` engine currently. To disable backtracking, set this value to 0. Must be between 0 and 259200 (72 hours)"
   type        = number
   default     = null
+
+  validation {
+    condition     = var.backtrack_window == null || (var.backtrack_window >= 0 && var.backtrack_window <= 259200)
+    error_message = "backtrack_window must be between 0 and 259200 seconds (72 hours)."
+  }
 }
 
 variable "cluster_ca_cert_identifier" {
@@ -175,7 +185,7 @@ variable "delete_automated_backups" {
 }
 
 variable "deletion_protection" {
-  description = "If the DB instance should have deletion protection enabled. The database can't be deleted when this value is set to `true`. The default is `false`"
+  description = "If the DB instance should have deletion protection enabled. The database can't be deleted when this value is set to `true`. The default is `true`"
   type        = bool
   default     = true
 }
@@ -208,6 +218,11 @@ variable "engine" {
   description = "The name of the database engine to be used for this DB cluster. Defaults to `aurora`. Valid Values: `aurora`, `aurora-mysql`, `aurora-postgresql`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.engine == null || contains(["aurora", "aurora-mysql", "aurora-postgresql"], var.engine)
+    error_message = "engine must be one of: aurora, aurora-mysql, aurora-postgresql."
+  }
 }
 
 variable "engine_mode" {
@@ -679,8 +694,19 @@ variable "vpc_id" {
 
 variable "security_group_rules" {
   description = "Map of security group rules to add to the cluster security group created"
-  type        = any
-  default     = {}
+  type = map(object({
+    type                         = optional(string, "ingress")
+    ip_protocol                  = optional(string, "tcp")
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    description                  = optional(string)
+    prefix_list_id               = optional(string)
+    referenced_security_group_id = optional(string)
+    tags                         = optional(map(string), {})
+  }))
+  default = {}
 }
 
 variable "security_group_tags" {

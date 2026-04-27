@@ -10,9 +10,6 @@ locals {
   log_group_arn  = var.create_log_group ? aws_cloudwatch_log_group.this.arn : var.existing_log_group_arn
 }
 
-data "aws_caller_identity" "current" {}
-data "aws_partition" "current" {}
-data "aws_region" "current" {}
 
 ################################################################################
 # State Machine

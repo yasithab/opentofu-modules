@@ -4,11 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region override. If not specified, the provider default region is used"
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name of the Athena workgroup"

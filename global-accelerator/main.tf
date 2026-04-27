@@ -1,4 +1,3 @@
-data "aws_partition" "current" {}
 
 locals {
   enabled = var.enabled

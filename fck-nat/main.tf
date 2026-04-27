@@ -2,7 +2,7 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -22,7 +22,7 @@ locals {
 ################################################################################
 
 data "aws_ami" "this" {
-  count = local.create && var.ami_id == null ? 1 : 0
+  count = local.enabled && var.ami_id == null ? 1 : 0
 
   most_recent = true
   owners      = ["568608671756"]
@@ -57,7 +57,7 @@ locals {
 ################################################################################
 
 data "aws_vpc" "this" {
-  count = local.create && var.create_security_group ? 1 : 0
+  count = local.enabled && var.create_security_group ? 1 : 0
   id    = var.vpc_id
 }
 
@@ -89,7 +89,7 @@ resource "aws_security_group" "this" {
   })
 
   lifecycle {
-    enabled               = local.create && var.create_security_group
+    enabled               = local.enabled && var.create_security_group
     create_before_destroy = true
   }
 }
@@ -112,7 +112,7 @@ resource "aws_network_interface" "this" {
   })
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -121,7 +121,7 @@ resource "aws_network_interface" "this" {
 ################################################################################
 
 resource "aws_route" "this" {
-  for_each = { for k, v in var.route_tables_ids : k => v if local.create && var.update_route_tables }
+  for_each = { for k, v in var.route_tables_ids : k => v if local.enabled && var.update_route_tables }
 
   route_table_id         = each.value
   destination_cidr_block = "0.0.0.0/0"
@@ -229,7 +229,7 @@ resource "aws_launch_template" "this" {
   })
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -248,7 +248,7 @@ resource "aws_instance" "this" {
   })
 
   lifecycle {
-    enabled = local.create && !var.ha_mode
+    enabled = local.enabled && !var.ha_mode
     ignore_changes = [
       source_dest_check,
       user_data,
@@ -319,7 +319,7 @@ resource "aws_autoscaling_group" "this" {
   }
 
   lifecycle {
-    enabled = local.create && var.ha_mode
+    enabled = local.enabled && var.ha_mode
   }
 }
 
@@ -348,7 +348,7 @@ resource "aws_iam_role" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -359,7 +359,7 @@ resource "aws_iam_instance_profile" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled               = local.create
+    enabled               = local.enabled
     create_before_destroy = true
   }
 }
@@ -462,7 +462,7 @@ resource "aws_iam_policy" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -471,6 +471,6 @@ resource "aws_iam_role_policy_attachment" "this" {
   policy_arn = aws_iam_policy.this.arn
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }

@@ -5,11 +5,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region to deploy resources into. If null, uses the provider default."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name to use for the key pair. If not provided, a name will be generated using `name_prefix`."
@@ -57,8 +52,3 @@ variable "private_key_rsa_bits" {
   default     = 4096
 }
 
-variable "key_type" {
-  description = "The type of key pair. Valid values: `rsa`, `ed25519`."
-  type        = string
-  default     = null
-}

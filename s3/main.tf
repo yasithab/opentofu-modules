@@ -1,14 +1,14 @@
 data "aws_region" "current" {}
 
 data "aws_canonical_user_id" "this" {
-  count = local.create && local.create_bucket_acl && try(var.owner["id"], null) == null ? 1 : 0
+  count = local.enabled && local.create_bucket_acl && try(var.owner["id"], null) == null ? 1 : 0
 }
 
 data "aws_caller_identity" "current" {}
 
 data "aws_partition" "current" {}
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   create_bucket_acl = (var.acl != null && var.acl != "null") || length(local.grants) > 0
 
@@ -36,7 +36,7 @@ resource "aws_s3_bucket" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create
+    enabled = local.enabled
   }
 }
 
@@ -82,7 +82,7 @@ resource "aws_s3_bucket_logging" "this" {
   }
 
   lifecycle {
-    enabled = local.create && length(keys(var.logging)) > 0
+    enabled = local.enabled && length(keys(var.logging)) > 0
   }
 }
 
@@ -121,7 +121,7 @@ resource "aws_s3_bucket_acl" "this" {
   depends_on = [aws_s3_bucket_ownership_controls.this]
 
   lifecycle {
-    enabled = local.create && local.create_bucket_acl
+    enabled = local.enabled && local.create_bucket_acl
   }
 }
 
@@ -177,7 +177,7 @@ resource "aws_s3_bucket_website_configuration" "this" {
   }
 
   lifecycle {
-    enabled = local.create && length(keys(var.website)) > 0
+    enabled = local.enabled && length(keys(var.website)) > 0
   }
 }
 
@@ -194,7 +194,7 @@ resource "aws_s3_bucket_versioning" "this" {
   }
 
   lifecycle {
-    enabled = local.create && length(keys(var.versioning)) > 0
+    enabled = local.enabled && length(keys(var.versioning)) > 0
   }
 }
 
@@ -221,7 +221,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   }
 
   lifecycle {
-    enabled = local.create && length(keys(var.server_side_encryption_configuration)) > 0
+    enabled = local.enabled && length(keys(var.server_side_encryption_configuration)) > 0
   }
 }
 
@@ -232,7 +232,7 @@ resource "aws_s3_bucket_accelerate_configuration" "this" {
   status = title(lower(var.acceleration_status))
 
   lifecycle {
-    enabled = local.create && var.acceleration_status != null
+    enabled = local.enabled && var.acceleration_status != null
   }
 }
 
@@ -243,7 +243,7 @@ resource "aws_s3_bucket_request_payment_configuration" "this" {
   payer = lower(var.request_payer) == "requester" ? "Requester" : "BucketOwner"
 
   lifecycle {
-    enabled = local.create && var.request_payer != null
+    enabled = local.enabled && var.request_payer != null
   }
 }
 
@@ -264,7 +264,7 @@ resource "aws_s3_bucket_cors_configuration" "this" {
   }
 
   lifecycle {
-    enabled = local.create && length(local.cors_rules) > 0
+    enabled = local.enabled && length(local.cors_rules) > 0
   }
 }
 
@@ -382,7 +382,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   depends_on = [aws_s3_bucket_versioning.this]
 
   lifecycle {
-    enabled = local.create && length(local.lifecycle_rules) > 0
+    enabled = local.enabled && length(local.lifecycle_rules) > 0
   }
 }
 
@@ -399,7 +399,7 @@ resource "aws_s3_bucket_object_lock_configuration" "this" {
   }
 
   lifecycle {
-    enabled = local.create && var.object_lock_enabled && try(var.object_lock_configuration.rule.default_retention, null) != null
+    enabled = local.enabled && var.object_lock_enabled && try(var.object_lock_configuration.rule.default_retention, null) != null
   }
 }
 
@@ -568,7 +568,7 @@ resource "aws_s3_bucket_replication_configuration" "this" {
   depends_on = [aws_s3_bucket_versioning.this]
 
   lifecycle {
-    enabled = local.create && length(keys(var.replication_configuration)) > 0
+    enabled = local.enabled && length(keys(var.replication_configuration)) > 0
   }
 }
 
@@ -585,12 +585,12 @@ resource "aws_s3_bucket_policy" "this" {
   ]
 
   lifecycle {
-    enabled = local.create && local.attach_policy
+    enabled = local.enabled && local.attach_policy
   }
 }
 
 data "aws_iam_policy_document" "combined" {
-  count = local.create && local.attach_policy ? 1 : 0
+  count = local.enabled && local.attach_policy ? 1 : 0
 
   source_policy_documents = compact([
     var.attach_elb_log_delivery_policy ? data.aws_iam_policy_document.elb_log_delivery[0].json : "",
@@ -640,7 +640,7 @@ locals {
 }
 
 data "aws_iam_policy_document" "elb_log_delivery" {
-  count = local.create && var.attach_elb_log_delivery_policy ? 1 : 0
+  count = local.enabled && var.attach_elb_log_delivery_policy ? 1 : 0
 
   # Policy for AWS Regions created before August 2022 (e.g. US East (N. Virginia), Asia Pacific (Singapore), Asia Pacific (Sydney), Asia Pacific (Tokyo), Europe (Ireland))
   dynamic "statement" {
@@ -689,7 +689,7 @@ data "aws_iam_policy_document" "elb_log_delivery" {
 
 # ALB/NLB
 data "aws_iam_policy_document" "lb_log_delivery" {
-  count = local.create && var.attach_lb_log_delivery_policy ? 1 : 0
+  count = local.enabled && var.attach_lb_log_delivery_policy ? 1 : 0
 
   statement {
     sid = "AWSLogDeliveryWrite"
@@ -742,7 +742,7 @@ data "aws_iam_policy_document" "lb_log_delivery" {
 # https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-ownership-migrating-acls-prerequisites.html#object-ownership-server-access-logs
 # https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-server-access-logging.html#grant-log-delivery-permissions-general
 data "aws_iam_policy_document" "access_log_delivery" {
-  count = local.create && var.attach_access_log_delivery_policy ? 1 : 0
+  count = local.enabled && var.attach_access_log_delivery_policy ? 1 : 0
 
   statement {
     sid = "AWSAccessLogDeliveryWrite"
@@ -804,7 +804,7 @@ data "aws_iam_policy_document" "access_log_delivery" {
 }
 
 data "aws_iam_policy_document" "deny_insecure_transport" {
-  count = local.create && var.attach_deny_insecure_transport_policy ? 1 : 0
+  count = local.enabled && var.attach_deny_insecure_transport_policy ? 1 : 0
 
   statement {
     sid    = "denyInsecureTransport"
@@ -835,7 +835,7 @@ data "aws_iam_policy_document" "deny_insecure_transport" {
 }
 
 data "aws_iam_policy_document" "require_latest_tls" {
-  count = local.create && var.attach_require_latest_tls_policy ? 1 : 0
+  count = local.enabled && var.attach_require_latest_tls_policy ? 1 : 0
 
   statement {
     sid    = "denyOutdatedTLS"
@@ -866,7 +866,7 @@ data "aws_iam_policy_document" "require_latest_tls" {
 }
 
 data "aws_iam_policy_document" "deny_incorrect_encryption_headers" {
-  count = local.create && var.attach_deny_incorrect_encryption_headers ? 1 : 0
+  count = local.enabled && var.attach_deny_incorrect_encryption_headers ? 1 : 0
 
   statement {
     sid    = "denyIncorrectEncryptionHeaders"
@@ -894,7 +894,7 @@ data "aws_iam_policy_document" "deny_incorrect_encryption_headers" {
 }
 
 data "aws_iam_policy_document" "deny_incorrect_kms_key_sse" {
-  count = local.create && var.attach_deny_incorrect_kms_key_sse ? 1 : 0
+  count = local.enabled && var.attach_deny_incorrect_kms_key_sse ? 1 : 0
 
   statement {
     sid    = "denyIncorrectKmsKeySse"
@@ -922,7 +922,7 @@ data "aws_iam_policy_document" "deny_incorrect_kms_key_sse" {
 }
 
 data "aws_iam_policy_document" "deny_unencrypted_object_uploads" {
-  count = local.create && var.attach_deny_unencrypted_object_uploads ? 1 : 0
+  count = local.enabled && var.attach_deny_unencrypted_object_uploads ? 1 : 0
 
   statement {
     sid    = "denyUnencryptedObjectUploads"
@@ -959,7 +959,7 @@ resource "aws_s3_bucket_public_access_block" "this" {
   skip_destroy            = var.s3_bucket_public_access_block_skip_destroy
 
   lifecycle {
-    enabled = local.create && var.attach_public_policy
+    enabled = local.enabled && var.attach_public_policy
   }
 }
 
@@ -978,12 +978,12 @@ resource "aws_s3_bucket_ownership_controls" "this" {
   ]
 
   lifecycle {
-    enabled = local.create && var.control_object_ownership
+    enabled = local.enabled && var.control_object_ownership
   }
 }
 
 resource "aws_s3_bucket_intelligent_tiering_configuration" "this" {
-  for_each = { for k, v in local.intelligent_tiering : k => v if local.create }
+  for_each = { for k, v in local.intelligent_tiering : k => v if local.enabled }
 
   name   = each.key
   bucket = aws_s3_bucket.this.id
@@ -1011,7 +1011,7 @@ resource "aws_s3_bucket_intelligent_tiering_configuration" "this" {
 }
 
 resource "aws_s3_bucket_metric" "this" {
-  for_each = { for k, v in local.metric_configuration : k => v if local.create }
+  for_each = { for k, v in local.metric_configuration : k => v if local.enabled }
 
   name   = each.value.name
   bucket = aws_s3_bucket.this.id
@@ -1026,7 +1026,7 @@ resource "aws_s3_bucket_metric" "this" {
 }
 
 resource "aws_s3_bucket_inventory" "this" {
-  for_each = { for k, v in var.inventory_configuration : k => v if local.create && try(v.enabled, true) }
+  for_each = { for k, v in var.inventory_configuration : k => v if local.enabled && try(v.enabled, true) }
 
   name                     = each.key
   bucket                   = try(each.value.bucket, aws_s3_bucket.this.id)
@@ -1080,7 +1080,7 @@ resource "aws_s3_bucket_inventory" "this" {
 # Inventory and analytics destination bucket requires a bucket policy to allow source to PutObjects
 # https://docs.aws.amazon.com/AmazonS3/latest/userguide/example-bucket-policies.html#example-bucket-policies-use-case-9
 data "aws_iam_policy_document" "inventory_and_analytics_destination_policy" {
-  count = local.create && var.attach_inventory_destination_policy || var.attach_analytics_destination_policy ? 1 : 0
+  count = local.enabled && var.attach_inventory_destination_policy || var.attach_analytics_destination_policy ? 1 : 0
 
   statement {
     sid    = "destinationInventoryAndAnalyticsPolicy"
@@ -1166,12 +1166,12 @@ resource "aws_s3_bucket_notification" "this" {
   }
 
   lifecycle {
-    enabled = local.create && (var.notification_eventbridge || length(var.notification_lambda_functions) > 0 || length(var.notification_queues) > 0 || length(var.notification_topics) > 0 || var.notification_configuration != null)
+    enabled = local.enabled && (var.notification_eventbridge || length(var.notification_lambda_functions) > 0 || length(var.notification_queues) > 0 || length(var.notification_topics) > 0 || var.notification_configuration != null)
   }
 }
 
 resource "aws_s3_bucket_analytics_configuration" "this" {
-  for_each = { for k, v in var.analytics_configuration : k => v if local.create }
+  for_each = { for k, v in var.analytics_configuration : k => v if local.enabled }
 
   bucket = aws_s3_bucket.this.id
   name   = each.key
@@ -1204,5 +1204,30 @@ resource "aws_s3_bucket_analytics_configuration" "this" {
         }
       }
     }
+  }
+}
+
+################################################################################
+# OpenTofu Check Blocks
+################################################################################
+
+check "versioning_enabled" {
+  assert {
+    condition     = !var.enabled || try(aws_s3_bucket_versioning.this.versioning_configuration[0].status, "Disabled") == "Enabled"
+    error_message = "S3 bucket should have versioning enabled for data protection."
+  }
+}
+
+check "server_side_encryption_configured" {
+  assert {
+    condition     = !var.enabled || length(try(aws_s3_bucket_server_side_encryption_configuration.this.rule, [])) > 0
+    error_message = "S3 bucket should have server-side encryption configured."
+  }
+}
+
+check "public_access_blocked" {
+  assert {
+    condition     = !var.enabled || try(aws_s3_bucket_public_access_block.this.block_public_acls, false)
+    error_message = "S3 bucket should have public access blocked."
   }
 }

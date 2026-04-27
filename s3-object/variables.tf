@@ -4,17 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region. If null, uses the provider's region."
-  type        = string
-  default     = null
-}
-
-variable "name" {
-  description = "Name prefix used for resources (used in tags)"
-  type        = string
-}
-
 variable "tags" {
   description = "Map of tags to apply to all resources."
   type        = map(string)
@@ -34,11 +23,21 @@ variable "create_object" {
 variable "bucket" {
   description = "Name of the S3 bucket to put the object in"
   type        = string
+
+  validation {
+    condition     = length(var.bucket) > 0
+    error_message = "The bucket name must not be empty."
+  }
 }
 
 variable "key" {
   description = "Key (path) of the object in the bucket"
   type        = string
+
+  validation {
+    condition     = length(var.key) > 0
+    error_message = "The key must not be empty."
+  }
 }
 
 variable "source_file" {
@@ -109,6 +108,11 @@ variable "storage_class" {
   description = "Storage class for the object. One of: `STANDARD`, `REDUCED_REDUNDANCY`, `ONEZONE_IA`, `INTELLIGENT_TIERING`, `GLACIER`, `DEEP_ARCHIVE`, `GLACIER_IR`"
   type        = string
   default     = "STANDARD"
+
+  validation {
+    condition     = contains(["STANDARD", "REDUCED_REDUNDANCY", "ONEZONE_IA", "INTELLIGENT_TIERING", "GLACIER", "DEEP_ARCHIVE", "GLACIER_IR"], var.storage_class)
+    error_message = "The storage_class must be one of: STANDARD, REDUCED_REDUNDANCY, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER, DEEP_ARCHIVE, GLACIER_IR."
+  }
 }
 
 ################################################################################
@@ -119,31 +123,28 @@ variable "server_side_encryption" {
   description = "Server-side encryption algorithm. `AES256` (SSE-S3), `aws:kms` (SSE-KMS), or `aws:kms:dsse` (DSSE-KMS)"
   type        = string
   default     = "AES256"
+
+  validation {
+    condition     = contains(["AES256", "aws:kms", "aws:kms:dsse"], var.server_side_encryption)
+    error_message = "The server_side_encryption must be 'AES256', 'aws:kms', or 'aws:kms:dsse'."
+  }
 }
 
 variable "kms_key_id" {
   description = "ARN of the KMS key for SSE-KMS encryption. Required when `server_side_encryption` is `aws:kms` or `aws:kms:dsse`."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.kms_key_id == null || can(regex("^arn:", var.kms_key_id))
+    error_message = "The kms_key_id must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "bucket_key_enabled" {
   description = "Whether to use S3 Bucket Keys for SSE-KMS, reducing KMS request costs"
   type        = bool
   default     = true
-}
-
-variable "customer_algorithm" {
-  description = "SSE-C encryption algorithm (e.g., `AES256`). Used for customer-provided encryption keys."
-  type        = string
-  default     = null
-}
-
-variable "customer_key" {
-  description = "Base64-encoded 256-bit customer-provided encryption key for SSE-C"
-  type        = string
-  default     = null
-  sensitive   = true
 }
 
 ################################################################################
@@ -180,6 +181,11 @@ variable "object_lock_mode" {
   description = "Object lock retention mode. `GOVERNANCE` or `COMPLIANCE`."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.object_lock_mode == null || contains(["GOVERNANCE", "COMPLIANCE"], var.object_lock_mode)
+    error_message = "The object_lock_mode must be 'GOVERNANCE' or 'COMPLIANCE'."
+  }
 }
 
 variable "object_lock_retain_until_date" {
@@ -192,6 +198,11 @@ variable "object_lock_legal_hold_status" {
   description = "Legal hold status. `ON` or `OFF`."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.object_lock_legal_hold_status == null || contains(["ON", "OFF"], var.object_lock_legal_hold_status)
+    error_message = "The object_lock_legal_hold_status must be 'ON' or 'OFF'."
+  }
 }
 
 variable "force_destroy" {
@@ -232,6 +243,11 @@ variable "copy_metadata_directive" {
   description = "Whether to COPY or REPLACE metadata from the source object"
   type        = string
   default     = "COPY"
+
+  validation {
+    condition     = contains(["COPY", "REPLACE"], var.copy_metadata_directive)
+    error_message = "The copy_metadata_directive must be 'COPY' or 'REPLACE'."
+  }
 }
 
 ################################################################################

@@ -5,11 +5,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region to deploy resources into. If null, uses the provider default."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name used for the Auto Scaling Group, launch template, and related resources"
@@ -112,6 +107,11 @@ variable "iam_instance_profile_arn" {
   description = "ARN of an existing IAM instance profile. Mutually exclusive with `create_iam_instance_profile`."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_instance_profile_arn == null || can(regex("^arn:", var.iam_instance_profile_arn))
+    error_message = "iam_instance_profile_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "placement" {
@@ -158,6 +158,11 @@ variable "iam_role_permissions_boundary" {
   description = "ARN of the permissions boundary policy for the IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_role_permissions_boundary == null || can(regex("^arn:", var.iam_role_permissions_boundary))
+    error_message = "iam_role_permissions_boundary must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_role_policy_arns" {
@@ -232,18 +237,33 @@ variable "min_size" {
   description = "Minimum number of instances in the ASG"
   type        = number
   default     = 0
+
+  validation {
+    condition     = var.min_size >= 0
+    error_message = "min_size must be >= 0."
+  }
 }
 
 variable "max_size" {
   description = "Maximum number of instances in the ASG"
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.max_size >= 0
+    error_message = "max_size must be >= 0."
+  }
 }
 
 variable "desired_capacity" {
   description = "Desired number of instances in the ASG"
   type        = number
   default     = null
+
+  validation {
+    condition     = var.desired_capacity == null || var.desired_capacity >= 0
+    error_message = "desired_capacity must be >= 0."
+  }
 }
 
 variable "vpc_zone_identifier" {
@@ -256,12 +276,22 @@ variable "health_check_type" {
   description = "Type of health check. Valid values: `EC2`, `ELB`."
   type        = string
   default     = "EC2"
+
+  validation {
+    condition     = contains(["EC2", "ELB"], var.health_check_type)
+    error_message = "health_check_type must be one of: EC2, ELB."
+  }
 }
 
 variable "health_check_grace_period" {
   description = "Time in seconds after instance launch before health checking starts"
   type        = number
   default     = 300
+
+  validation {
+    condition     = var.health_check_grace_period >= 0
+    error_message = "health_check_grace_period must be >= 0."
+  }
 }
 
 variable "default_cooldown" {
@@ -330,6 +360,11 @@ variable "service_linked_role_arn" {
   description = "ARN of the service-linked role for the ASG"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.service_linked_role_arn == null || can(regex("^arn:", var.service_linked_role_arn))
+    error_message = "service_linked_role_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "capacity_rebalance" {
@@ -376,12 +411,22 @@ variable "on_demand_percentage_above_base_capacity" {
   description = "Percentage of on-demand instances beyond the base capacity"
   type        = number
   default     = 100
+
+  validation {
+    condition     = var.on_demand_percentage_above_base_capacity >= 0 && var.on_demand_percentage_above_base_capacity <= 100
+    error_message = "on_demand_percentage_above_base_capacity must be between 0 and 100."
+  }
 }
 
 variable "spot_allocation_strategy" {
   description = "Strategy for allocating Spot instances. Valid values: `lowest-price`, `capacity-optimized`, `capacity-optimized-prioritized`, `price-capacity-optimized`."
   type        = string
   default     = "price-capacity-optimized"
+
+  validation {
+    condition     = contains(["lowest-price", "capacity-optimized", "capacity-optimized-prioritized", "price-capacity-optimized"], var.spot_allocation_strategy)
+    error_message = "spot_allocation_strategy must be one of: lowest-price, capacity-optimized, capacity-optimized-prioritized, price-capacity-optimized."
+  }
 }
 
 variable "spot_instance_pools" {

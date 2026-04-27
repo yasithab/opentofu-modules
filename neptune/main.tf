@@ -77,6 +77,55 @@ resource "aws_neptune_parameter_group" "this" {
 }
 
 ################################################################################
+# Security Group
+################################################################################
+
+resource "aws_security_group" "this" {
+  name        = "${var.name}-neptune"
+  vpc_id      = var.vpc_id
+  description = "Security group for Neptune cluster ${var.name}"
+
+  tags = merge(local.tags, { Name = "${var.name}-neptune" })
+
+  lifecycle {
+    enabled               = local.enabled && var.create_security_group
+    create_before_destroy = true
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "this" {
+  for_each = { for k, v in var.security_group_rules : k => v if local.enabled && var.create_security_group && try(v.type, "ingress") == "ingress" }
+
+  security_group_id            = aws_security_group.this.id
+  ip_protocol                  = try(each.value.ip_protocol, "tcp")
+  cidr_ipv4                    = lookup(each.value, "cidr_ipv4", null)
+  cidr_ipv6                    = lookup(each.value, "cidr_ipv6", null)
+  description                  = try(each.value.description, null)
+  from_port                    = try(each.value.from_port, local.port)
+  prefix_list_id               = lookup(each.value, "prefix_list_id", null)
+  referenced_security_group_id = lookup(each.value, "referenced_security_group_id", null)
+  to_port                      = try(each.value.to_port, local.port)
+
+  tags = merge(local.tags, try(each.value.tags, {}))
+}
+
+resource "aws_vpc_security_group_egress_rule" "this" {
+  for_each = { for k, v in var.security_group_rules : k => v if local.enabled && var.create_security_group && try(v.type, "ingress") == "egress" }
+
+  security_group_id            = aws_security_group.this.id
+  ip_protocol                  = try(each.value.ip_protocol, "tcp")
+  cidr_ipv4                    = lookup(each.value, "cidr_ipv4", null)
+  cidr_ipv6                    = lookup(each.value, "cidr_ipv6", null)
+  description                  = try(each.value.description, null)
+  from_port                    = try(each.value.from_port, null)
+  prefix_list_id               = lookup(each.value, "prefix_list_id", null)
+  referenced_security_group_id = lookup(each.value, "referenced_security_group_id", null)
+  to_port                      = try(each.value.to_port, null)
+
+  tags = merge(local.tags, try(each.value.tags, {}))
+}
+
+################################################################################
 # Cluster
 ################################################################################
 
@@ -87,7 +136,7 @@ resource "aws_neptune_cluster" "this" {
   port                                 = local.port
   neptune_subnet_group_name            = var.create_subnet_group ? aws_neptune_subnet_group.this.name : var.subnet_group_name
   neptune_cluster_parameter_group_name = var.create_cluster_parameter_group ? aws_neptune_cluster_parameter_group.this.name : var.cluster_parameter_group_name
-  vpc_security_group_ids               = var.vpc_security_group_ids
+  vpc_security_group_ids               = compact(concat([try(aws_security_group.this.id, "")], var.vpc_security_group_ids))
   storage_encrypted                    = var.storage_encrypted
   kms_key_arn                          = var.kms_key_arn
   iam_database_authentication_enabled  = var.iam_database_authentication_enabled
@@ -126,6 +175,7 @@ resource "aws_neptune_cluster" "this" {
   depends_on = [
     aws_neptune_subnet_group.this,
     aws_neptune_cluster_parameter_group.this,
+    aws_cloudwatch_log_group.this,
   ]
 }
 
@@ -148,4 +198,38 @@ resource "aws_neptune_cluster_instance" "this" {
   publicly_accessible          = try(each.value.publicly_accessible, false)
 
   tags = merge(local.tags, try(each.value.tags, {}))
+}
+
+################################################################################
+# CloudWatch Log Group
+################################################################################
+
+resource "aws_cloudwatch_log_group" "this" {
+  for_each = toset([for log in var.enable_cloudwatch_logs_exports : log if local.enabled && var.create_cloudwatch_log_group])
+
+  name              = "/aws/neptune/${var.name}/${each.value}"
+  retention_in_days = var.cloudwatch_log_group_retention_in_days
+  kms_key_id        = var.cloudwatch_log_group_kms_key_id
+  skip_destroy      = var.cloudwatch_log_group_skip_destroy
+  log_group_class   = var.cloudwatch_log_group_class
+
+  tags = merge(local.tags, var.cloudwatch_log_group_tags)
+}
+
+################################################################################
+# OpenTofu Check Blocks
+################################################################################
+
+check "encryption_enabled" {
+  assert {
+    condition     = !var.enabled || aws_neptune_cluster.this.storage_encrypted
+    error_message = "Neptune cluster must have storage encryption enabled."
+  }
+}
+
+check "deletion_protection_enabled" {
+  assert {
+    condition     = !var.enabled || aws_neptune_cluster.this.deletion_protection
+    error_message = "Neptune cluster should have deletion protection enabled for production use."
+  }
 }

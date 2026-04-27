@@ -78,6 +78,11 @@ variable "transit_gateway_cidr_blocks" {
   description = "One or more IPv4 or IPv6 CIDR blocks for the transit gateway. Must be a size /24 CIDR block or larger for IPv4, or a size /64 CIDR block or larger for IPv6"
   type        = list(string)
   default     = []
+
+  validation {
+    condition     = alltrue([for cidr in var.transit_gateway_cidr_blocks : can(cidrnetmask(cidr)) || can(cidrhost(cidr, 0))])
+    error_message = "Each entry in transit_gateway_cidr_blocks must be a valid CIDR block."
+  }
 }
 
 variable "vpn_ecmp_support" {

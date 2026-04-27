@@ -147,6 +147,11 @@ variable "instance_type" {
   description = "The type of instance to start"
   type        = string
   default     = "t3.micro"
+
+  validation {
+    condition     = var.instance_type == null || can(regex("^[a-z][a-z0-9]*\\.[a-z0-9]+$", var.instance_type))
+    error_message = "instance_type must be a valid EC2 instance type format (e.g., t3.micro, m5.large)."
+  }
 }
 
 variable "instance_tags" {

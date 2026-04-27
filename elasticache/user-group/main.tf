@@ -1,5 +1,5 @@
 locals {
-  create = var.enabled
+  enabled = var.enabled
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -19,7 +19,7 @@ resource "aws_elasticache_user_group" "this" {
   user_ids      = var.create_default_user ? [aws_elasticache_user.default.user_id] : [var.default_user_id]
 
   lifecycle {
-    enabled        = local.create && var.create_group
+    enabled        = local.enabled && var.create_group
     ignore_changes = [user_ids]
   }
 }
@@ -47,7 +47,7 @@ resource "aws_elasticache_user" "default" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.create && var.create_default_user
+    enabled = local.enabled && var.create_default_user
   }
 }
 
@@ -56,7 +56,7 @@ resource "aws_elasticache_user" "default" {
 ################################################################################
 
 resource "aws_elasticache_user" "this" {
-  for_each = { for k, v in var.users : k => v if local.create }
+  for_each = { for k, v in var.users : k => v if local.enabled }
 
   region = var.region
 
@@ -81,9 +81,9 @@ resource "aws_elasticache_user" "this" {
 }
 
 resource "aws_elasticache_user_group_association" "this" {
-  for_each = { for k, v in var.users : k => v if local.create }
+  for_each = { for k, v in var.users : k => v if local.enabled }
 
-  user_group_id = local.create && var.create_group ? aws_elasticache_user_group.this.user_group_id : each.value.user_group_id
+  user_group_id = local.enabled && var.create_group ? aws_elasticache_user_group.this.user_group_id : each.value.user_group_id
   user_id       = aws_elasticache_user.this[each.key].user_id
 
   dynamic "timeouts" {

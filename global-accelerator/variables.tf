@@ -13,6 +13,11 @@ variable "region" {
 variable "name" {
   description = "Name of the Global Accelerator."
   type        = string
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "The name must not be empty."
+  }
 }
 
 variable "tags" {
@@ -29,6 +34,11 @@ variable "ip_address_type" {
   description = "IP address type for the accelerator. Valid values: `IPV4`, `DUAL_STACK`."
   type        = string
   default     = "IPV4"
+
+  validation {
+    condition     = contains(["IPV4", "DUAL_STACK"], var.ip_address_type)
+    error_message = "The ip_address_type must be 'IPV4' or 'DUAL_STACK'."
+  }
 }
 
 variable "ip_addresses" {

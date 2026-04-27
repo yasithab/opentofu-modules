@@ -210,9 +210,3 @@ variable "sso_instance_access_control_attributes" {
     error_message = "The attribute source is mandatory and must contain non-empty strings."
   }
 }
-
-variable "tags" {
-  description = "Map of tags to apply to all resources."
-  type        = map(string)
-  default     = {}
-}

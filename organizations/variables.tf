@@ -4,11 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region where resources will be created. If null, the provider default region is used."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "Name identifier used for tagging and resource naming within the organization."

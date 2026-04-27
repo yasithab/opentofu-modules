@@ -7,6 +7,11 @@ variable "enabled" {
 variable "name" {
   description = "Name for the conformance pack."
   type        = string
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "name must not be empty."
+  }
 }
 
 # -- Template -----------------------------------------------------------------
@@ -27,6 +32,11 @@ variable "template_s3_uri" {
   EOT
   type        = string
   default     = null
+
+  validation {
+    condition     = var.template_s3_uri == null || can(regex("^s3://", var.template_s3_uri))
+    error_message = "template_s3_uri must be a valid S3 URI starting with 's3://'."
+  }
 }
 
 # -- Parameters ---------------------------------------------------------------

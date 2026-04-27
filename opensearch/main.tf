@@ -606,3 +606,28 @@ resource "aws_opensearch_vpc_endpoint" "this" {
 }
 
 ################################################################################
+# OpenTofu Check Blocks
+################################################################################
+
+check "encryption_at_rest_enabled" {
+  assert {
+    condition     = !var.enabled || try(aws_opensearch_domain.this.encrypt_at_rest[0].enabled, false)
+    error_message = "OpenSearch domain must have encryption at rest enabled."
+  }
+}
+
+check "node_to_node_encryption_enabled" {
+  assert {
+    condition     = !var.enabled || try(aws_opensearch_domain.this.node_to_node_encryption[0].enabled, false)
+    error_message = "OpenSearch domain must have node-to-node encryption enabled."
+  }
+}
+
+check "enforce_https" {
+  assert {
+    condition     = !var.enabled || try(aws_opensearch_domain.this.domain_endpoint_options[0].enforce_https, false)
+    error_message = "OpenSearch domain should enforce HTTPS for all traffic."
+  }
+}
+
+################################################################################

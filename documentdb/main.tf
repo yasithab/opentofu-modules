@@ -140,6 +140,7 @@ resource "aws_docdb_cluster" "this" {
   depends_on = [
     aws_docdb_subnet_group.this,
     aws_docdb_cluster_parameter_group.this,
+    aws_cloudwatch_log_group.this,
   ]
 }
 
@@ -163,4 +164,38 @@ resource "aws_docdb_cluster_instance" "this" {
   promotion_tier                  = try(each.value.promotion_tier, null)
 
   tags = merge(local.tags, try(each.value.tags, {}))
+}
+
+################################################################################
+# CloudWatch Log Group
+################################################################################
+
+resource "aws_cloudwatch_log_group" "this" {
+  for_each = toset([for log in var.enabled_cloudwatch_logs_exports : log if local.enabled && var.create_cloudwatch_log_group])
+
+  name              = "/aws/docdb/${var.name}/${each.value}"
+  retention_in_days = var.cloudwatch_log_group_retention_in_days
+  kms_key_id        = var.cloudwatch_log_group_kms_key_id
+  skip_destroy      = var.cloudwatch_log_group_skip_destroy
+  log_group_class   = var.cloudwatch_log_group_class
+
+  tags = merge(local.tags, var.cloudwatch_log_group_tags)
+}
+
+################################################################################
+# OpenTofu Check Blocks
+################################################################################
+
+check "encryption_enabled" {
+  assert {
+    condition     = !var.enabled || aws_docdb_cluster.this.storage_encrypted
+    error_message = "DocumentDB cluster must have storage encryption enabled."
+  }
+}
+
+check "deletion_protection_enabled" {
+  assert {
+    condition     = !var.enabled || aws_docdb_cluster.this.deletion_protection
+    error_message = "DocumentDB cluster should have deletion protection enabled for production use."
+  }
 }

@@ -352,18 +352,33 @@ variable "min_size" {
   description = "Minimum number of instances/nodes"
   type        = number
   default     = 0
+
+  validation {
+    condition     = var.min_size >= 0
+    error_message = "The min_size must be non-negative."
+  }
 }
 
 variable "max_size" {
   description = "Maximum number of instances/nodes"
   type        = number
   default     = 3
+
+  validation {
+    condition     = var.max_size >= 0
+    error_message = "The max_size must be non-negative."
+  }
 }
 
 variable "desired_size" {
   description = "Desired number of instances/nodes"
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.desired_size >= 0
+    error_message = "The desired_size must be non-negative."
+  }
 }
 
 variable "name" {
@@ -400,6 +415,11 @@ variable "capacity_type" {
   description = "Type of capacity associated with the EKS Node Group. Valid values: `ON_DEMAND`, `SPOT`"
   type        = string
   default     = "ON_DEMAND"
+
+  validation {
+    condition     = contains(["ON_DEMAND", "SPOT"], var.capacity_type)
+    error_message = "The capacity_type must be 'ON_DEMAND' or 'SPOT'."
+  }
 }
 
 variable "disk_size" {
@@ -496,12 +516,22 @@ variable "cluster_ip_family" {
   description = "The IP family used to assign Kubernetes pod and service addresses. Valid values are `ipv4` (default) and `ipv6`"
   type        = string
   default     = "ipv4"
+
+  validation {
+    condition     = contains(["ipv4", "ipv6"], var.cluster_ip_family)
+    error_message = "The cluster_ip_family must be 'ipv4' or 'ipv6'."
+  }
 }
 
 variable "iam_role_arn" {
   description = "Existing IAM role ARN for the node group. Required if `create_iam_role` is set to `false`"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_role_arn == null || can(regex("^arn:", var.iam_role_arn))
+    error_message = "The iam_role_arn must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_role_name" {
@@ -532,6 +562,11 @@ variable "iam_role_permissions_boundary" {
   description = "ARN of the policy that is used to set the permissions boundary for the IAM role"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.iam_role_permissions_boundary == null || can(regex("^arn:", var.iam_role_permissions_boundary))
+    error_message = "The iam_role_permissions_boundary must be null or a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_role_attach_cni_policy" {

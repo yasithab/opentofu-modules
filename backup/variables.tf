@@ -11,6 +11,11 @@ variable "enabled" {
 variable "name" {
   description = "Name to use for resource naming and tagging."
   type        = string
+
+  validation {
+    condition     = length(var.name) >= 1
+    error_message = "name must not be empty."
+  }
 }
 
 variable "tags" {
@@ -39,6 +44,11 @@ variable "kms_key_arn" {
   type        = string
   description = "ARN of the KMS key used to encrypt the backup vault. Uses the AWS-managed key when null."
   default     = null
+
+  validation {
+    condition     = var.kms_key_arn == null || can(regex("^arn:", var.kms_key_arn))
+    error_message = "kms_key_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "vault_force_destroy" {
@@ -124,6 +134,11 @@ variable "permissions_boundary" {
   type        = string
   description = "ARN of the IAM policy to use as permissions boundary for the backup IAM role."
   default     = null
+
+  validation {
+    condition     = var.permissions_boundary == null || can(regex("^arn:", var.permissions_boundary))
+    error_message = "permissions_boundary must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "iam_role_extra_policies" {

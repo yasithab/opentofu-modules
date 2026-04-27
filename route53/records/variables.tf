@@ -15,6 +15,11 @@ variable "zone_id" {
   description = "ID of DNS zone"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.zone_id == null || length(var.zone_id) > 0
+    error_message = "The zone_id must be null or a non-empty string."
+  }
 }
 
 variable "zone_name" {

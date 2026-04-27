@@ -4,33 +4,37 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "AWS region. If specified, overrides the provider's default region."
-  type        = string
-  default     = null
-}
 
 variable "name" {
   description = "The name of the IAM group."
   type        = string
-}
 
-variable "tags" {
-  description = "Map of tags to apply to all resources."
-  type        = map(string)
-  default     = {}
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "The name must not be empty."
+  }
 }
 
 variable "path" {
   description = "Path in which to create the group."
   type        = string
   default     = "/"
+
+  validation {
+    condition     = can(regex("^/", var.path))
+    error_message = "The path must begin with '/'."
+  }
 }
 
 variable "managed_policy_arns" {
   description = "Set of managed policy ARNs to attach to the group."
   type        = set(string)
   default     = []
+
+  validation {
+    condition     = alltrue([for arn in var.managed_policy_arns : can(regex("^arn:", arn))])
+    error_message = "Each managed_policy_arns entry must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "inline_policies" {

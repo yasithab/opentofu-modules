@@ -27,6 +27,11 @@ variable "kms_arn" {
   type        = string
   default     = null
   description = "The ARN of a KMS key used to encrypt and decrypt SecretString values"
+
+  validation {
+    condition     = var.kms_arn == null || can(regex("^arn:", var.kms_arn))
+    error_message = "The kms_arn must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "parameter_write_defaults" {
