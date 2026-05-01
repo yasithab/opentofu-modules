@@ -224,7 +224,7 @@ variable "platform_version" {
 variable "propagate_tags" {
   description = "Specifies whether to propagate the tags from the task definition or the service to the tasks. The valid values are `SERVICE` and `TASK_DEFINITION`"
   type        = string
-  default     = null
+  default     = "SERVICE"
 
   validation {
     condition     = var.propagate_tags == null || contains(["SERVICE", "TASK_DEFINITION"], var.propagate_tags)
