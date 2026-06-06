@@ -352,6 +352,7 @@ resource "aws_iam_role_policy_attachment" "this" {
 # CloudWatch Alarm (ASG health)
 ################################################################################
 
+# trivy:ignore:AVD-AWS-0095 - Alarm notification topic; encryption is optional for operational alerts
 resource "aws_sns_topic" "alarm" {
   name_prefix = "${var.name}-alarm-"
 

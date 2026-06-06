@@ -9,6 +9,7 @@ locals {
 # Workgroup
 ################################################################################
 
+# trivy:ignore:AVD-AWS-0006 - Encryption is caller-controlled via configuration.result_configuration.encryption_configuration
 resource "aws_athena_workgroup" "this" {
   name          = var.name
   description   = var.workgroup_description

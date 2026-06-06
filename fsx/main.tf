@@ -51,6 +51,7 @@ resource "aws_vpc_security_group_ingress_rule" "this" {
   tags = local.tags
 }
 
+# trivy:ignore:AVD-AWS-0104 - Egress rules are caller-controlled via var.security_group_egress_rules
 resource "aws_vpc_security_group_egress_rule" "this" {
   for_each = { for k, v in var.security_group_egress_rules : k => v if local.create_security_group }
 
