@@ -151,7 +151,7 @@ data "cloudinit_config" "this" {
       oidc_expiry              = try(var.oidc.expiry, "24h")
       secrets_manager_arn      = var.secrets_manager_arn
       secrets_manager_oidc_key = var.secrets_manager_oidc_key
-      aws_region               = data.aws_region.current.name
+      aws_region               = data.aws_region.current.region
       acl_policy               = var.acl_policy
       eip_allocation_id        = local.has_eip ? local.eip_allocation_id : ""
       subnet_router_enabled    = var.subnet_router_enabled

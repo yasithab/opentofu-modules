@@ -395,7 +395,7 @@ data "aws_iam_policy_document" "this" {
         "ec2:DisassociateAddress",
       ]
       resources = [
-        "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:elastic-ip/${var.eip_allocation_ids[0]}",
+        "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:elastic-ip/${var.eip_allocation_ids[0]}",
       ]
     }
   }
@@ -411,7 +411,7 @@ data "aws_iam_policy_document" "this" {
         "ec2:DisassociateAddress",
       ]
       resources = [
-        "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:network-interface/*",
+        "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:network-interface/*",
       ]
 
       condition {
