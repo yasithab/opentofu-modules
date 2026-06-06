@@ -419,7 +419,7 @@ resource "aws_cloudwatch_event_permission" "this" {
 }
 
 resource "aws_cloudwatch_event_connection" "this" {
-  for_each = { for k, v in local.eventbridge_connections : v.name => v if var.enabled && var.create_connections }
+  for_each = { for k, v in nonsensitive(local.eventbridge_connections) : v.name => v if var.enabled && var.create_connections }
 
   region = var.region
 

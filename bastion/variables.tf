@@ -48,6 +48,11 @@ variable "subnet_id" {
   type        = string
 }
 
+variable "vpc_id" {
+  description = "VPC ID for the security group."
+  type        = string
+}
+
 variable "vpc_security_group_ids" {
   description = "List of security group IDs to associate with the bastion"
   type        = list(string)

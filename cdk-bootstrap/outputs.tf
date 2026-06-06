@@ -80,7 +80,7 @@ output "lookup_role_arn" {
 
 output "bootstrap_version" {
   description = "The CDK bootstrap version stored in SSM."
-  value       = try(aws_ssm_parameter.version.value, "")
+  value       = try(nonsensitive(aws_ssm_parameter.version.value), "")
 }
 
 output "ssm_parameter_name" {

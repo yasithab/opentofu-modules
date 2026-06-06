@@ -1207,6 +1207,18 @@ resource "aws_s3_bucket_analytics_configuration" "this" {
   }
 }
 
+resource "aws_s3_bucket_abac" "this" {
+  bucket = aws_s3_bucket.this.bucket
+
+  abac_status {
+    status = var.abac_enabled ? "Enabled" : "Disabled"
+  }
+
+  lifecycle {
+    enabled = local.enabled
+  }
+}
+
 ################################################################################
 # OpenTofu Check Blocks
 ################################################################################

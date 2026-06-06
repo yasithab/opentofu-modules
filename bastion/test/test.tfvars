@@ -1,6 +1,7 @@
 enabled       = true
 name          = "test-bastion"
 subnet_id     = "subnet-0123456789abcdef0"
+vpc_id        = "vpc-0123456789abcdef0"
 instance_type = "t4g.nano"
 public        = true
 

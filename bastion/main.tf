@@ -1,12 +1,6 @@
 data "aws_partition" "current" {}
 data "aws_region" "current" {}
 
-data "aws_subnet" "this" {
-  count = local.enabled ? 1 : 0
-
-  id = var.subnet_id
-}
-
 locals {
   enabled     = var.enabled
   name        = var.name
@@ -248,7 +242,7 @@ resource "aws_iam_instance_profile" "this" {
 resource "aws_security_group" "this" {
   name_prefix = "${local.bastion_id}-"
   description = "Security group for ${local.bastion_id}"
-  vpc_id      = data.aws_subnet.this[0].vpc_id
+  vpc_id      = var.vpc_id
 
   tags = merge(local.tags, { "Name" = local.bastion_id })
 
