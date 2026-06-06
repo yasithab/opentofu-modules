@@ -367,3 +367,9 @@ variable "notification_topics" {
   type        = any
   default     = []
 }
+
+variable "abac_enabled" {
+  description = "Whether to enable Attribute Based Access Control (ABAC) for the S3 bucket, allowing tag-based authorization in IAM policies."
+  type        = bool
+  default     = true
+}

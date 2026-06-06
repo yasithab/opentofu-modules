@@ -2,7 +2,7 @@ data "aws_partition" "current" {}
 data "aws_region" "current" {}
 
 data "aws_subnet" "this" {
-  count = local.enabled ? 1 : 0
+  count = local.enabled && local.create_sg ? 1 : 0
 
   id = var.subnet_id
 }
