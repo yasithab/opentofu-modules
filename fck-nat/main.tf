@@ -237,6 +237,7 @@ resource "aws_launch_template" "this" {
 # EC2 Instance (non-HA mode)
 ################################################################################
 
+# trivy:ignore:AVD-AWS-0131 - EBS encryption is set in launch template; instance inherits it
 resource "aws_instance" "this" {
   launch_template {
     id      = aws_launch_template.this.id

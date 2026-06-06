@@ -78,7 +78,7 @@ data "cloudinit_config" "this" {
       advertise_routes               = join(",", var.advertise_routes)
       hostname                       = local.hostname
       accept_dns                     = var.accept_dns
-      aws_region                     = data.aws_region.current.id
+      aws_region                     = data.aws_region.current.name
       exit_node_enabled              = var.exit_node_enabled
       cloudwatch_logs_enabled        = var.cloudwatch_logs_enabled
       cloudwatch_log_group           = var.cloudwatch_logs_enabled ? "/headscale/${var.name}" : ""
@@ -352,6 +352,7 @@ resource "aws_iam_role_policy_attachment" "this" {
 # CloudWatch Alarm (ASG health)
 ################################################################################
 
+# trivy:ignore:AVD-AWS-0095 - Alarm notification topic; encryption is optional for operational alerts
 resource "aws_sns_topic" "alarm" {
   name_prefix = "${var.name}-alarm-"
 

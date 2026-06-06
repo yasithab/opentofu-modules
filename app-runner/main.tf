@@ -364,7 +364,7 @@ resource "aws_iam_role_policy" "instance_inline" {
 }
 
 resource "aws_iam_role_policy_attachment" "instance_xray" {
-  policy_arn = "arn:${data.aws_partition.current.id}:iam::aws:policy/AWSXRayDaemonWriteAccess"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AWSXRayDaemonWriteAccess"
   role       = aws_iam_role.instance.name
 
   lifecycle {
