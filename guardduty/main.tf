@@ -13,26 +13,6 @@ resource "aws_guardduty_detector" "this" {
   enable                       = true
   finding_publishing_frequency = var.finding_publishing_frequency
 
-  datasources {
-    s3_logs {
-      enable = var.enable_s3_protection
-    }
-
-    kubernetes {
-      audit_logs {
-        enable = var.enable_eks_protection
-      }
-    }
-
-    malware_protection {
-      scan_ec2_instance_with_findings {
-        ebs_volumes {
-          enable = var.enable_malware_protection
-        }
-      }
-    }
-  }
-
   tags = local.tags
 
   lifecycle {
@@ -43,6 +23,36 @@ resource "aws_guardduty_detector" "this" {
 ################################################################################
 # Feature Configuration
 ################################################################################
+
+resource "aws_guardduty_detector_feature" "s3_data_events" {
+  detector_id = aws_guardduty_detector.this.id
+  name        = "S3_DATA_EVENTS"
+  status      = var.enable_s3_protection ? "ENABLED" : "DISABLED"
+
+  lifecycle {
+    enabled = local.enabled
+  }
+}
+
+resource "aws_guardduty_detector_feature" "eks_audit_logs" {
+  detector_id = aws_guardduty_detector.this.id
+  name        = "EKS_AUDIT_LOGS"
+  status      = var.enable_eks_protection ? "ENABLED" : "DISABLED"
+
+  lifecycle {
+    enabled = local.enabled
+  }
+}
+
+resource "aws_guardduty_detector_feature" "ebs_malware_protection" {
+  detector_id = aws_guardduty_detector.this.id
+  name        = "EBS_MALWARE_PROTECTION"
+  status      = var.enable_malware_protection ? "ENABLED" : "DISABLED"
+
+  lifecycle {
+    enabled = local.enabled
+  }
+}
 
 resource "aws_guardduty_detector_feature" "rds_login_events" {
   detector_id = aws_guardduty_detector.this.id

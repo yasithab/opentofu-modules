@@ -78,7 +78,7 @@ data "cloudinit_config" "this" {
       advertise_routes               = join(",", var.advertise_routes)
       hostname                       = local.hostname
       accept_dns                     = var.accept_dns
-      aws_region                     = data.aws_region.current.name
+      aws_region                     = data.aws_region.current.region
       exit_node_enabled              = var.exit_node_enabled
       cloudwatch_logs_enabled        = var.cloudwatch_logs_enabled
       cloudwatch_log_group           = var.cloudwatch_logs_enabled ? "/headscale/${var.name}" : ""

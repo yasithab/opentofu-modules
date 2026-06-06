@@ -13,7 +13,7 @@ locals {
 resource "aws_elasticache_user_group" "this" {
   region = var.region
 
-  engine        = var.engine
+  engine        = lower(var.engine)
   user_group_id = var.user_group_id
   tags          = local.tags
   user_ids      = var.create_default_user ? [aws_elasticache_user.default.user_id] : [var.default_user_id]
@@ -38,7 +38,7 @@ resource "aws_elasticache_user" "default" {
     }
   }
 
-  engine               = try(var.default_user.engine, "REDIS")
+  engine               = try(lower(var.default_user.engine), "redis")
   no_password_required = try(var.default_user.no_password_required, null)
   passwords            = try(var.default_user.passwords, null)
   user_id              = try(var.default_user.user_id, null)
@@ -71,7 +71,7 @@ resource "aws_elasticache_user" "this" {
     }
   }
 
-  engine               = try(each.value.engine, "REDIS")
+  engine               = try(lower(each.value.engine), "redis")
   no_password_required = try(each.value.no_password_required, null)
   passwords            = try(each.value.passwords, null)
   user_id              = try(each.value.user_id, each.key)
