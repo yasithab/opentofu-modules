@@ -1,9 +1,9 @@
-enabled       = true
-name          = "test-bastion"
-subnet_id     = "subnet-0123456789abcdef0"
-vpc_id        = "vpc-0123456789abcdef0"
-instance_type = "t4g.nano"
-public        = true
+enabled                = true
+name                   = "test-bastion"
+subnet_id              = "subnet-0123456789abcdef0"
+vpc_security_group_ids = ["sg-0123456789abcdef0"]
+instance_type          = "t4g.nano"
+public                 = true
 
 allowed_ssh_cidrs = ["203.0.113.0/24"]
 
