@@ -83,6 +83,11 @@ variable "ebs_root_volume_size" {
   description = "Root EBS volume size in GB"
   type        = number
   default     = 8
+
+  validation {
+    condition     = var.ebs_root_volume_size >= 1
+    error_message = "ebs_root_volume_size must be at least 1 GB."
+  }
 }
 
 variable "ebs_encrypted" {
@@ -145,6 +150,13 @@ variable "tunnel_users" {
 
   validation {
     condition = alltrue([
+      for name, user in var.tunnel_users : can(regex("^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp(256|384|521)|sk-(ssh-ed25519|ecdsa-sha2-nistp256)@openssh\\.com) ", user.ssh_public_key))
+    ])
+    error_message = "ssh_public_key must start with a valid key type: ssh-ed25519, ssh-rsa, ecdsa-sha2-nistp{256,384,521}, sk-ssh-ed25519@openssh.com, or sk-ecdsa-sha2-nistp256@openssh.com."
+  }
+
+  validation {
+    condition = alltrue([
       for name, user in var.tunnel_users : alltrue([
         for t in user.allowed_tunnels : can(regex("^[a-zA-Z0-9._-]+:[0-9]+$", t))
       ])
@@ -200,6 +212,11 @@ variable "maintenance_window_cutoff" {
   description = "Hours before the end of the maintenance window that new tasks stop being scheduled. Only used when ha_mode = false."
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.maintenance_window_cutoff >= 0 && var.maintenance_window_cutoff < var.maintenance_window_duration
+    error_message = "maintenance_window_cutoff must be less than maintenance_window_duration."
+  }
 }
 
 variable "patch_baseline_approval_days" {
@@ -251,8 +268,8 @@ variable "ssh_host_key_ssm_prefix" {
   default     = null
 
   validation {
-    condition     = var.ssh_host_key_ssm_prefix == null || can(regex("^/[a-zA-Z0-9/_-]+$", var.ssh_host_key_ssm_prefix))
-    error_message = "ssh_host_key_ssm_prefix must start with / and contain only alphanumeric characters, forward slashes, underscores, and hyphens."
+    condition     = var.ssh_host_key_ssm_prefix == null || (can(regex("^/[a-zA-Z0-9/_-]+$", var.ssh_host_key_ssm_prefix)) && !can(regex("\\.\\.", var.ssh_host_key_ssm_prefix)))
+    error_message = "ssh_host_key_ssm_prefix must start with / and contain only alphanumeric characters, forward slashes, underscores, and hyphens. Path traversal (..) is not allowed."
   }
 }
 
@@ -264,12 +281,28 @@ variable "session_log_retention_days" {
   description = "Number of days to retain SSM session logs in CloudWatch"
   type        = number
   default     = 7
+
+  validation {
+    condition     = contains([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653], var.session_log_retention_days)
+    error_message = "session_log_retention_days must be a valid CloudWatch retention value: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, or 3653."
+  }
+}
+
+variable "session_log_kms_key_id" {
+  description = "KMS key ARN for encrypting SSM session logs in CloudWatch. Uses default CloudWatch encryption when null."
+  type        = string
+  default     = null
 }
 
 variable "session_idle_timeout_minutes" {
   description = "Idle timeout in minutes for SSM sessions"
   type        = number
   default     = 20
+
+  validation {
+    condition     = var.session_idle_timeout_minutes >= 1 && var.session_idle_timeout_minutes <= 60
+    error_message = "session_idle_timeout_minutes must be between 1 and 60."
+  }
 }
 
 ################################################################################

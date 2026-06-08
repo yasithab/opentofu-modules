@@ -1,5 +1,6 @@
 data "aws_partition" "current" {}
 data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
 
 data "aws_subnet" "this" {
   count = local.enabled && local.create_sg ? 1 : 0
@@ -159,10 +160,14 @@ data "aws_iam_policy_document" "bastion" {
     for_each = var.public && local.is_ha ? [1] : []
 
     content {
-      sid       = "AssociateEIP"
-      effect    = "Allow"
-      actions   = ["ec2:AssociateAddress"]
-      resources = ["*"]
+      sid     = "AssociateEIP"
+      effect  = "Allow"
+      actions = ["ec2:AssociateAddress"]
+      resources = [
+        aws_eip.this.arn,
+        "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*",
+        "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:network-interface/*",
+      ]
     }
   }
 
@@ -192,7 +197,7 @@ data "aws_iam_policy_document" "bastion" {
         "ssm:GetParameter",
       ]
       resources = [
-        "arn:${data.aws_partition.current.partition}:ssm:${data.aws_region.current.region}:*:parameter${local.ssh_host_key_ssm_prefix}/*",
+        "arn:${data.aws_partition.current.partition}:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter${local.ssh_host_key_ssm_prefix}",
       ]
     }
   }
@@ -207,13 +212,32 @@ data "aws_iam_policy_document" "bastion" {
         "kms:Decrypt",
       ]
       resources = [
-        "arn:${data.aws_partition.current.partition}:kms:${data.aws_region.current.region}:*:key/*",
+        "arn:${data.aws_partition.current.partition}:kms:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:key/*",
       ]
 
       condition {
         test     = "StringEquals"
         variable = "kms:ViaService"
         values   = ["ssm.${data.aws_region.current.region}.amazonaws.com"]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.session_log_kms_key_id != null ? [1] : []
+
+    content {
+      sid    = "SessionLogEncryption"
+      effect = "Allow"
+      actions = [
+        "kms:GenerateDataKey",
+      ]
+      resources = [var.session_log_kms_key_id]
+
+      condition {
+        test     = "StringEquals"
+        variable = "kms:ViaService"
+        values   = ["logs.${data.aws_region.current.region}.amazonaws.com"]
       }
     }
   }
@@ -307,6 +331,7 @@ resource "aws_eip" "this" {
 resource "aws_cloudwatch_log_group" "ssm_sessions" {
   name              = "/ssm/sessions/${local.bastion_id}"
   retention_in_days = var.session_log_retention_days
+  kms_key_id        = var.session_log_kms_key_id
   log_group_class   = "STANDARD"
   skip_destroy      = false
 
@@ -328,7 +353,7 @@ resource "aws_ssm_document" "session_preferences" {
     sessionType   = "Standard_Stream"
     inputs = {
       cloudWatchLogGroupName      = aws_cloudwatch_log_group.ssm_sessions.name
-      cloudWatchEncryptionEnabled = true
+      cloudWatchEncryptionEnabled = var.session_log_kms_key_id != null
       idleSessionTimeout          = tostring(var.session_idle_timeout_minutes)
       runAsEnabled                = false
     }
@@ -349,7 +374,7 @@ locals {
   persist_host_keys = local.enabled && var.persist_ssh_host_keys && var.public && local.is_ha
 }
 
-resource "tls_private_key" "ssh_host" {
+resource "tls_private_key" "ssh_host_ed25519" {
   algorithm = "ED25519"
 
   lifecycle {
@@ -357,15 +382,43 @@ resource "tls_private_key" "ssh_host" {
   }
 }
 
-resource "aws_ssm_parameter" "ssh_host_key" {
-  name = "${local.ssh_host_key_ssm_prefix}/ed25519"
+resource "tls_private_key" "ssh_host_rsa" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+
+  lifecycle {
+    enabled = local.persist_host_keys
+  }
+}
+
+resource "tls_private_key" "ssh_host_ecdsa" {
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P256"
+
+  lifecycle {
+    enabled = local.persist_host_keys
+  }
+}
+
+resource "aws_ssm_parameter" "ssh_host_keys" {
+  name = local.ssh_host_key_ssm_prefix
   type = "SecureString"
   value = jsonencode({
-    private_key = tls_private_key.ssh_host.private_key_openssh
-    public_key  = tls_private_key.ssh_host.public_key_openssh
+    ed25519 = {
+      private_key = tls_private_key.ssh_host_ed25519.private_key_openssh
+      public_key  = tls_private_key.ssh_host_ed25519.public_key_openssh
+    }
+    rsa = {
+      private_key = tls_private_key.ssh_host_rsa.private_key_openssh
+      public_key  = tls_private_key.ssh_host_rsa.public_key_openssh
+    }
+    ecdsa = {
+      private_key = tls_private_key.ssh_host_ecdsa.private_key_openssh
+      public_key  = tls_private_key.ssh_host_ecdsa.public_key_openssh
+    }
   })
 
-  tags = merge(local.tags, { "Name" = "${local.bastion_id}-ssh-host-key" })
+  tags = merge(local.tags, { "Name" = "${local.bastion_id}-ssh-host-keys" })
 
   lifecycle {
     enabled = local.persist_host_keys

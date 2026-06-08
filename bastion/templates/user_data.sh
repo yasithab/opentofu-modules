@@ -31,7 +31,7 @@ done
 %{ if length(tunnel_users) > 0 ~}
 echo "Creating tunnel users..."
 %{ for username, user in tunnel_users ~}
-useradd -m -s /bin/bash "${username}" 2>/dev/null || true
+useradd -m -s /usr/sbin/nologin "${username}" 2>/dev/null || true
 mkdir -p "/home/${username}/.ssh"
 chmod 700 "/home/${username}/.ssh"
 
@@ -65,13 +65,13 @@ echo "Associating EIP ${eip_allocation_id}..."
 %{ endif ~}
 
 %{ if persist_ssh_host_keys ~}
-SSM_PREFIX="${ssh_host_key_ssm_prefix}"
+SSM_PARAM="${ssh_host_key_ssm_prefix}"
 
 echo "Fetching SSH host keys from SSM..."
 _keys_json=""
 for i in $(seq 1 5); do
   _keys_json=$(aws ssm get-parameter \
-    --name "$${SSM_PREFIX}/ed25519" \
+    --name "$SSM_PARAM" \
     --with-decryption \
     --region "$REGION" \
     --cli-connect-timeout 5 \
@@ -84,21 +84,29 @@ for i in $(seq 1 5); do
 done
 
 if [ -n "$_keys_json" ]; then
-  _priv=$(echo "$_keys_json" | jq -r '.private_key')
-  _pub=$(echo "$_keys_json" | jq -r '.public_key')
+  _installed=0
+  for _algo in ed25519 rsa ecdsa; do
+    _priv=$(echo "$_keys_json" | jq -r ".$${_algo}.private_key")
+    _pub=$(echo "$_keys_json" | jq -r ".$${_algo}.public_key")
 
-  if [ -n "$_priv" ] && [ "$_priv" != "null" ] && [ -n "$_pub" ] && [ "$_pub" != "null" ]; then
-    printf '%s\n' "$_priv" > /etc/ssh/ssh_host_ed25519_key
-    printf '%s\n' "$_pub" > /etc/ssh/ssh_host_ed25519_key.pub
-    chmod 600 /etc/ssh/ssh_host_ed25519_key
-    chmod 644 /etc/ssh/ssh_host_ed25519_key.pub
-    rm -f /etc/ssh/ssh_host_rsa_key* /etc/ssh/ssh_host_ecdsa_key*
+    if [ -n "$_priv" ] && [ "$_priv" != "null" ] && [ -n "$_pub" ] && [ "$_pub" != "null" ]; then
+      printf '%s\n' "$_priv" > "/etc/ssh/ssh_host_$${_algo}_key"
+      printf '%s\n' "$_pub" > "/etc/ssh/ssh_host_$${_algo}_key.pub"
+      chmod 600 "/etc/ssh/ssh_host_$${_algo}_key"
+      chmod 644 "/etc/ssh/ssh_host_$${_algo}_key.pub"
+      _installed=$((_installed + 1))
+      echo "Installed $${_algo} host key."
+    fi
+  done
+  unset _priv _pub _algo
+
+  if [ "$_installed" -gt 0 ]; then
     systemctl restart sshd.service
-    echo "SSH host keys installed, sshd restarted."
+    echo "SSH host keys installed ($_installed types), sshd restarted."
   else
-    echo "WARNING: Failed to parse SSH host keys from SSM. Using OS-generated keys."
+    echo "WARNING: Failed to parse any SSH host keys from SSM. Using OS-generated keys."
   fi
-  unset _priv _pub
+  unset _installed
 else
   echo "WARNING: Failed to fetch SSH host keys from SSM. Using OS-generated keys."
 fi
