@@ -36,10 +36,11 @@ resource "aws_launch_template" "this" {
     device_name = "/dev/xvda"
 
     ebs {
-      volume_size = var.ebs_root_volume_size
-      volume_type = "gp3"
-      encrypted   = var.ebs_encrypted
-      kms_key_id  = var.kms_key_id
+      volume_size           = var.ebs_root_volume_size
+      volume_type           = "gp3"
+      encrypted             = var.ebs_encrypted
+      kms_key_id            = var.kms_key_id
+      delete_on_termination = true
     }
   }
 

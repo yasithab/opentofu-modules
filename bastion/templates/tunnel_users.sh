@@ -2,7 +2,7 @@
 set -euo pipefail
 
 %{ for username, user in tunnel_users ~}
-useradd -m -s /bin/bash "${username}" 2>/dev/null || true
+useradd -m -s /usr/sbin/nologin "${username}" 2>/dev/null || true
 mkdir -p "/home/${username}/.ssh"
 chmod 700 "/home/${username}/.ssh"
 
