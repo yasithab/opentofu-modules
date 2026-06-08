@@ -403,6 +403,7 @@ resource "tls_private_key" "ssh_host_ecdsa" {
 resource "aws_ssm_parameter" "ssh_host_keys" {
   name = local.ssh_host_key_ssm_prefix
   type = "SecureString"
+  tier = "Advanced"
   value = jsonencode({
     ed25519 = {
       private_key = tls_private_key.ssh_host_ed25519.private_key_openssh
