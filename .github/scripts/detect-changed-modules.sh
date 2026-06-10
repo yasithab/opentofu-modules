@@ -30,7 +30,7 @@ normpath() {
 # ── UP: changed dirs and all their module ancestors ──────────────────────────
 # Wrappers are not seeded directly (the test harness skips them in discovery);
 # they are only added when pulled in as consumers of a changed module below.
-git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- '*.tf' |
+git diff --name-only "$BASE_SHA" "$HEAD_SHA" -- '*.tf' '*.tfvars' '*.terraform.lock.hcl' |
 	xargs -r -n1 dirname | sort -u |
 	while IFS= read -r dir; do
 		d="$dir"
