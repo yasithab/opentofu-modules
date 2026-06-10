@@ -70,13 +70,13 @@ tasks:
     desc: Run Terratest on all modules (validate only, no AWS creds needed)
     dir: test
     cmds:
-      - go test -v -run "TestValidateAllModules" -timeout 30m -count=1
+      - go test -v -run "TestValidateAllModules" -timeout 30m -count=1 -parallel=16
 
   test-plan:
     desc: Run Terratest plan on all modules (requires AWS credentials)
     dir: test
     cmds:
-      - go test -v -run "TestPlanAllModules" -timeout 30m -count=1
+      - go test -v -run "TestPlanAllModules" -timeout 30m -count=1 -parallel=16
 
   security:
     desc: Run Trivy misconfiguration scan (CRITICAL + HIGH)
