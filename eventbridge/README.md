@@ -52,149 +52,6 @@ module "eventbridge" {
 }
 ```
 
-
-<!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-| ---- | ------- |
-| terraform | >= 1.11.0 |
-| aws | >= 6.49, < 7.0 |
-
-## Providers
-
-| Name | Version |
-| ---- | ------- |
-| aws | >= 6.49, < 7.0 |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
-| api\_destinations | A map of objects with EventBridge Destination definitions. | `map(any)` | `{}` | no |
-| append\_connection\_postfix | Controls whether to append '-connection' to the name of the connection | `bool` | `true` | no |
-| append\_destination\_postfix | Controls whether to append '-destination' to the name of the destination | `bool` | `true` | no |
-| append\_pipe\_postfix | Controls whether to append '-pipe' to the name of the pipe | `bool` | `true` | no |
-| append\_rule\_postfix | Controls whether to append '-rule' to the name of the rule | `bool` | `true` | no |
-| append\_schedule\_group\_postfix | Controls whether to append '-group' to the name of the schedule group | `bool` | `true` | no |
-| append\_schedule\_postfix | Controls whether to append '-schedule' to the name of the schedule | `bool` | `true` | no |
-| archives | A map of objects with the EventBridge Archive definitions. | `map(any)` | `{}` | no |
-| attach\_api\_destination\_policy | Controls whether the API Destination policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
-| attach\_cloudwatch\_policy | Controls whether the Cloudwatch policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
-| attach\_ecs\_policy | Controls whether the ECS policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
-| attach\_kinesis\_firehose\_policy | Controls whether the Kinesis Firehose policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
-| attach\_kinesis\_policy | Controls whether the Kinesis policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
-| attach\_lambda\_policy | Controls whether the Lambda Function policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
-| attach\_policies | Controls whether list of policies should be added to IAM role | `bool` | `false` | no |
-| attach\_policy | Controls whether policy should be added to IAM role | `bool` | `false` | no |
-| attach\_policy\_json | Controls whether policy\_json should be added to IAM role | `bool` | `false` | no |
-| attach\_policy\_jsons | Controls whether policy\_jsons should be added to IAM role | `bool` | `false` | no |
-| attach\_policy\_statements | Controls whether policy\_statements should be added to IAM role | `bool` | `false` | no |
-| attach\_sfn\_policy | Controls whether the StepFunction policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
-| attach\_sns\_policy | Controls whether the SNS policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
-| attach\_sqs\_policy | Controls whether the SQS policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
-| attach\_tracing\_policy | Controls whether X-Ray tracing policy should be added to IAM role for EventBridge | `bool` | `false` | no |
-| bus\_description | Event bus description | `string` | `null` | no |
-| cloudwatch\_target\_arns | The Amazon Resource Name (ARN) of the Cloudwatch Log Streams you want to use as EventBridge targets | `list(string)` | `[]` | no |
-| connections | A map of objects with EventBridge Connection definitions. Note: auth\_parameters passwords will be stored in state as the provider does not support write\_only for this field | `any` | `{}` | no |
-| create\_api\_destinations | Controls whether EventBridge Destination resources should be created | `bool` | `false` | no |
-| create\_archives | Controls whether EventBridge Archive resources should be created | `bool` | `false` | no |
-| create\_bus | Controls whether EventBridge Bus resource should be created | `bool` | `true` | no |
-| create\_connections | Controls whether EventBridge Connection resources should be created | `bool` | `false` | no |
-| create\_log\_delivery | Controls whether EventBridge log delivery resources should be created | `bool` | `true` | no |
-| create\_log\_delivery\_source | Controls whether EventBridge log delivery source resource should be created | `bool` | `true` | no |
-| create\_permissions | Controls whether EventBridge Permission resources should be created | `bool` | `true` | no |
-| create\_pipe\_role\_only | Controls whether an IAM role should be created for the pipes only | `bool` | `false` | no |
-| create\_pipes | Controls whether EventBridge Pipes resources should be created | `bool` | `true` | no |
-| create\_role | Controls whether IAM roles should be created | `bool` | `true` | no |
-| create\_rules | Controls whether EventBridge Rule resources should be created | `bool` | `true` | no |
-| create\_schedule\_groups | Controls whether EventBridge Schedule Group resources should be created | `bool` | `true` | no |
-| create\_schedules | Controls whether EventBridge Schedule resources should be created | `bool` | `true` | no |
-| create\_schemas\_discoverer | Controls whether default schemas discoverer should be created | `bool` | `false` | no |
-| create\_targets | Controls whether EventBridge Target resources should be created | `bool` | `true` | no |
-| dead\_letter\_config | Configuration details of the Amazon SQS queue for EventBridge to use as a dead-letter queue (DLQ) | `any` | `{}` | no |
-| ecs\_pass\_role\_resources | List of IAM role ARNs (task role / task execution role) that EventBridge is allowed to pass to ECS. Required when `attach_ecs_policy = true` - there is no wildcard fallback | `list(string)` | `[]` | no |
-| ecs\_target\_arns | The Amazon Resource Name (ARN) of the AWS ECS Tasks you want to use as EventBridge targets | `list(string)` | `[]` | no |
-| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| event\_source\_name | The partner event source that the new event bus will be matched with. Must match name. | `string` | `null` | no |
-| kinesis\_firehose\_target\_arns | The Amazon Resource Name (ARN) of the Kinesis Firehose Delivery Streams you want to use as EventBridge targets | `list(string)` | `[]` | no |
-| kinesis\_target\_arns | The Amazon Resource Name (ARN) of the Kinesis Streams you want to use as EventBridge targets | `list(string)` | `[]` | no |
-| kms\_key\_identifier | The identifier of the AWS KMS customer managed key for EventBridge to use, if you choose to use a customer managed key to encrypt events on this event bus. The identifier can be the key Amazon Resource Name (ARN), KeyId, key alias, or key alias ARN. | `string` | `null` | no |
-| lambda\_target\_arns | The Amazon Resource Name (ARN) of the Lambda Functions you want to use as EventBridge targets | `list(string)` | `[]` | no |
-| log\_config | The configuration block for the EventBridge bus log config settings | <pre>object({<br/>    include_detail = string<br/>    level          = string<br/>  })</pre> | `null` | no |
-| log\_delivery | Map of the configuration block for the EventBridge bus log delivery settings (key is the type of log delivery: cloudwatch\_logs, s3, firehose) | <pre>map(object({<br/>    enabled                   = optional(bool, true)<br/>    destination_arn           = string<br/>    delivery_destination_type = optional(string)<br/>    source_name               = optional(string)<br/>    name                      = optional(string)<br/>    output_format             = optional(string)<br/>    field_delimiter           = optional(string)<br/>    record_fields             = optional(list(string))<br/>    s3_delivery_configuration = optional(object({<br/>      enable_hive_compatible_path = optional(bool)<br/>      suffix_path                 = optional(string)<br/>    }))<br/>  }))</pre> | `{}` | no |
-| log\_delivery\_source\_name | Name of log delivery source | `string` | `null` | no |
-| name | A unique name for your EventBridge Bus | `string` | `"default"` | no |
-| number\_of\_policies | Number of policies to attach to IAM role | `number` | `0` | no |
-| number\_of\_policy\_jsons | Number of policies JSON to attach to IAM role | `number` | `0` | no |
-| permissions | A map of objects with EventBridge Permission definitions. Map keys must be in the format "<principal> <statement\_id>" (e.g. "123456789012 AllowAccountX"). | `map(any)` | `{}` | no |
-| pipes | A map of objects with EventBridge Pipe definitions. | `any` | `{}` | no |
-| policies | List of policy statements ARN to attach to IAM role | `list(string)` | `[]` | no |
-| policy | An additional policy document ARN to attach to IAM role | `string` | `null` | no |
-| policy\_json | An additional policy document as JSON to attach to IAM role | `string` | `null` | no |
-| policy\_jsons | List of additional policy documents as JSON to attach to IAM role | `list(string)` | `[]` | no |
-| policy\_path | Path of IAM policy to use for EventBridge | `string` | `null` | no |
-| policy\_statements | Map of dynamic policy statements to attach to IAM role | `any` | `{}` | no |
-| region | Region where the resource(s) will be managed. Defaults to the region set in the provider configuration | `string` | `null` | no |
-| role\_description | Description of IAM role to use for EventBridge | `string` | `null` | no |
-| role\_force\_detach\_policies | Specifies to force detaching any policies the IAM role has before destroying it. | `bool` | `true` | no |
-| role\_name | Name of IAM role to use for EventBridge | `string` | `null` | no |
-| role\_path | Path of IAM role to use for EventBridge | `string` | `null` | no |
-| role\_permissions\_boundary | The ARN of the policy that is used to set the permissions boundary for the IAM role used by EventBridge | `string` | `null` | no |
-| role\_tags | A map of tags to assign to IAM role | `map(string)` | `{}` | no |
-| rules | A map of objects with EventBridge Rule definitions. `role_arn` accepts only an IAM role ARN (string) or null; the previous boolean form (`role_arn = true`) is no longer supported. | `map(any)` | `{}` | no |
-| schedule\_group\_timeouts | A map of objects with EventBridge Schedule Group create and delete timeouts. | `map(string)` | `{}` | no |
-| schedule\_groups | A map of objects with EventBridge Schedule Group definitions. | `any` | `{}` | no |
-| schedules | A map of objects with EventBridge Schedule definitions. | `map(any)` | `{}` | no |
-| schemas\_discoverer\_description | Default schemas discoverer description | `string` | `"Auto schemas discoverer event"` | no |
-| sfn\_target\_arns | The Amazon Resource Name (ARN) of the StepFunctions you want to use as EventBridge targets | `list(string)` | `[]` | no |
-| sns\_kms\_arns | The Amazon Resource Name (ARN) of the AWS KMS's configured for AWS SNS you want Decrypt/GenerateDataKey for | `list(string)` | <pre>[<br/>  "*"<br/>]</pre> | no |
-| sns\_target\_arns | The Amazon Resource Name (ARN) of the AWS SNS's you want to use as EventBridge targets | `list(string)` | `[]` | no |
-| sqs\_target\_arns | The Amazon Resource Name (ARN) of the AWS SQS Queues you want to use as EventBridge targets | `list(string)` | `[]` | no |
-| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| targets | A map of objects with EventBridge Target definitions. | `any` | `{}` | no |
-| trusted\_entities | Additional trusted entities for assuming roles (trust relationship) | `list(string)` | `[]` | no |
-
-## Outputs
-
-| Name | Description |
-| ---- | ----------- |
-| eventbridge\_api\_destination\_arns | The EventBridge API Destination ARNs |
-| eventbridge\_api\_destinations | The EventBridge API Destinations created and their attributes |
-| eventbridge\_archive\_arns | The EventBridge Archive ARNs |
-| eventbridge\_archives | The EventBridge Archives created and their attributes |
-| eventbridge\_bus | The EventBridge Bus created and their attributes |
-| eventbridge\_bus\_arn | The EventBridge Bus ARN |
-| eventbridge\_bus\_name | The EventBridge Bus Name |
-| eventbridge\_connection\_arns | The EventBridge Connection Arns |
-| eventbridge\_connection\_ids | The EventBridge Connection IDs |
-| eventbridge\_connections | The EventBridge Connections created and their attributes |
-| eventbridge\_iam\_roles | The EventBridge IAM roles created and their attributes |
-| eventbridge\_log\_delivery\_source\_arn | The EventBridge Bus CloudWatch Log Delivery Source ARN |
-| eventbridge\_log\_delivery\_source\_name | The EventBridge Bus CloudWatch Log Delivery Source Name |
-| eventbridge\_permission\_ids | The EventBridge Permission IDs |
-| eventbridge\_permissions | The EventBridge Permissions created and their attributes |
-| eventbridge\_pipe\_arns | The EventBridge Pipes ARNs |
-| eventbridge\_pipe\_ids | The EventBridge Pipes IDs |
-| eventbridge\_pipe\_role\_arns | The ARNs of the IAM role created for EventBridge Pipes |
-| eventbridge\_pipe\_role\_names | The names of the IAM role created for EventBridge Pipes |
-| eventbridge\_pipes | The EventBridge Pipes created and their attributes |
-| eventbridge\_pipes\_iam\_roles | The EventBridge Pipes IAM roles created and their attributes |
-| eventbridge\_role\_arn | The ARN of the IAM role created for EventBridge |
-| eventbridge\_role\_name | The name of the IAM role created for EventBridge |
-| eventbridge\_rule\_arns | The EventBridge Rule ARNs |
-| eventbridge\_rule\_ids | The EventBridge Rule IDs |
-| eventbridge\_rules | The EventBridge Rules created and their attributes |
-| eventbridge\_schedule\_arns | The EventBridge Schedule ARNs created |
-| eventbridge\_schedule\_group\_arns | The EventBridge Schedule Group ARNs |
-| eventbridge\_schedule\_group\_ids | The EventBridge Schedule Group IDs |
-| eventbridge\_schedule\_group\_states | The EventBridge Schedule Group states |
-| eventbridge\_schedule\_groups | The EventBridge Schedule Groups created and their attributes |
-| eventbridge\_schedule\_ids | The EventBridge Schedule IDs created |
-| eventbridge\_schedules | The EventBridge Schedules created and their attributes |
-| eventbridge\_targets | The EventBridge Targets created and their attributes |
-<!-- END_TF_DOCS -->
-
 ## Examples
 
 ## Basic Usage
@@ -429,3 +286,152 @@ module "eventbridge" {
   }
 }
 ```
+
+## Reference
+
+<details>
+<summary>Requirements, providers, inputs and outputs (generated by terraform-docs)</summary>
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| api\_destinations | A map of objects with EventBridge Destination definitions. | `map(any)` | `{}` | no |
+| append\_connection\_postfix | Controls whether to append '-connection' to the name of the connection | `bool` | `true` | no |
+| append\_destination\_postfix | Controls whether to append '-destination' to the name of the destination | `bool` | `true` | no |
+| append\_pipe\_postfix | Controls whether to append '-pipe' to the name of the pipe | `bool` | `true` | no |
+| append\_rule\_postfix | Controls whether to append '-rule' to the name of the rule | `bool` | `true` | no |
+| append\_schedule\_group\_postfix | Controls whether to append '-group' to the name of the schedule group | `bool` | `true` | no |
+| append\_schedule\_postfix | Controls whether to append '-schedule' to the name of the schedule | `bool` | `true` | no |
+| archives | A map of objects with the EventBridge Archive definitions. | `map(any)` | `{}` | no |
+| attach\_api\_destination\_policy | Controls whether the API Destination policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
+| attach\_cloudwatch\_policy | Controls whether the Cloudwatch policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
+| attach\_ecs\_policy | Controls whether the ECS policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
+| attach\_kinesis\_firehose\_policy | Controls whether the Kinesis Firehose policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
+| attach\_kinesis\_policy | Controls whether the Kinesis policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
+| attach\_lambda\_policy | Controls whether the Lambda Function policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
+| attach\_policies | Controls whether list of policies should be added to IAM role | `bool` | `false` | no |
+| attach\_policy | Controls whether policy should be added to IAM role | `bool` | `false` | no |
+| attach\_policy\_json | Controls whether policy\_json should be added to IAM role | `bool` | `false` | no |
+| attach\_policy\_jsons | Controls whether policy\_jsons should be added to IAM role | `bool` | `false` | no |
+| attach\_policy\_statements | Controls whether policy\_statements should be added to IAM role | `bool` | `false` | no |
+| attach\_sfn\_policy | Controls whether the StepFunction policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
+| attach\_sns\_policy | Controls whether the SNS policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
+| attach\_sqs\_policy | Controls whether the SQS policy should be added to IAM role for EventBridge Target | `bool` | `false` | no |
+| attach\_tracing\_policy | Controls whether X-Ray tracing policy should be added to IAM role for EventBridge | `bool` | `false` | no |
+| bus\_description | Event bus description | `string` | `null` | no |
+| cloudwatch\_target\_arns | The Amazon Resource Name (ARN) of the Cloudwatch Log Streams you want to use as EventBridge targets | `list(string)` | `[]` | no |
+| connections | A map of objects with EventBridge Connection definitions. Note: auth\_parameters passwords will be stored in state as the provider does not support write\_only for this field | `any` | `{}` | no |
+| create\_api\_destinations | Controls whether EventBridge Destination resources should be created | `bool` | `false` | no |
+| create\_archives | Controls whether EventBridge Archive resources should be created | `bool` | `false` | no |
+| create\_bus | Controls whether EventBridge Bus resource should be created | `bool` | `true` | no |
+| create\_connections | Controls whether EventBridge Connection resources should be created | `bool` | `false` | no |
+| create\_log\_delivery | Controls whether EventBridge log delivery resources should be created | `bool` | `true` | no |
+| create\_log\_delivery\_source | Controls whether EventBridge log delivery source resource should be created | `bool` | `true` | no |
+| create\_permissions | Controls whether EventBridge Permission resources should be created | `bool` | `true` | no |
+| create\_pipe\_role\_only | Controls whether an IAM role should be created for the pipes only | `bool` | `false` | no |
+| create\_pipes | Controls whether EventBridge Pipes resources should be created | `bool` | `true` | no |
+| create\_role | Controls whether IAM roles should be created | `bool` | `true` | no |
+| create\_rules | Controls whether EventBridge Rule resources should be created | `bool` | `true` | no |
+| create\_schedule\_groups | Controls whether EventBridge Schedule Group resources should be created | `bool` | `true` | no |
+| create\_schedules | Controls whether EventBridge Schedule resources should be created | `bool` | `true` | no |
+| create\_schemas\_discoverer | Controls whether default schemas discoverer should be created | `bool` | `false` | no |
+| create\_targets | Controls whether EventBridge Target resources should be created | `bool` | `true` | no |
+| dead\_letter\_config | Configuration details of the Amazon SQS queue for EventBridge to use as a dead-letter queue (DLQ) | `any` | `{}` | no |
+| ecs\_pass\_role\_resources | List of IAM role ARNs (task role / task execution role) that EventBridge is allowed to pass to ECS. Required when `attach_ecs_policy = true` - there is no wildcard fallback | `list(string)` | `[]` | no |
+| ecs\_target\_arns | The Amazon Resource Name (ARN) of the AWS ECS Tasks you want to use as EventBridge targets | `list(string)` | `[]` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| event\_source\_name | The partner event source that the new event bus will be matched with. Must match name. | `string` | `null` | no |
+| kinesis\_firehose\_target\_arns | The Amazon Resource Name (ARN) of the Kinesis Firehose Delivery Streams you want to use as EventBridge targets | `list(string)` | `[]` | no |
+| kinesis\_target\_arns | The Amazon Resource Name (ARN) of the Kinesis Streams you want to use as EventBridge targets | `list(string)` | `[]` | no |
+| kms\_key\_identifier | The identifier of the AWS KMS customer managed key for EventBridge to use, if you choose to use a customer managed key to encrypt events on this event bus. The identifier can be the key Amazon Resource Name (ARN), KeyId, key alias, or key alias ARN. | `string` | `null` | no |
+| lambda\_target\_arns | The Amazon Resource Name (ARN) of the Lambda Functions you want to use as EventBridge targets | `list(string)` | `[]` | no |
+| log\_config | The configuration block for the EventBridge bus log config settings | <pre>object({<br/>    include_detail = string<br/>    level          = string<br/>  })</pre> | `null` | no |
+| log\_delivery | Map of the configuration block for the EventBridge bus log delivery settings (key is the type of log delivery: cloudwatch\_logs, s3, firehose) | <pre>map(object({<br/>    enabled                   = optional(bool, true)<br/>    destination_arn           = string<br/>    delivery_destination_type = optional(string)<br/>    source_name               = optional(string)<br/>    name                      = optional(string)<br/>    output_format             = optional(string)<br/>    field_delimiter           = optional(string)<br/>    record_fields             = optional(list(string))<br/>    s3_delivery_configuration = optional(object({<br/>      enable_hive_compatible_path = optional(bool)<br/>      suffix_path                 = optional(string)<br/>    }))<br/>  }))</pre> | `{}` | no |
+| log\_delivery\_source\_name | Name of log delivery source | `string` | `null` | no |
+| name | A unique name for your EventBridge Bus | `string` | `"default"` | no |
+| number\_of\_policies | Number of policies to attach to IAM role | `number` | `0` | no |
+| number\_of\_policy\_jsons | Number of policies JSON to attach to IAM role | `number` | `0` | no |
+| permissions | A map of objects with EventBridge Permission definitions. Map keys must be in the format "<principal> <statement\_id>" (e.g. "123456789012 AllowAccountX"). | `map(any)` | `{}` | no |
+| pipes | A map of objects with EventBridge Pipe definitions. | `any` | `{}` | no |
+| policies | List of policy statements ARN to attach to IAM role | `list(string)` | `[]` | no |
+| policy | An additional policy document ARN to attach to IAM role | `string` | `null` | no |
+| policy\_json | An additional policy document as JSON to attach to IAM role | `string` | `null` | no |
+| policy\_jsons | List of additional policy documents as JSON to attach to IAM role | `list(string)` | `[]` | no |
+| policy\_path | Path of IAM policy to use for EventBridge | `string` | `null` | no |
+| policy\_statements | Map of dynamic policy statements to attach to IAM role | `any` | `{}` | no |
+| region | Region where the resource(s) will be managed. Defaults to the region set in the provider configuration | `string` | `null` | no |
+| role\_description | Description of IAM role to use for EventBridge | `string` | `null` | no |
+| role\_force\_detach\_policies | Specifies to force detaching any policies the IAM role has before destroying it. | `bool` | `true` | no |
+| role\_name | Name of IAM role to use for EventBridge | `string` | `null` | no |
+| role\_path | Path of IAM role to use for EventBridge | `string` | `null` | no |
+| role\_permissions\_boundary | The ARN of the policy that is used to set the permissions boundary for the IAM role used by EventBridge | `string` | `null` | no |
+| role\_tags | A map of tags to assign to IAM role | `map(string)` | `{}` | no |
+| rules | A map of objects with EventBridge Rule definitions. `role_arn` accepts only an IAM role ARN (string) or null; the previous boolean form (`role_arn = true`) is no longer supported. | `map(any)` | `{}` | no |
+| schedule\_group\_timeouts | A map of objects with EventBridge Schedule Group create and delete timeouts. | `map(string)` | `{}` | no |
+| schedule\_groups | A map of objects with EventBridge Schedule Group definitions. | `any` | `{}` | no |
+| schedules | A map of objects with EventBridge Schedule definitions. | `map(any)` | `{}` | no |
+| schemas\_discoverer\_description | Default schemas discoverer description | `string` | `"Auto schemas discoverer event"` | no |
+| sfn\_target\_arns | The Amazon Resource Name (ARN) of the StepFunctions you want to use as EventBridge targets | `list(string)` | `[]` | no |
+| sns\_kms\_arns | The Amazon Resource Name (ARN) of the AWS KMS's configured for AWS SNS you want Decrypt/GenerateDataKey for | `list(string)` | <pre>[<br/>  "*"<br/>]</pre> | no |
+| sns\_target\_arns | The Amazon Resource Name (ARN) of the AWS SNS's you want to use as EventBridge targets | `list(string)` | `[]` | no |
+| sqs\_target\_arns | The Amazon Resource Name (ARN) of the AWS SQS Queues you want to use as EventBridge targets | `list(string)` | `[]` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| targets | A map of objects with EventBridge Target definitions. | `any` | `{}` | no |
+| trusted\_entities | Additional trusted entities for assuming roles (trust relationship) | `list(string)` | `[]` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| eventbridge\_api\_destination\_arns | The EventBridge API Destination ARNs |
+| eventbridge\_api\_destinations | The EventBridge API Destinations created and their attributes |
+| eventbridge\_archive\_arns | The EventBridge Archive ARNs |
+| eventbridge\_archives | The EventBridge Archives created and their attributes |
+| eventbridge\_bus | The EventBridge Bus created and their attributes |
+| eventbridge\_bus\_arn | The EventBridge Bus ARN |
+| eventbridge\_bus\_name | The EventBridge Bus Name |
+| eventbridge\_connection\_arns | The EventBridge Connection Arns |
+| eventbridge\_connection\_ids | The EventBridge Connection IDs |
+| eventbridge\_connections | The EventBridge Connections created and their attributes |
+| eventbridge\_iam\_roles | The EventBridge IAM roles created and their attributes |
+| eventbridge\_log\_delivery\_source\_arn | The EventBridge Bus CloudWatch Log Delivery Source ARN |
+| eventbridge\_log\_delivery\_source\_name | The EventBridge Bus CloudWatch Log Delivery Source Name |
+| eventbridge\_permission\_ids | The EventBridge Permission IDs |
+| eventbridge\_permissions | The EventBridge Permissions created and their attributes |
+| eventbridge\_pipe\_arns | The EventBridge Pipes ARNs |
+| eventbridge\_pipe\_ids | The EventBridge Pipes IDs |
+| eventbridge\_pipe\_role\_arns | The ARNs of the IAM role created for EventBridge Pipes |
+| eventbridge\_pipe\_role\_names | The names of the IAM role created for EventBridge Pipes |
+| eventbridge\_pipes | The EventBridge Pipes created and their attributes |
+| eventbridge\_pipes\_iam\_roles | The EventBridge Pipes IAM roles created and their attributes |
+| eventbridge\_role\_arn | The ARN of the IAM role created for EventBridge |
+| eventbridge\_role\_name | The name of the IAM role created for EventBridge |
+| eventbridge\_rule\_arns | The EventBridge Rule ARNs |
+| eventbridge\_rule\_ids | The EventBridge Rule IDs |
+| eventbridge\_rules | The EventBridge Rules created and their attributes |
+| eventbridge\_schedule\_arns | The EventBridge Schedule ARNs created |
+| eventbridge\_schedule\_group\_arns | The EventBridge Schedule Group ARNs |
+| eventbridge\_schedule\_group\_ids | The EventBridge Schedule Group IDs |
+| eventbridge\_schedule\_group\_states | The EventBridge Schedule Group states |
+| eventbridge\_schedule\_groups | The EventBridge Schedule Groups created and their attributes |
+| eventbridge\_schedule\_ids | The EventBridge Schedule IDs created |
+| eventbridge\_schedules | The EventBridge Schedules created and their attributes |
+| eventbridge\_targets | The EventBridge Targets created and their attributes |
+<!-- END_TF_DOCS -->
+
+</details>

@@ -69,77 +69,6 @@ module "eks_hybrid_node_role" {
 }
 ```
 
-
-<!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-| ---- | ------- |
-| terraform | >= 1.11.0 |
-| aws | >= 6.49, < 7.0 |
-
-## Providers
-
-| Name | Version |
-| ---- | ------- |
-| aws | >= 6.49, < 7.0 |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
-| cluster\_arns | List of EKS cluster ARNs the node is allowed to call `eks:DescribeCluster` on. Defaults to `["*"]` (all clusters in the account) for convenience - scope this down to specific cluster ARNs in production | `list(string)` | <pre>[<br/>  "*"<br/>]</pre> | no |
-| description | IAM role description | `string` | `"EKS Hybrid Node IAM role"` | no |
-| enable\_ira | Enables IAM Roles Anywhere based IAM permissions on the node | `bool` | `false` | no |
-| enable\_pod\_identity | Enables EKS Pod Identity based IAM permissions on the node | `bool` | `true` | no |
-| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| intermediate\_policy\_name | Name of the IAM policy | `string` | `null` | no |
-| intermediate\_policy\_statements | A list of IAM policy [statements](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document#statement) - used for adding specific IAM permissions as needed | `any` | `[]` | no |
-| intermediate\_policy\_use\_name\_prefix | Determines whether the name of the IAM policy (`intermediate_policy_name`) is used as a prefix | `bool` | `true` | no |
-| intermediate\_role\_description | IAM role description | `string` | `"EKS Hybrid Node IAM Roles Anywhere intermediate IAM role"` | no |
-| intermediate\_role\_name | Name of the IAM role | `string` | `null` | no |
-| intermediate\_role\_path | Path of the IAM role | `string` | `"/"` | no |
-| intermediate\_role\_policies | Policies to attach to the IAM role in `{'static_name' = 'policy_arn'}` format | `map(string)` | `{}` | no |
-| intermediate\_role\_use\_name\_prefix | Determines whether the name of the IAM role (`intermediate_role_name`) is used as a prefix | `bool` | `true` | no |
-| ira\_profile\_accept\_role\_session\_name | Whether the Roles Anywhere profile allows custom role session names in CreateSession requests. Defaults to false | `bool` | `null` | no |
-| ira\_profile\_duration\_seconds | The number of seconds the vended session credentials are valid for. Defaults to `3600` | `number` | `null` | no |
-| ira\_profile\_enabled | Whether the Roles Anywhere profile is enabled | `bool` | `null` | no |
-| ira\_profile\_managed\_policy\_arns | A list of managed policy ARNs that apply to the vended session credentials | `list(string)` | `[]` | no |
-| ira\_profile\_name | Name of the Roles Anywhere profile | `string` | `null` | no |
-| ira\_profile\_require\_instance\_properties | Specifies whether instance properties are required in [CreateSession](https://docs.aws.amazon.com/rolesanywhere/latest/APIReference/API_CreateSession.html) requests with this profile | `bool` | `null` | no |
-| ira\_profile\_session\_policy | A session policy that applies to the trust boundary of the vended session credentials | `string` | `null` | no |
-| ira\_trust\_anchor\_acm\_pca\_arn | The ARN of the ACM PCA that issued the trust anchor certificate | `string` | `null` | no |
-| ira\_trust\_anchor\_enabled | Whether the Roles Anywhere trust anchor is enabled | `bool` | `null` | no |
-| ira\_trust\_anchor\_name | Name of the Roles Anywhere trust anchor | `string` | `null` | no |
-| ira\_trust\_anchor\_notification\_settings | Notification settings for the trust anchor | `any` | `[]` | no |
-| ira\_trust\_anchor\_source\_type | The source type of the trust anchor | `string` | `null` | no |
-| ira\_trust\_anchor\_x509\_certificate\_data | The X.509 certificate data of the trust anchor | `string` | `null` | no |
-| max\_session\_duration | Maximum API session duration in seconds between 3600 and 43200 | `number` | `null` | no |
-| name | Name of the IAM role | `string` | `"EKSHybridNode"` | no |
-| path | Path of the IAM role | `string` | `"/"` | no |
-| permissions\_boundary\_arn | Permissions boundary ARN to use for the IAM role | `string` | `null` | no |
-| policies | Policies to attach to the IAM role in `{'static_name' = 'policy_arn'}` format | `map(string)` | `{}` | no |
-| policy\_description | IAM policy description | `string` | `"EKS Hybrid Node IAM role policy"` | no |
-| policy\_name | Name of the IAM policy | `string` | `"EKSHybridNode"` | no |
-| policy\_path | Path of the IAM policy | `string` | `"/"` | no |
-| policy\_statements | A list of IAM policy [statements](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document#statement) - used for adding specific IAM permissions as needed | `any` | `[]` | no |
-| policy\_use\_name\_prefix | Determines whether the name of the IAM policy (`policy_name`) is used as a prefix | `bool` | `true` | no |
-| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| trust\_anchor\_arns | List of IAM Roles Anywhere trust anchor ARNs. Required if `enable_ira` is set to `true` | `list(string)` | `[]` | no |
-| use\_name\_prefix | Determines whether the name of the IAM role (`name`) is used as a prefix | `bool` | `true` | no |
-
-## Outputs
-
-| Name | Description |
-| ---- | ----------- |
-| arn | The Amazon Resource Name (ARN) specifying the node IAM role |
-| intermediate\_role\_arn | The Amazon Resource Name (ARN) specifying the node IAM role |
-| intermediate\_role\_name | The name of the node IAM role |
-| intermediate\_role\_unique\_id | Stable and unique string identifying the node IAM role |
-| name | The name of the node IAM role |
-| unique\_id | Stable and unique string identifying the node IAM role |
-<!-- END_TF_DOCS -->
-
 ## Examples
 
 ## Basic Usage
@@ -238,3 +167,80 @@ module "hybrid_node_role" {
 ## Notes
 
 - **`cluster_arns` wildcard default**: `cluster_arns` defaults to `["*"]`, which grants `eks:DescribeCluster` on every cluster in the account. This is convenient for getting started but should be scoped to specific cluster ARNs in production, as shown in the examples above.
+
+## Reference
+
+<details>
+<summary>Requirements, providers, inputs and outputs (generated by terraform-docs)</summary>
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| cluster\_arns | List of EKS cluster ARNs the node is allowed to call `eks:DescribeCluster` on. Defaults to `["*"]` (all clusters in the account) for convenience - scope this down to specific cluster ARNs in production | `list(string)` | <pre>[<br/>  "*"<br/>]</pre> | no |
+| description | IAM role description | `string` | `"EKS Hybrid Node IAM role"` | no |
+| enable\_ira | Enables IAM Roles Anywhere based IAM permissions on the node | `bool` | `false` | no |
+| enable\_pod\_identity | Enables EKS Pod Identity based IAM permissions on the node | `bool` | `true` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| intermediate\_policy\_name | Name of the IAM policy | `string` | `null` | no |
+| intermediate\_policy\_statements | A list of IAM policy [statements](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document#statement) - used for adding specific IAM permissions as needed | `any` | `[]` | no |
+| intermediate\_policy\_use\_name\_prefix | Determines whether the name of the IAM policy (`intermediate_policy_name`) is used as a prefix | `bool` | `true` | no |
+| intermediate\_role\_description | IAM role description | `string` | `"EKS Hybrid Node IAM Roles Anywhere intermediate IAM role"` | no |
+| intermediate\_role\_name | Name of the IAM role | `string` | `null` | no |
+| intermediate\_role\_path | Path of the IAM role | `string` | `"/"` | no |
+| intermediate\_role\_policies | Policies to attach to the IAM role in `{'static_name' = 'policy_arn'}` format | `map(string)` | `{}` | no |
+| intermediate\_role\_use\_name\_prefix | Determines whether the name of the IAM role (`intermediate_role_name`) is used as a prefix | `bool` | `true` | no |
+| ira\_profile\_accept\_role\_session\_name | Whether the Roles Anywhere profile allows custom role session names in CreateSession requests. Defaults to false | `bool` | `null` | no |
+| ira\_profile\_duration\_seconds | The number of seconds the vended session credentials are valid for. Defaults to `3600` | `number` | `null` | no |
+| ira\_profile\_enabled | Whether the Roles Anywhere profile is enabled | `bool` | `null` | no |
+| ira\_profile\_managed\_policy\_arns | A list of managed policy ARNs that apply to the vended session credentials | `list(string)` | `[]` | no |
+| ira\_profile\_name | Name of the Roles Anywhere profile | `string` | `null` | no |
+| ira\_profile\_require\_instance\_properties | Specifies whether instance properties are required in [CreateSession](https://docs.aws.amazon.com/rolesanywhere/latest/APIReference/API_CreateSession.html) requests with this profile | `bool` | `null` | no |
+| ira\_profile\_session\_policy | A session policy that applies to the trust boundary of the vended session credentials | `string` | `null` | no |
+| ira\_trust\_anchor\_acm\_pca\_arn | The ARN of the ACM PCA that issued the trust anchor certificate | `string` | `null` | no |
+| ira\_trust\_anchor\_enabled | Whether the Roles Anywhere trust anchor is enabled | `bool` | `null` | no |
+| ira\_trust\_anchor\_name | Name of the Roles Anywhere trust anchor | `string` | `null` | no |
+| ira\_trust\_anchor\_notification\_settings | Notification settings for the trust anchor | `any` | `[]` | no |
+| ira\_trust\_anchor\_source\_type | The source type of the trust anchor | `string` | `null` | no |
+| ira\_trust\_anchor\_x509\_certificate\_data | The X.509 certificate data of the trust anchor | `string` | `null` | no |
+| max\_session\_duration | Maximum API session duration in seconds between 3600 and 43200 | `number` | `null` | no |
+| name | Name of the IAM role | `string` | `"EKSHybridNode"` | no |
+| path | Path of the IAM role | `string` | `"/"` | no |
+| permissions\_boundary\_arn | Permissions boundary ARN to use for the IAM role | `string` | `null` | no |
+| policies | Policies to attach to the IAM role in `{'static_name' = 'policy_arn'}` format | `map(string)` | `{}` | no |
+| policy\_description | IAM policy description | `string` | `"EKS Hybrid Node IAM role policy"` | no |
+| policy\_name | Name of the IAM policy | `string` | `"EKSHybridNode"` | no |
+| policy\_path | Path of the IAM policy | `string` | `"/"` | no |
+| policy\_statements | A list of IAM policy [statements](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document#statement) - used for adding specific IAM permissions as needed | `any` | `[]` | no |
+| policy\_use\_name\_prefix | Determines whether the name of the IAM policy (`policy_name`) is used as a prefix | `bool` | `true` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| trust\_anchor\_arns | List of IAM Roles Anywhere trust anchor ARNs. Required if `enable_ira` is set to `true` | `list(string)` | `[]` | no |
+| use\_name\_prefix | Determines whether the name of the IAM role (`name`) is used as a prefix | `bool` | `true` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| arn | The Amazon Resource Name (ARN) specifying the node IAM role |
+| intermediate\_role\_arn | The Amazon Resource Name (ARN) specifying the node IAM role |
+| intermediate\_role\_name | The name of the node IAM role |
+| intermediate\_role\_unique\_id | Stable and unique string identifying the node IAM role |
+| name | The name of the node IAM role |
+| unique\_id | Stable and unique string identifying the node IAM role |
+<!-- END_TF_DOCS -->
+
+</details>

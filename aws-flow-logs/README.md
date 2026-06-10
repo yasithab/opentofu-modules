@@ -29,68 +29,6 @@ module "flow_logs" {
 }
 ```
 
-
-<!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-| ---- | ------- |
-| terraform | >= 1.11.0 |
-| aws | >= 6.49, < 7.0 |
-
-## Providers
-
-| Name | Version |
-| ---- | ------- |
-| aws | >= 6.49, < 7.0 |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
-| cloudwatch\_log\_group\_class | Specified the log class of the log group. Possible values are: STANDARD or INFREQUENT\_ACCESS | `string` | `null` | no |
-| cloudwatch\_log\_group\_name | Name of the CloudWatch Log Group (only used when log\_destination\_type is 'cloud-watch-logs' and log\_destination is not specified) | `string` | `null` | no |
-| cloudwatch\_log\_group\_skip\_destroy | Set to true if you do not want to destroy the log group at destroy time, and instead just remove the log group from the Terraform state | `bool` | `false` | no |
-| cloudwatch\_log\_kms\_key\_id | ARN of the KMS key to use for encrypting CloudWatch Logs | `string` | `null` | no |
-| cloudwatch\_log\_retention\_in\_days | Number of days to retain logs in CloudWatch Logs | `number` | `30` | no |
-| deliver\_cross\_account\_role | ARN of the IAM role that allows publishing flow logs across accounts | `string` | `null` | no |
-| destination\_options | Destination options for flow logs (only applicable when log\_destination\_type is 's3') | <pre>object({<br/>    file_format                = optional(string, "plain-text")<br/>    hive_compatible_partitions = optional(bool, false)<br/>    per_hour_partition         = optional(bool, false)<br/>  })</pre> | `null` | no |
-| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| eni\_id | Elastic Network Interface ID to attach to (mutually exclusive with other attachment options) | `string` | `null` | no |
-| iam\_policy\_name | Name of the IAM policy to create (only used when log\_destination\_type is 'cloud-watch-logs' and iam\_role\_arn is not specified) | `string` | `null` | no |
-| iam\_role\_arn | ARN of an existing IAM role for posting logs to CloudWatch Logs (only used when log\_destination\_type is 'cloud-watch-logs') | `string` | `null` | no |
-| iam\_role\_name | Name of the IAM role to create (only used when log\_destination\_type is 'cloud-watch-logs' and iam\_role\_arn is not specified) | `string` | `null` | no |
-| kinesis\_firehose\_delivery\_stream\_arn | ARN of the Kinesis Firehose delivery stream (only used when log\_destination\_type is 'kinesis-data-firehose' and log\_destination is not specified) | `string` | `null` | no |
-| log\_destination | ARN of the logging destination. If not specified, a default destination will be created based on log\_destination\_type | `string` | `null` | no |
-| log\_destination\_type | The type of the logging destination. Valid values: cloud-watch-logs, s3, kinesis-data-firehose | `string` | `"cloud-watch-logs"` | no |
-| log\_format | The fields to include in the flow log record. See AWS documentation for format syntax | `string` | `null` | no |
-| max\_aggregation\_interval | The maximum interval of time (in seconds) during which a flow of packets is captured and aggregated into a flow log record. Valid values: 60, 600 | `number` | `60` | no |
-| name | Name tag for the Flow Log resource | `string` | `null` | no |
-| regional\_nat\_gateway\_id | Regional NAT Gateway ID to attach to (mutually exclusive with other attachment options) | `string` | `null` | no |
-| s3\_bucket\_arn | ARN of the S3 bucket (only used when log\_destination\_type is 's3' and log\_destination is not specified) | `string` | `null` | no |
-| subnet\_id | Subnet ID to attach to (mutually exclusive with other attachment options) | `string` | `null` | no |
-| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| traffic\_type | The type of traffic to capture. Valid values: ACCEPT, REJECT, ALL | `string` | `"ALL"` | no |
-| transit\_gateway\_attachment\_id | Transit Gateway Attachment ID to attach to (mutually exclusive with other attachment options) | `string` | `null` | no |
-| transit\_gateway\_id | Transit Gateway ID to attach to (mutually exclusive with other attachment options) | `string` | `null` | no |
-| vpc\_id | The ID of the VPC to attach to (mutually exclusive with other attachment options) | `string` | `null` | no |
-
-## Outputs
-
-| Name | Description |
-| ---- | ----------- |
-| cloudwatch\_log\_group\_arn | The ARN of the CloudWatch Log Group created for flow logs (if applicable) |
-| cloudwatch\_log\_group\_name | The name of the CloudWatch Log Group created for flow logs (if applicable) |
-| flow\_log\_arn | The ARN of the Flow Log resource |
-| flow\_log\_id | The ID of the Flow Log resource |
-| iam\_policy\_arn | The ARN of the IAM policy created for flow logs (if applicable) |
-| iam\_role\_arn | The ARN of the IAM role created for flow logs (if applicable) |
-| iam\_role\_name | The name of the IAM role created for flow logs (if applicable) |
-| kinesis\_firehose\_arn | The ARN of the Kinesis Firehose delivery stream used for flow logs (if applicable) |
-| log\_destination | The final destination ARN used for flow logs (either specified or created) |
-| s3\_bucket\_arn | The ARN of the S3 bucket used for flow logs (if applicable) |
-<!-- END_TF_DOCS -->
-
 ## Examples
 
 ## Basic Usage (CloudWatch Logs)
@@ -208,3 +146,71 @@ module "vpc_flow_logs_firehose" {
 
 - Exactly one attachment target (`vpc_id`, `eni_id`, `subnet_id`, `transit_gateway_id`, `transit_gateway_attachment_id`, or `regional_nat_gateway_id`) must be set when the module is enabled (validated at plan time).
 - The generated IAM policy is scoped to the flow log destination log group (no `logs:CreateLogGroup`, no `Resource: "*"`).
+
+## Reference
+
+<details>
+<summary>Requirements, providers, inputs and outputs (generated by terraform-docs)</summary>
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| cloudwatch\_log\_group\_class | Specified the log class of the log group. Possible values are: STANDARD or INFREQUENT\_ACCESS | `string` | `null` | no |
+| cloudwatch\_log\_group\_name | Name of the CloudWatch Log Group (only used when log\_destination\_type is 'cloud-watch-logs' and log\_destination is not specified) | `string` | `null` | no |
+| cloudwatch\_log\_group\_skip\_destroy | Set to true if you do not want to destroy the log group at destroy time, and instead just remove the log group from the Terraform state | `bool` | `false` | no |
+| cloudwatch\_log\_kms\_key\_id | ARN of the KMS key to use for encrypting CloudWatch Logs | `string` | `null` | no |
+| cloudwatch\_log\_retention\_in\_days | Number of days to retain logs in CloudWatch Logs | `number` | `30` | no |
+| deliver\_cross\_account\_role | ARN of the IAM role that allows publishing flow logs across accounts | `string` | `null` | no |
+| destination\_options | Destination options for flow logs (only applicable when log\_destination\_type is 's3') | <pre>object({<br/>    file_format                = optional(string, "plain-text")<br/>    hive_compatible_partitions = optional(bool, false)<br/>    per_hour_partition         = optional(bool, false)<br/>  })</pre> | `null` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| eni\_id | Elastic Network Interface ID to attach to (mutually exclusive with other attachment options) | `string` | `null` | no |
+| iam\_policy\_name | Name of the IAM policy to create (only used when log\_destination\_type is 'cloud-watch-logs' and iam\_role\_arn is not specified) | `string` | `null` | no |
+| iam\_role\_arn | ARN of an existing IAM role for posting logs to CloudWatch Logs (only used when log\_destination\_type is 'cloud-watch-logs') | `string` | `null` | no |
+| iam\_role\_name | Name of the IAM role to create (only used when log\_destination\_type is 'cloud-watch-logs' and iam\_role\_arn is not specified) | `string` | `null` | no |
+| kinesis\_firehose\_delivery\_stream\_arn | ARN of the Kinesis Firehose delivery stream (only used when log\_destination\_type is 'kinesis-data-firehose' and log\_destination is not specified) | `string` | `null` | no |
+| log\_destination | ARN of the logging destination. If not specified, a default destination will be created based on log\_destination\_type | `string` | `null` | no |
+| log\_destination\_type | The type of the logging destination. Valid values: cloud-watch-logs, s3, kinesis-data-firehose | `string` | `"cloud-watch-logs"` | no |
+| log\_format | The fields to include in the flow log record. See AWS documentation for format syntax | `string` | `null` | no |
+| max\_aggregation\_interval | The maximum interval of time (in seconds) during which a flow of packets is captured and aggregated into a flow log record. Valid values: 60, 600 | `number` | `60` | no |
+| name | Name tag for the Flow Log resource | `string` | `null` | no |
+| regional\_nat\_gateway\_id | Regional NAT Gateway ID to attach to (mutually exclusive with other attachment options) | `string` | `null` | no |
+| s3\_bucket\_arn | ARN of the S3 bucket (only used when log\_destination\_type is 's3' and log\_destination is not specified) | `string` | `null` | no |
+| subnet\_id | Subnet ID to attach to (mutually exclusive with other attachment options) | `string` | `null` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| traffic\_type | The type of traffic to capture. Valid values: ACCEPT, REJECT, ALL | `string` | `"ALL"` | no |
+| transit\_gateway\_attachment\_id | Transit Gateway Attachment ID to attach to (mutually exclusive with other attachment options) | `string` | `null` | no |
+| transit\_gateway\_id | Transit Gateway ID to attach to (mutually exclusive with other attachment options) | `string` | `null` | no |
+| vpc\_id | The ID of the VPC to attach to (mutually exclusive with other attachment options) | `string` | `null` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| cloudwatch\_log\_group\_arn | The ARN of the CloudWatch Log Group created for flow logs (if applicable) |
+| cloudwatch\_log\_group\_name | The name of the CloudWatch Log Group created for flow logs (if applicable) |
+| flow\_log\_arn | The ARN of the Flow Log resource |
+| flow\_log\_id | The ID of the Flow Log resource |
+| iam\_policy\_arn | The ARN of the IAM policy created for flow logs (if applicable) |
+| iam\_role\_arn | The ARN of the IAM role created for flow logs (if applicable) |
+| iam\_role\_name | The name of the IAM role created for flow logs (if applicable) |
+| kinesis\_firehose\_arn | The ARN of the Kinesis Firehose delivery stream used for flow logs (if applicable) |
+| log\_destination | The final destination ARN used for flow logs (either specified or created) |
+| s3\_bucket\_arn | The ARN of the S3 bucket used for flow logs (if applicable) |
+<!-- END_TF_DOCS -->
+
+</details>

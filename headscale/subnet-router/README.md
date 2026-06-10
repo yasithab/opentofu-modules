@@ -51,74 +51,6 @@ headscale routes list
 headscale routes enable --route <id>
 ```
 
-
-<!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-| ---- | ------- |
-| terraform | >= 1.11.0 |
-| aws | >= 6.49, < 7.0 |
-| cloudinit | >= 2.0 |
-
-## Providers
-
-| Name | Version |
-| ---- | ------- |
-| aws | >= 6.49, < 7.0 |
-| cloudinit | >= 2.0 |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
-| accept\_dns | Whether this node accepts DNS configuration from the tailnet. | `bool` | `false` | no |
-| additional\_security\_group\_ids | Additional security group IDs to attach to the instance. | `list(string)` | `[]` | no |
-| advertise\_routes | CIDR ranges to advertise to the tailnet (e.g., ['10.0.0.0/16', '172.16.0.0/12']). | `list(string)` | n/a | yes |
-| alarm\_enabled | Create a CloudWatch alarm that fires when the subnet router instance is unhealthy. | `bool` | `true` | no |
-| alarm\_sns\_topic\_arn | SNS topic ARN for CloudWatch alarms. Leave empty to create a new topic. | `string` | `""` | no |
-| ami\_id | Custom AMI ID. When null, the latest Amazon Linux 2023 AMI is auto-detected. | `string` | `null` | no |
-| attach\_ssm\_policy | Attach SSM Session Manager permissions to the IAM role for remote access. | `bool` | `true` | no |
-| cloud\_init\_parts | Additional cloud-init parts to append after the Tailscale setup script. | <pre>list(object({<br/>    content      = string<br/>    content_type = string<br/>  }))</pre> | `[]` | no |
-| cloudwatch\_logs\_enabled | Export Tailscale and cloud-init logs to CloudWatch Logs. | `bool` | `true` | no |
-| cloudwatch\_logs\_retention\_days | Number of days to retain CloudWatch logs. | `number` | `30` | no |
-| ebs\_root\_volume\_size | Root EBS volume size in GB. | `number` | `8` | no |
-| enable\_instance\_refresh | Enable ASG instance refresh (rolling, 90% min healthy) so launch template changes roll out automatically. | `bool` | `true` | no |
-| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| encryption | Whether to encrypt the root EBS volume. | `bool` | `true` | no |
-| exit\_node\_enabled | Advertise this node as a Tailscale exit node. Routes ALL client traffic through this instance (not just subnet routes). | `bool` | `false` | no |
-| headscale\_auth\_key | Pre-auth key from Headscale for automatic registration. Leave empty when using secrets\_manager\_arn. Generate with: headscale preauthkeys create --user <user> --reusable --expiration 87600h | `string` | `""` | no |
-| headscale\_server\_url | Headscale server URL (e.g., 'https://headscale.example.com'). | `string` | n/a | yes |
-| hostname | Tailscale hostname for this subnet router node. Defaults to the instance name. | `string` | `""` | no |
-| instance\_type | EC2 instance type. Graviton (t4g) recommended for cost savings. | `string` | `"t4g.nano"` | no |
-| kms\_key\_arn | ARN of the customer-managed KMS key encrypting the Secrets Manager secret. When set, the instance's kms:Decrypt permission is scoped to this key instead of all keys (the kms:ViaService=secretsmanager condition applies either way). Required to be set explicitly for cross-account secrets encrypted with a CMK. | `string` | `null` | no |
-| kms\_key\_id | KMS key ID for EBS volume encryption. Uses the default EBS key when null. | `string` | `null` | no |
-| name | Name for all subnet router resources. | `string` | n/a | yes |
-| secrets\_manager\_arn | ARN of a Secrets Manager secret containing a JSON object with sensitive values. The module reads the auth key from the key specified by secrets\_manager\_auth\_key\_field. | `string` | `""` | no |
-| secrets\_manager\_auth\_key\_field | JSON key in the Secrets Manager secret that holds the Headscale pre-auth key. | `string` | `"headscale_auth_key"` | no |
-| subnet\_id | Private subnet ID for the subnet router instance. | `string` | n/a | yes |
-| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| tailscale\_version | Tailscale client version to install. | `string` | `"1.96.4"` | no |
-| use\_spot\_instances | Use spot instances for cost savings (~70% cheaper). Safe because the subnet router is stateless - ASG replaces terminated instances and Tailscale re-registers automatically. | `bool` | `false` | no |
-| vpc\_id | VPC ID to deploy the subnet router into. | `string` | n/a | yes |
-
-## Outputs
-
-| Name | Description |
-| ---- | ----------- |
-| alarm\_arn | CloudWatch alarm ARN (null when alarm is disabled) |
-| ami\_id | Resolved AMI ID |
-| autoscaling\_group\_arn | ASG ARN |
-| autoscaling\_group\_name | ASG name |
-| iam\_role\_arn | IAM role ARN |
-| iam\_role\_name | IAM role name |
-| instance\_profile\_arn | Instance profile ARN |
-| launch\_template\_id | Launch template ID |
-| log\_group\_name | CloudWatch log group name (null when logs are disabled) |
-| security\_group\_id | Security group ID |
-| sns\_topic\_arn | SNS topic ARN for alarm notifications (null when using existing topic or alarm is disabled) |
-<!-- END_TF_DOCS -->
-
 ## Examples
 
 ## Basic  - route a VPC to the tailnet
@@ -194,3 +126,77 @@ headscale routes enable --route <id>
 tailscale status
 tailscale ping <subnet-router-hostname>
 ```
+
+## Reference
+
+<details>
+<summary>Requirements, providers, inputs and outputs (generated by terraform-docs)</summary>
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+| cloudinit | >= 2.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+| cloudinit | >= 2.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| accept\_dns | Whether this node accepts DNS configuration from the tailnet. | `bool` | `false` | no |
+| additional\_security\_group\_ids | Additional security group IDs to attach to the instance. | `list(string)` | `[]` | no |
+| advertise\_routes | CIDR ranges to advertise to the tailnet (e.g., ['10.0.0.0/16', '172.16.0.0/12']). | `list(string)` | n/a | yes |
+| alarm\_enabled | Create a CloudWatch alarm that fires when the subnet router instance is unhealthy. | `bool` | `true` | no |
+| alarm\_sns\_topic\_arn | SNS topic ARN for CloudWatch alarms. Leave empty to create a new topic. | `string` | `""` | no |
+| ami\_id | Custom AMI ID. When null, the latest Amazon Linux 2023 AMI is auto-detected. | `string` | `null` | no |
+| attach\_ssm\_policy | Attach SSM Session Manager permissions to the IAM role for remote access. | `bool` | `true` | no |
+| cloud\_init\_parts | Additional cloud-init parts to append after the Tailscale setup script. | <pre>list(object({<br/>    content      = string<br/>    content_type = string<br/>  }))</pre> | `[]` | no |
+| cloudwatch\_logs\_enabled | Export Tailscale and cloud-init logs to CloudWatch Logs. | `bool` | `true` | no |
+| cloudwatch\_logs\_retention\_days | Number of days to retain CloudWatch logs. | `number` | `30` | no |
+| ebs\_root\_volume\_size | Root EBS volume size in GB. | `number` | `8` | no |
+| enable\_instance\_refresh | Enable ASG instance refresh (rolling, 90% min healthy) so launch template changes roll out automatically. | `bool` | `true` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| encryption | Whether to encrypt the root EBS volume. | `bool` | `true` | no |
+| exit\_node\_enabled | Advertise this node as a Tailscale exit node. Routes ALL client traffic through this instance (not just subnet routes). | `bool` | `false` | no |
+| headscale\_auth\_key | Pre-auth key from Headscale for automatic registration. Leave empty when using secrets\_manager\_arn. Generate with: headscale preauthkeys create --user <user> --reusable --expiration 87600h | `string` | `""` | no |
+| headscale\_server\_url | Headscale server URL (e.g., 'https://headscale.example.com'). | `string` | n/a | yes |
+| hostname | Tailscale hostname for this subnet router node. Defaults to the instance name. | `string` | `""` | no |
+| instance\_type | EC2 instance type. Graviton (t4g) recommended for cost savings. | `string` | `"t4g.nano"` | no |
+| kms\_key\_arn | ARN of the customer-managed KMS key encrypting the Secrets Manager secret. When set, the instance's kms:Decrypt permission is scoped to this key instead of all keys (the kms:ViaService=secretsmanager condition applies either way). Required to be set explicitly for cross-account secrets encrypted with a CMK. | `string` | `null` | no |
+| kms\_key\_id | KMS key ID for EBS volume encryption. Uses the default EBS key when null. | `string` | `null` | no |
+| name | Name for all subnet router resources. | `string` | n/a | yes |
+| secrets\_manager\_arn | ARN of a Secrets Manager secret containing a JSON object with sensitive values. The module reads the auth key from the key specified by secrets\_manager\_auth\_key\_field. | `string` | `""` | no |
+| secrets\_manager\_auth\_key\_field | JSON key in the Secrets Manager secret that holds the Headscale pre-auth key. | `string` | `"headscale_auth_key"` | no |
+| subnet\_id | Private subnet ID for the subnet router instance. | `string` | n/a | yes |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| tailscale\_version | Tailscale client version to install. | `string` | `"1.96.4"` | no |
+| use\_spot\_instances | Use spot instances for cost savings (~70% cheaper). Safe because the subnet router is stateless - ASG replaces terminated instances and Tailscale re-registers automatically. | `bool` | `false` | no |
+| vpc\_id | VPC ID to deploy the subnet router into. | `string` | n/a | yes |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| alarm\_arn | CloudWatch alarm ARN (null when alarm is disabled) |
+| ami\_id | Resolved AMI ID |
+| autoscaling\_group\_arn | ASG ARN |
+| autoscaling\_group\_name | ASG name |
+| iam\_role\_arn | IAM role ARN |
+| iam\_role\_name | IAM role name |
+| instance\_profile\_arn | Instance profile ARN |
+| launch\_template\_id | Launch template ID |
+| log\_group\_name | CloudWatch log group name (null when logs are disabled) |
+| security\_group\_id | Security group ID |
+| sns\_topic\_arn | SNS topic ARN for alarm notifications (null when using existing topic or alarm is disabled) |
+<!-- END_TF_DOCS -->
+
+</details>

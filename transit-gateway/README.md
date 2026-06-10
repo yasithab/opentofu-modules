@@ -44,65 +44,6 @@ module "transit_gateway" {
 }
 ```
 
-
-<!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-| ---- | ------- |
-| terraform | >= 1.11.0 |
-| aws | >= 6.49, < 7.0 |
-
-## Providers
-
-| Name | Version |
-| ---- | ------- |
-| aws | >= 6.49, < 7.0 |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
-| amazon\_side\_asn | The Autonomous System Number (ASN) for the Amazon side of the gateway. By default the TGW is created with the current default Amazon ASN | `string` | `null` | no |
-| auto\_accept\_shared\_attachments | Whether resource attachment requests are automatically accepted | `bool` | `false` | no |
-| create\_flow\_log | Whether to create flow log resource(s) | `bool` | `true` | no |
-| default\_route\_table\_association | Whether resource attachments are automatically associated with the default association route table | `bool` | `false` | no |
-| default\_route\_table\_propagation | Whether resource attachments automatically propagate routes to the default propagation route table | `bool` | `false` | no |
-| description | Description of the EC2 Transit Gateway | `string` | `null` | no |
-| dns\_support | Should be true to enable DNS support in the TGW | `bool` | `true` | no |
-| enable\_ram\_share | Whether to share your transit gateway with other accounts | `bool` | `false` | no |
-| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| encryption\_support | Whether VPC Encryption Control support is enabled. Valid values: enable, disable | `bool` | `false` | no |
-| flow\_logs | Flow Logs to create for Transit Gateway or attachments | <pre>map(object({<br/>    deliver_cross_account_role = optional(string)<br/>    destination_options = optional(object({<br/>      file_format                = optional(string, "parquet")<br/>      hive_compatible_partitions = optional(bool, false)<br/>      per_hour_partition         = optional(bool, true)<br/>    }))<br/>    eni_id                   = optional(string)<br/>    iam_role_arn             = optional(string)<br/>    log_destination          = optional(string)<br/>    log_destination_type     = optional(string)<br/>    log_format               = optional(string)<br/>    max_aggregation_interval = optional(number, 60)<br/>    regional_nat_gateway_id  = optional(string)<br/>    subnet_id                = optional(string)<br/>    traffic_type             = optional(string, "ALL")<br/>    tags                     = optional(map(string), {})<br/><br/>    enable_transit_gateway = optional(bool, true)<br/>    # The following can be provided when `enable_transit_gateway` is `false`<br/>    vpc_attachment_key     = optional(string)<br/>    peering_attachment_key = optional(string)<br/>  }))</pre> | `{}` | no |
-| multicast\_support | Whether multicast support is enabled | `bool` | `false` | no |
-| name | Name to use for resource naming and tagging. | `string` | `null` | no |
-| peering\_attachments | Map of Transit Gateway peering attachments to create | <pre>map(object({<br/>    peer_account_id         = string<br/>    peer_region             = string<br/>    peer_transit_gateway_id = string<br/>    dynamic_routing         = optional(string) # "enable" or "disable"<br/>    tags                    = optional(map(string), {})<br/><br/>    accept_peering_attachment = optional(bool, false)<br/>  }))</pre> | `{}` | no |
-| ram\_allow\_external\_principals | Indicates whether principals outside your organization can be associated with a resource share | `bool` | `false` | no |
-| ram\_name | The name of the resource share of TGW | `string` | `null` | no |
-| ram\_principals | A list of principals to share TGW with. Possible values are an AWS account ID, an AWS Organizations Organization ARN, or an AWS Organizations Organization Unit ARN | `set(string)` | `[]` | no |
-| ram\_tags | Additional tags for the RAM | `map(string)` | `{}` | no |
-| security\_group\_referencing\_support | Whether security group referencing is enabled | `bool` | `false` | no |
-| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| tgw\_tags | Additional tags for the TGW | `map(string)` | `{}` | no |
-| timeouts | Create, update, and delete timeout configurations for the transit gateway | `map(string)` | `{}` | no |
-| transit\_gateway\_cidr\_blocks | One or more IPv4 or IPv6 CIDR blocks for the transit gateway. Must be a size /24 CIDR block or larger for IPv4, or a size /64 CIDR block or larger for IPv6 | `list(string)` | `[]` | no |
-| vpc\_attachments | Map of VPC route table attachments to create | <pre>map(object({<br/>    appliance_mode_support                          = optional(bool, false)<br/>    dns_support                                     = optional(bool, true)<br/>    ipv6_support                                    = optional(bool, false)<br/>    security_group_referencing_support              = optional(bool, false)<br/>    subnet_ids                                      = list(string)<br/>    tags                                            = optional(map(string), {})<br/>    transit_gateway_default_route_table_association = optional(bool, false)<br/>    transit_gateway_default_route_table_propagation = optional(bool, false)<br/>    vpc_id                                          = string<br/><br/>    accept_peering_attachment = optional(bool, false)<br/>  }))</pre> | `{}` | no |
-| vpn\_ecmp\_support | Whether VPN Equal Cost Multipath Protocol support is enabled | `bool` | `true` | no |
-
-## Outputs
-
-| Name | Description |
-| ---- | ----------- |
-| arn | EC2 Transit Gateway Amazon Resource Name (ARN) |
-| association\_default\_route\_table\_id | Identifier of the default association route table |
-| id | EC2 Transit Gateway identifier |
-| owner\_id | Identifier of the AWS account that owns the EC2 Transit Gateway |
-| peering\_attachments | Map of TGW peering attachments created |
-| propagation\_default\_route\_table\_id | Identifier of the default propagation route table |
-| ram\_resource\_share\_id | The Amazon Resource Name (ARN) of the resource share |
-| vpc\_attachments | Map of VPC attachments created |
-<!-- END_TF_DOCS -->
-
 ## Examples
 
 ## Basic Usage
@@ -256,3 +197,68 @@ module "transit_gateway" {
 - `auto_accept_shared_attachments` now defaults to `false` (security hardening); set it to `true` explicitly if you rely on automatic acceptance.
 - `flow_logs.max_aggregation_interval` defaults to `60` and must be `60` or `600` (AWS-supported values).
 - `vpc_attachments` and `peering_attachments` outputs are marked sensitive.
+
+## Reference
+
+<details>
+<summary>Requirements, providers, inputs and outputs (generated by terraform-docs)</summary>
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| amazon\_side\_asn | The Autonomous System Number (ASN) for the Amazon side of the gateway. By default the TGW is created with the current default Amazon ASN | `string` | `null` | no |
+| auto\_accept\_shared\_attachments | Whether resource attachment requests are automatically accepted | `bool` | `false` | no |
+| create\_flow\_log | Whether to create flow log resource(s) | `bool` | `true` | no |
+| default\_route\_table\_association | Whether resource attachments are automatically associated with the default association route table | `bool` | `false` | no |
+| default\_route\_table\_propagation | Whether resource attachments automatically propagate routes to the default propagation route table | `bool` | `false` | no |
+| description | Description of the EC2 Transit Gateway | `string` | `null` | no |
+| dns\_support | Should be true to enable DNS support in the TGW | `bool` | `true` | no |
+| enable\_ram\_share | Whether to share your transit gateway with other accounts | `bool` | `false` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| encryption\_support | Whether VPC Encryption Control support is enabled. Valid values: enable, disable | `bool` | `false` | no |
+| flow\_logs | Flow Logs to create for Transit Gateway or attachments | <pre>map(object({<br/>    deliver_cross_account_role = optional(string)<br/>    destination_options = optional(object({<br/>      file_format                = optional(string, "parquet")<br/>      hive_compatible_partitions = optional(bool, false)<br/>      per_hour_partition         = optional(bool, true)<br/>    }))<br/>    eni_id                   = optional(string)<br/>    iam_role_arn             = optional(string)<br/>    log_destination          = optional(string)<br/>    log_destination_type     = optional(string)<br/>    log_format               = optional(string)<br/>    max_aggregation_interval = optional(number, 60)<br/>    regional_nat_gateway_id  = optional(string)<br/>    subnet_id                = optional(string)<br/>    traffic_type             = optional(string, "ALL")<br/>    tags                     = optional(map(string), {})<br/><br/>    enable_transit_gateway = optional(bool, true)<br/>    # The following can be provided when `enable_transit_gateway` is `false`<br/>    vpc_attachment_key     = optional(string)<br/>    peering_attachment_key = optional(string)<br/>  }))</pre> | `{}` | no |
+| multicast\_support | Whether multicast support is enabled | `bool` | `false` | no |
+| name | Name to use for resource naming and tagging. | `string` | `null` | no |
+| peering\_attachments | Map of Transit Gateway peering attachments to create | <pre>map(object({<br/>    peer_account_id         = string<br/>    peer_region             = string<br/>    peer_transit_gateway_id = string<br/>    dynamic_routing         = optional(string) # "enable" or "disable"<br/>    tags                    = optional(map(string), {})<br/><br/>    accept_peering_attachment = optional(bool, false)<br/>  }))</pre> | `{}` | no |
+| ram\_allow\_external\_principals | Indicates whether principals outside your organization can be associated with a resource share | `bool` | `false` | no |
+| ram\_name | The name of the resource share of TGW | `string` | `null` | no |
+| ram\_principals | A list of principals to share TGW with. Possible values are an AWS account ID, an AWS Organizations Organization ARN, or an AWS Organizations Organization Unit ARN | `set(string)` | `[]` | no |
+| ram\_tags | Additional tags for the RAM | `map(string)` | `{}` | no |
+| security\_group\_referencing\_support | Whether security group referencing is enabled | `bool` | `false` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| tgw\_tags | Additional tags for the TGW | `map(string)` | `{}` | no |
+| timeouts | Create, update, and delete timeout configurations for the transit gateway | `map(string)` | `{}` | no |
+| transit\_gateway\_cidr\_blocks | One or more IPv4 or IPv6 CIDR blocks for the transit gateway. Must be a size /24 CIDR block or larger for IPv4, or a size /64 CIDR block or larger for IPv6 | `list(string)` | `[]` | no |
+| vpc\_attachments | Map of VPC route table attachments to create | <pre>map(object({<br/>    appliance_mode_support                          = optional(bool, false)<br/>    dns_support                                     = optional(bool, true)<br/>    ipv6_support                                    = optional(bool, false)<br/>    security_group_referencing_support              = optional(bool, false)<br/>    subnet_ids                                      = list(string)<br/>    tags                                            = optional(map(string), {})<br/>    transit_gateway_default_route_table_association = optional(bool, false)<br/>    transit_gateway_default_route_table_propagation = optional(bool, false)<br/>    vpc_id                                          = string<br/><br/>    accept_peering_attachment = optional(bool, false)<br/>  }))</pre> | `{}` | no |
+| vpn\_ecmp\_support | Whether VPN Equal Cost Multipath Protocol support is enabled | `bool` | `true` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| arn | EC2 Transit Gateway Amazon Resource Name (ARN) |
+| association\_default\_route\_table\_id | Identifier of the default association route table |
+| id | EC2 Transit Gateway identifier |
+| owner\_id | Identifier of the AWS account that owns the EC2 Transit Gateway |
+| peering\_attachments | Map of TGW peering attachments created |
+| propagation\_default\_route\_table\_id | Identifier of the default propagation route table |
+| ram\_resource\_share\_id | The Amazon Resource Name (ARN) of the resource share |
+| vpc\_attachments | Map of VPC attachments created |
+<!-- END_TF_DOCS -->
+
+</details>

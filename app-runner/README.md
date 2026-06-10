@@ -46,104 +46,6 @@ module "app_runner" {
 }
 ```
 
-
-<!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-| ---- | ------- |
-| terraform | >= 1.11.0 |
-| aws | >= 6.49, < 7.0 |
-
-## Providers
-
-| Name | Version |
-| ---- | ------- |
-| aws | >= 6.49, < 7.0 |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
-| access\_iam\_role\_description | Description of the role | `string` | `null` | no |
-| access\_iam\_role\_inline\_policies | Map of inline IAM policies to attach to the access IAM role. Keys are policy names; values are JSON policy documents. | `map(string)` | `{}` | no |
-| access\_iam\_role\_managed\_policy\_arns | Set of IAM managed policy ARNs to attach to the access IAM role. | `set(string)` | `null` | no |
-| access\_iam\_role\_max\_session\_duration | Maximum session duration (in seconds) for the access IAM role. Valid values are between 3600 and 43200. | `number` | `null` | no |
-| access\_iam\_role\_name | Name to use on IAM role created | `string` | `null` | no |
-| access\_iam\_role\_path | IAM role path | `string` | `null` | no |
-| access\_iam\_role\_permissions\_boundary | ARN of the policy that is used to set the permissions boundary for the IAM role | `string` | `null` | no |
-| access\_iam\_role\_policies | IAM policies to attach to the IAM role | `map(string)` | `{}` | no |
-| access\_iam\_role\_use\_name\_prefix | Determines whether the IAM role name (`iam_role_name`) is used as a prefix | `bool` | `true` | no |
-| auto\_scaling\_configuration\_arn | ARN of an App Runner automatic scaling configuration resource that you want to associate with your service. If not provided, App Runner associates the latest revision of a default auto scaling configuration | `string` | `null` | no |
-| auto\_scaling\_configurations | Map of auto-scaling configuration definitions to create | <pre>map(object({<br/>    name            = optional(string)<br/>    max_concurrency = optional(number)<br/>    max_size        = optional(number)<br/>    min_size        = optional(number)<br/>    tags            = optional(map(string), {})<br/>  }))</pre> | `{}` | no |
-| connections | Map of connection definitions to create | <pre>map(object({<br/>    name          = optional(string)<br/>    provider_type = optional(string, "GITHUB")<br/>    tags          = optional(map(string), {})<br/>  }))</pre> | `{}` | no |
-| create\_access\_iam\_role | Determines whether an IAM role is created or to use an existing IAM role | `bool` | `false` | no |
-| create\_custom\_domain\_association | Determines whether a Custom Domain Association will be created | `bool` | `false` | no |
-| create\_ingress\_vpc\_connection | Determines whether a VPC ingress configuration will be created | `bool` | `false` | no |
-| create\_instance\_iam\_role | Determines whether an IAM role is created or to use an existing IAM role | `bool` | `true` | no |
-| create\_service | Determines whether the service will be created | `bool` | `true` | no |
-| create\_vpc\_connector | Determines whether a VPC Connector will be created | `bool` | `false` | no |
-| domain\_name | The custom domain endpoint to association. Specify a base domain e.g., `example.com` or a subdomain e.g., `subdomain.example.com` | `string` | `null` | no |
-| enable\_observability\_configuration | Determines whether an X-Ray Observability Configuration will be created and assigned to the service | `bool` | `true` | no |
-| enable\_www\_subdomain | Whether to associate the subdomain with the App Runner service in addition to the base domain. Defaults to `true` | `bool` | `null` | no |
-| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| encryption\_configuration | The encryption configuration for the service | <pre>object({<br/>    kms_key = string<br/>  })</pre> | `null` | no |
-| health\_check\_configuration | The health check configuration for the service | <pre>object({<br/>    healthy_threshold   = optional(number)<br/>    interval            = optional(number)<br/>    path                = optional(string)<br/>    protocol            = optional(string)<br/>    timeout             = optional(number)<br/>    unhealthy_threshold = optional(number)<br/>  })</pre> | `null` | no |
-| hosted\_zone\_id | The ID of the Route53 hosted zone that contains the domain for the `domain_name` | `string` | `null` | no |
-| iam\_policy\_delay\_after\_creation\_ms | Milliseconds to wait after IAM policy creation before use. Helps avoid eventual-consistency race conditions. Applies to both access and instance IAM policies. | `number` | `null` | no |
-| ingress\_vpc\_endpoint\_id | The ID of the VPC endpoint that is used for the VPC ingress configuration | `string` | `null` | no |
-| ingress\_vpc\_id | The ID of the VPC that is used for the VPC ingress configuration | `string` | `null` | no |
-| instance\_configuration | The instance configuration for the service | <pre>object({<br/>    cpu               = optional(string)<br/>    memory            = optional(string)<br/>    instance_role_arn = optional(string)<br/>  })</pre> | `null` | no |
-| instance\_iam\_role\_description | Description of the role | `string` | `null` | no |
-| instance\_iam\_role\_inline\_policies | Map of inline IAM policies to attach to the instance IAM role. Keys are policy names; values are JSON policy documents. | `map(string)` | `{}` | no |
-| instance\_iam\_role\_managed\_policy\_arns | Set of IAM managed policy ARNs to attach to the instance IAM role. | `set(string)` | `null` | no |
-| instance\_iam\_role\_max\_session\_duration | Maximum session duration (in seconds) for the instance IAM role. Valid values are between 3600 and 43200. | `number` | `null` | no |
-| instance\_iam\_role\_name | Name to use on IAM role created | `string` | `null` | no |
-| instance\_iam\_role\_path | IAM role path | `string` | `null` | no |
-| instance\_iam\_role\_permissions\_boundary | ARN of the policy that is used to set the permissions boundary for the IAM role | `string` | `null` | no |
-| instance\_iam\_role\_policies | IAM policies to attach to the IAM role | `map(string)` | `{}` | no |
-| instance\_iam\_role\_use\_name\_prefix | Determines whether the IAM role name (`iam_role_name`) is used as a prefix | `bool` | `true` | no |
-| instance\_policy\_statements | A map of IAM policy [statements](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document#statement) for custom permission usage | <pre>map(object({<br/>    sid           = optional(string)<br/>    actions       = optional(list(string))<br/>    not_actions   = optional(list(string))<br/>    effect        = optional(string)<br/>    resources     = optional(list(string))<br/>    not_resources = optional(list(string))<br/>    principals = optional(list(object({<br/>      type        = string<br/>      identifiers = list(string)<br/>    })), [])<br/>    not_principals = optional(list(object({<br/>      type        = string<br/>      identifiers = list(string)<br/>    })), [])<br/>    conditions = optional(list(object({<br/>      test     = string<br/>      values   = list(string)<br/>      variable = string<br/>    })), [])<br/>  }))</pre> | `{}` | no |
-| name | The name of the service | `string` | `null` | no |
-| network\_configuration | The network configuration for the service | <pre>object({<br/>    ip_address_type = optional(string)<br/>    ingress_configuration = optional(object({<br/>      is_publicly_accessible = optional(bool)<br/>    }))<br/>    egress_configuration = optional(object({<br/>      egress_type       = optional(string, "VPC")<br/>      vpc_connector_arn = optional(string)<br/>    }))<br/>  })</pre> | `null` | no |
-| observability\_trace\_vendor | The implementation provider chosen for tracing App Runner services. Valid values: AWSXRAY. Defaults to AWSXRAY when enable\_observability\_configuration is true. | `string` | `"AWSXRAY"` | no |
-| private\_ecr\_arn | The ARN of the private ECR repository that contains the service image to launch | `string` | `null` | no |
-| source\_configuration | The source configuration for the service | <pre>object({<br/>    auto_deployments_enabled = optional(bool, false)<br/>    authentication_configuration = optional(object({<br/>      access_role_arn = optional(string)<br/>      connection_arn  = optional(string)<br/>    }))<br/>    code_repository = optional(object({<br/>      repository_url   = string<br/>      source_directory = optional(string)<br/>      source_code_version = object({<br/>        type  = optional(string, "BRANCH")<br/>        value = string<br/>      })<br/>      code_configuration = optional(object({<br/>        configuration_source = string<br/>        code_configuration_values = optional(object({<br/>          build_command                 = optional(string)<br/>          port                          = optional(string)<br/>          runtime                       = string<br/>          runtime_environment_variables = optional(map(string), {})<br/>          runtime_environment_secrets   = optional(map(string), {})<br/>          start_command                 = optional(string)<br/>        }))<br/>      }))<br/>    }))<br/>    image_repository = optional(object({<br/>      image_identifier      = string<br/>      image_repository_type = string<br/>      image_configuration = optional(object({<br/>        port                          = optional(string)<br/>        runtime_environment_variables = optional(map(string), {})<br/>        runtime_environment_secrets   = optional(map(string), {})<br/>        start_command                 = optional(string)<br/>      }))<br/>    }))<br/>  })</pre> | `null` | no |
-| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| vpc\_connector\_name | The name of the VPC Connector | `string` | `null` | no |
-| vpc\_connector\_security\_groups | The security groups to use for the VPC Connector | `list(string)` | `[]` | no |
-| vpc\_connector\_subnets | The subnets to use for the VPC Connector | `list(string)` | `[]` | no |
-
-## Outputs
-
-| Name | Description |
-| ---- | ----------- |
-| access\_iam\_role\_arn | The Amazon Resource Name (ARN) specifying the IAM role |
-| access\_iam\_role\_name | The name of the IAM role |
-| access\_iam\_role\_unique\_id | Stable and unique string identifying the IAM role |
-| auto\_scaling\_configurations | Map of attribute maps for all autoscaling configurations created |
-| connections | Map of attribute maps for all connections created |
-| custom\_domain\_association\_certificate\_validation\_records | A set of certificate CNAME records used for this domain name |
-| custom\_domain\_association\_dns\_target | The App Runner subdomain of the App Runner service. The custom domain name is mapped to this target name. Attribute only available if resource created (not imported) with Terraform |
-| custom\_domain\_association\_id | The `domain_name` and `service_arn` separated by a comma (`,`) |
-| instance\_iam\_role\_arn | The Amazon Resource Name (ARN) specifying the IAM role |
-| instance\_iam\_role\_name | The name of the IAM role |
-| instance\_iam\_role\_unique\_id | Stable and unique string identifying the IAM role |
-| observability\_configuration\_arn | ARN of this observability configuration |
-| observability\_configuration\_latest | Whether the observability configuration has the highest `observability_configuration_revision` among all configurations that share the same `observability_configuration_name` |
-| observability\_configuration\_revision | The revision of the observability configuration |
-| observability\_configuration\_status | The current state of the observability configuration. An `INACTIVE` configuration revision has been deleted and can't be used. It is permanently removed some time after deletion |
-| service\_arn | The Amazon Resource Name (ARN) of the service |
-| service\_id | An alphanumeric ID that App Runner generated for this service. Unique within the AWS Region |
-| service\_status | The current state of the App Runner service |
-| service\_url | A subdomain URL that App Runner generated for this service. You can use this URL to access your service web application |
-| vpc\_connector\_arn | The Amazon Resource Name (ARN) of VPC connector |
-| vpc\_connector\_revision | The revision of VPC connector. It's unique among all the active connectors ("Status": "ACTIVE") that share the same Name |
-| vpc\_connector\_status | The current state of the VPC connector. If the status of a connector revision is INACTIVE, it was deleted and can't be used. Inactive connector revisions are permanently removed some time after they are deleted |
-| vpc\_ingress\_connection\_arn | The Amazon Resource Name (ARN) of the VPC Ingress Connection |
-| vpc\_ingress\_connection\_domain\_name | The domain name associated with the VPC Ingress Connection resource |
-<!-- END_TF_DOCS -->
-
 ## Examples
 
 ## Basic Usage (Public ECR Image)
@@ -338,3 +240,107 @@ module "app_runner_custom_domain" {
   }
 }
 ```
+
+## Reference
+
+<details>
+<summary>Requirements, providers, inputs and outputs (generated by terraform-docs)</summary>
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| access\_iam\_role\_description | Description of the role | `string` | `null` | no |
+| access\_iam\_role\_inline\_policies | Map of inline IAM policies to attach to the access IAM role. Keys are policy names; values are JSON policy documents. | `map(string)` | `{}` | no |
+| access\_iam\_role\_managed\_policy\_arns | Set of IAM managed policy ARNs to attach to the access IAM role. | `set(string)` | `null` | no |
+| access\_iam\_role\_max\_session\_duration | Maximum session duration (in seconds) for the access IAM role. Valid values are between 3600 and 43200. | `number` | `null` | no |
+| access\_iam\_role\_name | Name to use on IAM role created | `string` | `null` | no |
+| access\_iam\_role\_path | IAM role path | `string` | `null` | no |
+| access\_iam\_role\_permissions\_boundary | ARN of the policy that is used to set the permissions boundary for the IAM role | `string` | `null` | no |
+| access\_iam\_role\_policies | IAM policies to attach to the IAM role | `map(string)` | `{}` | no |
+| access\_iam\_role\_use\_name\_prefix | Determines whether the IAM role name (`iam_role_name`) is used as a prefix | `bool` | `true` | no |
+| auto\_scaling\_configuration\_arn | ARN of an App Runner automatic scaling configuration resource that you want to associate with your service. If not provided, App Runner associates the latest revision of a default auto scaling configuration | `string` | `null` | no |
+| auto\_scaling\_configurations | Map of auto-scaling configuration definitions to create | <pre>map(object({<br/>    name            = optional(string)<br/>    max_concurrency = optional(number)<br/>    max_size        = optional(number)<br/>    min_size        = optional(number)<br/>    tags            = optional(map(string), {})<br/>  }))</pre> | `{}` | no |
+| connections | Map of connection definitions to create | <pre>map(object({<br/>    name          = optional(string)<br/>    provider_type = optional(string, "GITHUB")<br/>    tags          = optional(map(string), {})<br/>  }))</pre> | `{}` | no |
+| create\_access\_iam\_role | Determines whether an IAM role is created or to use an existing IAM role | `bool` | `false` | no |
+| create\_custom\_domain\_association | Determines whether a Custom Domain Association will be created | `bool` | `false` | no |
+| create\_ingress\_vpc\_connection | Determines whether a VPC ingress configuration will be created | `bool` | `false` | no |
+| create\_instance\_iam\_role | Determines whether an IAM role is created or to use an existing IAM role | `bool` | `true` | no |
+| create\_service | Determines whether the service will be created | `bool` | `true` | no |
+| create\_vpc\_connector | Determines whether a VPC Connector will be created | `bool` | `false` | no |
+| domain\_name | The custom domain endpoint to association. Specify a base domain e.g., `example.com` or a subdomain e.g., `subdomain.example.com` | `string` | `null` | no |
+| enable\_observability\_configuration | Determines whether an X-Ray Observability Configuration will be created and assigned to the service | `bool` | `true` | no |
+| enable\_www\_subdomain | Whether to associate the subdomain with the App Runner service in addition to the base domain. Defaults to `true` | `bool` | `null` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| encryption\_configuration | The encryption configuration for the service | <pre>object({<br/>    kms_key = string<br/>  })</pre> | `null` | no |
+| health\_check\_configuration | The health check configuration for the service | <pre>object({<br/>    healthy_threshold   = optional(number)<br/>    interval            = optional(number)<br/>    path                = optional(string)<br/>    protocol            = optional(string)<br/>    timeout             = optional(number)<br/>    unhealthy_threshold = optional(number)<br/>  })</pre> | `null` | no |
+| hosted\_zone\_id | The ID of the Route53 hosted zone that contains the domain for the `domain_name` | `string` | `null` | no |
+| iam\_policy\_delay\_after\_creation\_ms | Milliseconds to wait after IAM policy creation before use. Helps avoid eventual-consistency race conditions. Applies to both access and instance IAM policies. | `number` | `null` | no |
+| ingress\_vpc\_endpoint\_id | The ID of the VPC endpoint that is used for the VPC ingress configuration | `string` | `null` | no |
+| ingress\_vpc\_id | The ID of the VPC that is used for the VPC ingress configuration | `string` | `null` | no |
+| instance\_configuration | The instance configuration for the service | <pre>object({<br/>    cpu               = optional(string)<br/>    memory            = optional(string)<br/>    instance_role_arn = optional(string)<br/>  })</pre> | `null` | no |
+| instance\_iam\_role\_description | Description of the role | `string` | `null` | no |
+| instance\_iam\_role\_inline\_policies | Map of inline IAM policies to attach to the instance IAM role. Keys are policy names; values are JSON policy documents. | `map(string)` | `{}` | no |
+| instance\_iam\_role\_managed\_policy\_arns | Set of IAM managed policy ARNs to attach to the instance IAM role. | `set(string)` | `null` | no |
+| instance\_iam\_role\_max\_session\_duration | Maximum session duration (in seconds) for the instance IAM role. Valid values are between 3600 and 43200. | `number` | `null` | no |
+| instance\_iam\_role\_name | Name to use on IAM role created | `string` | `null` | no |
+| instance\_iam\_role\_path | IAM role path | `string` | `null` | no |
+| instance\_iam\_role\_permissions\_boundary | ARN of the policy that is used to set the permissions boundary for the IAM role | `string` | `null` | no |
+| instance\_iam\_role\_policies | IAM policies to attach to the IAM role | `map(string)` | `{}` | no |
+| instance\_iam\_role\_use\_name\_prefix | Determines whether the IAM role name (`iam_role_name`) is used as a prefix | `bool` | `true` | no |
+| instance\_policy\_statements | A map of IAM policy [statements](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document#statement) for custom permission usage | <pre>map(object({<br/>    sid           = optional(string)<br/>    actions       = optional(list(string))<br/>    not_actions   = optional(list(string))<br/>    effect        = optional(string)<br/>    resources     = optional(list(string))<br/>    not_resources = optional(list(string))<br/>    principals = optional(list(object({<br/>      type        = string<br/>      identifiers = list(string)<br/>    })), [])<br/>    not_principals = optional(list(object({<br/>      type        = string<br/>      identifiers = list(string)<br/>    })), [])<br/>    conditions = optional(list(object({<br/>      test     = string<br/>      values   = list(string)<br/>      variable = string<br/>    })), [])<br/>  }))</pre> | `{}` | no |
+| name | The name of the service | `string` | `null` | no |
+| network\_configuration | The network configuration for the service | <pre>object({<br/>    ip_address_type = optional(string)<br/>    ingress_configuration = optional(object({<br/>      is_publicly_accessible = optional(bool)<br/>    }))<br/>    egress_configuration = optional(object({<br/>      egress_type       = optional(string, "VPC")<br/>      vpc_connector_arn = optional(string)<br/>    }))<br/>  })</pre> | `null` | no |
+| observability\_trace\_vendor | The implementation provider chosen for tracing App Runner services. Valid values: AWSXRAY. Defaults to AWSXRAY when enable\_observability\_configuration is true. | `string` | `"AWSXRAY"` | no |
+| private\_ecr\_arn | The ARN of the private ECR repository that contains the service image to launch | `string` | `null` | no |
+| source\_configuration | The source configuration for the service | <pre>object({<br/>    auto_deployments_enabled = optional(bool, false)<br/>    authentication_configuration = optional(object({<br/>      access_role_arn = optional(string)<br/>      connection_arn  = optional(string)<br/>    }))<br/>    code_repository = optional(object({<br/>      repository_url   = string<br/>      source_directory = optional(string)<br/>      source_code_version = object({<br/>        type  = optional(string, "BRANCH")<br/>        value = string<br/>      })<br/>      code_configuration = optional(object({<br/>        configuration_source = string<br/>        code_configuration_values = optional(object({<br/>          build_command                 = optional(string)<br/>          port                          = optional(string)<br/>          runtime                       = string<br/>          runtime_environment_variables = optional(map(string), {})<br/>          runtime_environment_secrets   = optional(map(string), {})<br/>          start_command                 = optional(string)<br/>        }))<br/>      }))<br/>    }))<br/>    image_repository = optional(object({<br/>      image_identifier      = string<br/>      image_repository_type = string<br/>      image_configuration = optional(object({<br/>        port                          = optional(string)<br/>        runtime_environment_variables = optional(map(string), {})<br/>        runtime_environment_secrets   = optional(map(string), {})<br/>        start_command                 = optional(string)<br/>      }))<br/>    }))<br/>  })</pre> | `null` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| vpc\_connector\_name | The name of the VPC Connector | `string` | `null` | no |
+| vpc\_connector\_security\_groups | The security groups to use for the VPC Connector | `list(string)` | `[]` | no |
+| vpc\_connector\_subnets | The subnets to use for the VPC Connector | `list(string)` | `[]` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| access\_iam\_role\_arn | The Amazon Resource Name (ARN) specifying the IAM role |
+| access\_iam\_role\_name | The name of the IAM role |
+| access\_iam\_role\_unique\_id | Stable and unique string identifying the IAM role |
+| auto\_scaling\_configurations | Map of attribute maps for all autoscaling configurations created |
+| connections | Map of attribute maps for all connections created |
+| custom\_domain\_association\_certificate\_validation\_records | A set of certificate CNAME records used for this domain name |
+| custom\_domain\_association\_dns\_target | The App Runner subdomain of the App Runner service. The custom domain name is mapped to this target name. Attribute only available if resource created (not imported) with Terraform |
+| custom\_domain\_association\_id | The `domain_name` and `service_arn` separated by a comma (`,`) |
+| instance\_iam\_role\_arn | The Amazon Resource Name (ARN) specifying the IAM role |
+| instance\_iam\_role\_name | The name of the IAM role |
+| instance\_iam\_role\_unique\_id | Stable and unique string identifying the IAM role |
+| observability\_configuration\_arn | ARN of this observability configuration |
+| observability\_configuration\_latest | Whether the observability configuration has the highest `observability_configuration_revision` among all configurations that share the same `observability_configuration_name` |
+| observability\_configuration\_revision | The revision of the observability configuration |
+| observability\_configuration\_status | The current state of the observability configuration. An `INACTIVE` configuration revision has been deleted and can't be used. It is permanently removed some time after deletion |
+| service\_arn | The Amazon Resource Name (ARN) of the service |
+| service\_id | An alphanumeric ID that App Runner generated for this service. Unique within the AWS Region |
+| service\_status | The current state of the App Runner service |
+| service\_url | A subdomain URL that App Runner generated for this service. You can use this URL to access your service web application |
+| vpc\_connector\_arn | The Amazon Resource Name (ARN) of VPC connector |
+| vpc\_connector\_revision | The revision of VPC connector. It's unique among all the active connectors ("Status": "ACTIVE") that share the same Name |
+| vpc\_connector\_status | The current state of the VPC connector. If the status of a connector revision is INACTIVE, it was deleted and can't be used. Inactive connector revisions are permanently removed some time after they are deleted |
+| vpc\_ingress\_connection\_arn | The Amazon Resource Name (ARN) of the VPC Ingress Connection |
+| vpc\_ingress\_connection\_domain\_name | The domain name associated with the VPC Ingress Connection resource |
+<!-- END_TF_DOCS -->
+
+</details>

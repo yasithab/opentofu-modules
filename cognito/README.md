@@ -62,63 +62,6 @@ aws cognito-idp admin-disable-user \
 aws cognito-idp list-users --user-pool-id <pool-id>
 ```
 
-
-<!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-| ---- | ------- |
-| terraform | >= 1.11.0 |
-| aws | >= 6.49, < 7.0 |
-
-## Providers
-
-| Name | Version |
-| ---- | ------- |
-| aws | >= 6.49, < 7.0 |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
-| account\_recovery | Account recovery mechanism. | `string` | `"verified_email"` | no |
-| advanced\_security\_mode | Advanced security mode for the User Pool: 'OFF', 'AUDIT', or 'ENFORCED'. AUDIT logs risk events; ENFORCED additionally blocks/challenges risky sign-ins. Note: AUDIT and ENFORCED enable Cognito advanced security features, which incur additional cost per monthly active user. | `string` | `"AUDIT"` | no |
-| auto\_verified\_attributes | Attributes to auto-verify (e.g., 'email', 'phone\_number'). | `list(string)` | <pre>[<br/>  "email"<br/>]</pre> | no |
-| clients | Map of OAuth/OIDC client applications to create. Each client gets its own client ID and secret. `supported_identity_providers` defaults to COGNITO plus every provider in `identity_providers` when not set. | <pre>map(object({<br/>    callback_urls                        = list(string)<br/>    logout_urls                          = optional(list(string), [])<br/>    generate_secret                      = optional(bool, true)<br/>    allowed_oauth_flows                  = optional(list(string), ["code"])<br/>    allowed_oauth_scopes                 = optional(list(string), ["openid", "email", "profile"])<br/>    allowed_oauth_flows_user_pool_client = optional(bool, true)<br/>    explicit_auth_flows                  = optional(list(string), ["ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_USER_SRP_AUTH"])<br/>    supported_identity_providers         = optional(list(string))<br/>    token_validity = optional(object({<br/>      access_token_hours = optional(number, 1)<br/>      id_token_hours     = optional(number, 1)<br/>      refresh_token_days = optional(number, 30)<br/>    }), {})<br/>  }))</pre> | `{}` | no |
-| custom\_domain | Custom domain for Cognito hosted UI (e.g., 'auth.example.com'). Requires ACM certificate. Takes precedence over domain. | `string` | `""` | no |
-| custom\_domain\_certificate\_arn | ACM certificate ARN for the custom domain. Must be in us-east-1. | `string` | `""` | no |
-| deletion\_protection | Protect the User Pool from accidental deletion. | `bool` | `true` | no |
-| domain | Cognito hosted UI domain prefix (e.g., 'mycompany-auth'). Creates <domain>.auth.<region>.amazoncognito.com. Leave empty to skip. | `string` | `""` | no |
-| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| identity\_providers | Map of external identity providers to federate with. Supports Google, Facebook, Amazon, Apple, SAML, and OIDC. Marked sensitive because `provider_details` carries IdP client secrets - these values are also stored in the OpenTofu state. | <pre>map(object({<br/>    provider_type    = string # Google, Facebook, LoginWithAmazon, SignInWithApple, SAML, OIDC<br/>    provider_details = map(string)<br/>    attribute_mapping = optional(map(string), {<br/>      email    = "email"<br/>      username = "sub"<br/>    })<br/>  }))</pre> | `{}` | no |
-| mfa\_configuration | MFA configuration: 'OFF', 'ON' (required), or 'OPTIONAL'. | `string` | `"OPTIONAL"` | no |
-| name | Name for the Cognito User Pool and related resources. | `string` | n/a | yes |
-| password\_policy | Password policy for the User Pool. | <pre>object({<br/>    minimum_length                   = optional(number, 12)<br/>    require_lowercase                = optional(bool, true)<br/>    require_uppercase                = optional(bool, true)<br/>    require_numbers                  = optional(bool, true)<br/>    require_symbols                  = optional(bool, true)<br/>    temporary_password_validity_days = optional(number, 7)<br/>  })</pre> | `{}` | no |
-| resource\_servers | Map of resource servers defining custom OAuth scopes (e.g., for machine-to-machine APIs). `name` defaults to the map key. Clients reference scopes as <identifier>/<scope\_name> in allowed\_oauth\_scopes. | <pre>map(object({<br/>    name       = optional(string)<br/>    identifier = string<br/>    scopes = optional(list(object({<br/>      scope_name        = string<br/>      scope_description = string<br/>    })), [])<br/>  }))</pre> | `{}` | no |
-| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| user\_groups | Map of user groups to create in the User Pool. Each key is the group name. Lower `precedence` values take priority when a user belongs to multiple groups; `role_arn` sets the IAM role claimed in the cognito:preferred\_role token claim. | <pre>map(object({<br/>    description = optional(string)<br/>    precedence  = optional(number)<br/>    role_arn    = optional(string)<br/>  }))</pre> | `{}` | no |
-| username\_attributes | Attributes that can be used as usernames. Set to ['email'] to use email as username, or [] for plain usernames with separate email. | `list(string)` | `[]` | no |
-
-## Outputs
-
-| Name | Description |
-| ---- | ----------- |
-| client\_ids | Map of client name to client ID |
-| client\_secrets | Map of client name to client secret (sensitive) |
-| domain | Cognito hosted UI domain |
-| hosted\_ui\_url | Cognito hosted UI base URL for login |
-| oidc\_config | Ready-to-use OIDC configuration for the first client. Contains issuer and client\_id. Store client\_secret in Secrets Manager separately for production use. |
-| oidc\_config\_with\_secret | OIDC configuration including client\_secret for the first client. Use for development only - for production, store the secret in Secrets Manager instead. |
-| oidc\_issuer | OIDC issuer URL for this User Pool. Use this as the issuer in any OIDC-compatible application. |
-| resource\_server\_identifiers | Map of resource server keys to their identifiers |
-| resource\_server\_scope\_identifiers | Map of resource server keys to the list of full scope identifiers (<identifier>/<scope\_name>) for use in client allowed\_oauth\_scopes |
-| user\_group\_names | Map of user group keys to their names |
-| user\_group\_precedences | Map of user group keys to their precedence values |
-| user\_pool\_arn | Cognito User Pool ARN |
-| user\_pool\_endpoint | Cognito User Pool endpoint (use as OIDC issuer URL) |
-| user\_pool\_id | Cognito User Pool ID |
-<!-- END_TF_DOCS -->
-
 ## Examples
 
 ## Basic - single client
@@ -467,3 +410,66 @@ from `OFF` is only possible to `OPTIONAL` first; users must enroll before you ca
 external IdP's client secret. These values are stored in the OpenTofu state - protect state
 access accordingly. As a consequence of the sensitive marking, plan output for values derived
 from this variable is redacted.
+
+## Reference
+
+<details>
+<summary>Requirements, providers, inputs and outputs (generated by terraform-docs)</summary>
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| account\_recovery | Account recovery mechanism. | `string` | `"verified_email"` | no |
+| advanced\_security\_mode | Advanced security mode for the User Pool: 'OFF', 'AUDIT', or 'ENFORCED'. AUDIT logs risk events; ENFORCED additionally blocks/challenges risky sign-ins. Note: AUDIT and ENFORCED enable Cognito advanced security features, which incur additional cost per monthly active user. | `string` | `"AUDIT"` | no |
+| auto\_verified\_attributes | Attributes to auto-verify (e.g., 'email', 'phone\_number'). | `list(string)` | <pre>[<br/>  "email"<br/>]</pre> | no |
+| clients | Map of OAuth/OIDC client applications to create. Each client gets its own client ID and secret. `supported_identity_providers` defaults to COGNITO plus every provider in `identity_providers` when not set. | <pre>map(object({<br/>    callback_urls                        = list(string)<br/>    logout_urls                          = optional(list(string), [])<br/>    generate_secret                      = optional(bool, true)<br/>    allowed_oauth_flows                  = optional(list(string), ["code"])<br/>    allowed_oauth_scopes                 = optional(list(string), ["openid", "email", "profile"])<br/>    allowed_oauth_flows_user_pool_client = optional(bool, true)<br/>    explicit_auth_flows                  = optional(list(string), ["ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_USER_SRP_AUTH"])<br/>    supported_identity_providers         = optional(list(string))<br/>    token_validity = optional(object({<br/>      access_token_hours = optional(number, 1)<br/>      id_token_hours     = optional(number, 1)<br/>      refresh_token_days = optional(number, 30)<br/>    }), {})<br/>  }))</pre> | `{}` | no |
+| custom\_domain | Custom domain for Cognito hosted UI (e.g., 'auth.example.com'). Requires ACM certificate. Takes precedence over domain. | `string` | `""` | no |
+| custom\_domain\_certificate\_arn | ACM certificate ARN for the custom domain. Must be in us-east-1. | `string` | `""` | no |
+| deletion\_protection | Protect the User Pool from accidental deletion. | `bool` | `true` | no |
+| domain | Cognito hosted UI domain prefix (e.g., 'mycompany-auth'). Creates <domain>.auth.<region>.amazoncognito.com. Leave empty to skip. | `string` | `""` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| identity\_providers | Map of external identity providers to federate with. Supports Google, Facebook, Amazon, Apple, SAML, and OIDC. Marked sensitive because `provider_details` carries IdP client secrets - these values are also stored in the OpenTofu state. | <pre>map(object({<br/>    provider_type    = string # Google, Facebook, LoginWithAmazon, SignInWithApple, SAML, OIDC<br/>    provider_details = map(string)<br/>    attribute_mapping = optional(map(string), {<br/>      email    = "email"<br/>      username = "sub"<br/>    })<br/>  }))</pre> | `{}` | no |
+| mfa\_configuration | MFA configuration: 'OFF', 'ON' (required), or 'OPTIONAL'. | `string` | `"OPTIONAL"` | no |
+| name | Name for the Cognito User Pool and related resources. | `string` | n/a | yes |
+| password\_policy | Password policy for the User Pool. | <pre>object({<br/>    minimum_length                   = optional(number, 12)<br/>    require_lowercase                = optional(bool, true)<br/>    require_uppercase                = optional(bool, true)<br/>    require_numbers                  = optional(bool, true)<br/>    require_symbols                  = optional(bool, true)<br/>    temporary_password_validity_days = optional(number, 7)<br/>  })</pre> | `{}` | no |
+| resource\_servers | Map of resource servers defining custom OAuth scopes (e.g., for machine-to-machine APIs). `name` defaults to the map key. Clients reference scopes as <identifier>/<scope\_name> in allowed\_oauth\_scopes. | <pre>map(object({<br/>    name       = optional(string)<br/>    identifier = string<br/>    scopes = optional(list(object({<br/>      scope_name        = string<br/>      scope_description = string<br/>    })), [])<br/>  }))</pre> | `{}` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| user\_groups | Map of user groups to create in the User Pool. Each key is the group name. Lower `precedence` values take priority when a user belongs to multiple groups; `role_arn` sets the IAM role claimed in the cognito:preferred\_role token claim. | <pre>map(object({<br/>    description = optional(string)<br/>    precedence  = optional(number)<br/>    role_arn    = optional(string)<br/>  }))</pre> | `{}` | no |
+| username\_attributes | Attributes that can be used as usernames. Set to ['email'] to use email as username, or [] for plain usernames with separate email. | `list(string)` | `[]` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| client\_ids | Map of client name to client ID |
+| client\_secrets | Map of client name to client secret (sensitive) |
+| domain | Cognito hosted UI domain |
+| hosted\_ui\_url | Cognito hosted UI base URL for login |
+| oidc\_config | Ready-to-use OIDC configuration for the first client. Contains issuer and client\_id. Store client\_secret in Secrets Manager separately for production use. |
+| oidc\_config\_with\_secret | OIDC configuration including client\_secret for the first client. Use for development only - for production, store the secret in Secrets Manager instead. |
+| oidc\_issuer | OIDC issuer URL for this User Pool. Use this as the issuer in any OIDC-compatible application. |
+| resource\_server\_identifiers | Map of resource server keys to their identifiers |
+| resource\_server\_scope\_identifiers | Map of resource server keys to the list of full scope identifiers (<identifier>/<scope\_name>) for use in client allowed\_oauth\_scopes |
+| user\_group\_names | Map of user group keys to their names |
+| user\_group\_precedences | Map of user group keys to their precedence values |
+| user\_pool\_arn | Cognito User Pool ARN |
+| user\_pool\_endpoint | Cognito User Pool endpoint (use as OIDC issuer URL) |
+| user\_pool\_id | Cognito User Pool ID |
+<!-- END_TF_DOCS -->
+
+</details>

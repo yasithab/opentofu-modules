@@ -41,90 +41,6 @@ module "step_functions" {
 }
 ```
 
-<!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-| ---- | ------- |
-| terraform | >= 1.11.0 |
-| aws | >= 6.49, < 7.0 |
-
-## Providers
-
-| Name | Version |
-| ---- | ------- |
-| aws | >= 6.49, < 7.0 |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
-| alarm\_actions | List of ARNs to notify when the alarm transitions to ALARM state | `list(string)` | `[]` | no |
-| alarm\_execution\_failed\_evaluation\_periods | Number of evaluation periods for the ExecutionsFailed alarm | `number` | `1` | no |
-| alarm\_execution\_failed\_period | Period in seconds for the ExecutionsFailed alarm | `number` | `300` | no |
-| alarm\_execution\_failed\_threshold | Threshold for the ExecutionsFailed alarm | `number` | `1` | no |
-| alarm\_execution\_throttled\_threshold | Threshold for the ExecutionsThrottled alarm | `number` | `1` | no |
-| alarm\_execution\_timed\_out\_threshold | Threshold for the ExecutionsTimedOut alarm | `number` | `1` | no |
-| aliases | Map of Step Functions aliases to create. Each key is the alias name. Each routing<br/>configuration entry routes `weight` percent of traffic to a state machine version;<br/>when `state_machine_version_arn` is omitted it defaults to the version published by<br/>this module (requires `publish = true`). Weights across entries must sum to 100.<br/>Use two entries with explicit version ARNs for gradual (canary) rollouts. | <pre>map(object({<br/>    description = optional(string)<br/>    routing_configuration = list(object({<br/>      state_machine_version_arn = optional(string)<br/>      weight                    = number<br/>    }))<br/>  }))</pre> | `{}` | no |
-| create\_alarms | Whether to create CloudWatch alarms for the state machine | `bool` | `false` | no |
-| create\_event\_role | Whether to create an IAM role for EventBridge triggers | `bool` | `false` | no |
-| create\_log\_group | Whether to create a CloudWatch log group for the state machine | `bool` | `true` | no |
-| create\_role | Whether to create an IAM role for the state machine | `bool` | `true` | no |
-| definition | The Amazon States Language (ASL) definition of the state machine in JSON format | `string` | n/a | yes |
-| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| event\_role\_arn | ARN of an existing IAM role for EventBridge to use when invoking the state machine. If not set, a role is created. | `string` | `null` | no |
-| event\_rules | Map of EventBridge rules to create for triggering the state machine. Each entry supports `description`, `schedule_expression`, `event_pattern`, `is_enabled`, `input`, `dead_letter_arn`, and `retry_policy` (with `maximum_event_age_in_seconds` and `maximum_retry_attempts`). | `any` | `{}` | no |
-| existing\_log\_group\_arn | ARN of an existing CloudWatch log group. Used when `create_log_group` is false. | `string` | `null` | no |
-| log\_group\_kms\_key\_id | KMS key ARN to use for encrypting the CloudWatch log group | `string` | `null` | no |
-| log\_group\_name | Name of the CloudWatch log group. Defaults to `/aws/states/<name>`. | `string` | `null` | no |
-| log\_group\_retention\_in\_days | Number of days to retain log events in the CloudWatch log group | `number` | `30` | no |
-| logging\_enabled | Whether to enable logging for the state machine | `bool` | `true` | no |
-| logging\_include\_execution\_data | Whether the execution data is included in the log output | `bool` | `true` | no |
-| logging\_level | Defines which category of execution history events are logged. Valid values: `ALL`, `ERROR`, `FATAL`, `OFF`. | `string` | `"ALL"` | no |
-| name | Name of the Step Functions state machine | `string` | n/a | yes |
-| ok\_actions | List of ARNs to notify when the alarm transitions to OK state | `list(string)` | `[]` | no |
-| publish | Whether to publish a version of the state machine during creation | `bool` | `false` | no |
-| role\_arn | ARN of an existing IAM role to use. Required if `create_role` is false. | `string` | `null` | no |
-| role\_description | Description of the IAM role | `string` | `null` | no |
-| role\_force\_detach\_policies | Whether to force detaching any policies the IAM role has before destroying it | `bool` | `true` | no |
-| role\_inline\_policies | Map of inline IAM policies to attach to the role. Key is the policy name, value is the JSON policy document. | `map(string)` | `{}` | no |
-| role\_name | Name of the IAM role. Defaults to the state machine name with `-role` suffix. | `string` | `null` | no |
-| role\_path | Path for the IAM role | `string` | `null` | no |
-| role\_permissions\_boundary | ARN of the permissions boundary policy to attach to the IAM role | `string` | `null` | no |
-| role\_policy\_arns | Map of IAM policy ARNs to attach to the role | `map(string)` | `{}` | no |
-| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| tracing\_enabled | Whether to enable X-Ray tracing for the state machine | `bool` | `false` | no |
-| trusted\_account\_arns | List of trusted AWS account ARNs that can assume the role | `list(string)` | `[]` | no |
-| trusted\_service\_principals | List of AWS service principals that can assume the role. Defaults to `states.amazonaws.com`. | `list(string)` | <pre>[<br/>  "states.amazonaws.com"<br/>]</pre> | no |
-| type | Type of the state machine. Valid values: `STANDARD`, `EXPRESS`. | `string` | `"STANDARD"` | no |
-
-## Outputs
-
-| Name | Description |
-| ---- | ----------- |
-| alarm\_execution\_failed\_arn | The ARN of the execution failed CloudWatch alarm |
-| alarm\_execution\_throttled\_arn | The ARN of the execution throttled CloudWatch alarm |
-| alarm\_execution\_timed\_out\_arn | The ARN of the execution timed out CloudWatch alarm |
-| alias\_arns | Map of alias names to their ARNs |
-| alias\_creation\_dates | Map of alias names to their creation dates |
-| event\_role\_arn | The ARN of the IAM role created for EventBridge |
-| event\_rule\_arns | Map of EventBridge rule ARNs |
-| event\_rule\_names | Map of EventBridge rule names |
-| log\_group\_arn | The ARN of the CloudWatch log group |
-| log\_group\_name | The name of the CloudWatch log group |
-| role\_arn | The ARN of the IAM role created for the state machine |
-| role\_id | The ID of the IAM role |
-| role\_name | The name of the IAM role created for the state machine |
-| role\_unique\_id | The unique ID of the IAM role |
-| state\_machine\_arn | The ARN of the state machine |
-| state\_machine\_creation\_date | The date the state machine was created |
-| state\_machine\_id | The ID of the state machine |
-| state\_machine\_name | The name of the state machine |
-| state\_machine\_revision\_id | The revision identifier for the state machine |
-| state\_machine\_status | The current status of the state machine |
-| state\_machine\_version\_arn | The ARN of the state machine version published during creation/update (when publish = true) |
-<!-- END_TF_DOCS -->
-
 ## Examples
 
 ### Basic Standard Workflow
@@ -505,3 +421,94 @@ module "step_function" {
   }
 }
 ```
+
+## Reference
+
+<details>
+<summary>Requirements, providers, inputs and outputs (generated by terraform-docs)</summary>
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| alarm\_actions | List of ARNs to notify when the alarm transitions to ALARM state | `list(string)` | `[]` | no |
+| alarm\_execution\_failed\_evaluation\_periods | Number of evaluation periods for the ExecutionsFailed alarm | `number` | `1` | no |
+| alarm\_execution\_failed\_period | Period in seconds for the ExecutionsFailed alarm | `number` | `300` | no |
+| alarm\_execution\_failed\_threshold | Threshold for the ExecutionsFailed alarm | `number` | `1` | no |
+| alarm\_execution\_throttled\_threshold | Threshold for the ExecutionsThrottled alarm | `number` | `1` | no |
+| alarm\_execution\_timed\_out\_threshold | Threshold for the ExecutionsTimedOut alarm | `number` | `1` | no |
+| aliases | Map of Step Functions aliases to create. Each key is the alias name. Each routing<br/>configuration entry routes `weight` percent of traffic to a state machine version;<br/>when `state_machine_version_arn` is omitted it defaults to the version published by<br/>this module (requires `publish = true`). Weights across entries must sum to 100.<br/>Use two entries with explicit version ARNs for gradual (canary) rollouts. | <pre>map(object({<br/>    description = optional(string)<br/>    routing_configuration = list(object({<br/>      state_machine_version_arn = optional(string)<br/>      weight                    = number<br/>    }))<br/>  }))</pre> | `{}` | no |
+| create\_alarms | Whether to create CloudWatch alarms for the state machine | `bool` | `false` | no |
+| create\_event\_role | Whether to create an IAM role for EventBridge triggers | `bool` | `false` | no |
+| create\_log\_group | Whether to create a CloudWatch log group for the state machine | `bool` | `true` | no |
+| create\_role | Whether to create an IAM role for the state machine | `bool` | `true` | no |
+| definition | The Amazon States Language (ASL) definition of the state machine in JSON format | `string` | n/a | yes |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| event\_role\_arn | ARN of an existing IAM role for EventBridge to use when invoking the state machine. If not set, a role is created. | `string` | `null` | no |
+| event\_rules | Map of EventBridge rules to create for triggering the state machine. Each entry supports `description`, `schedule_expression`, `event_pattern`, `is_enabled`, `input`, `dead_letter_arn`, and `retry_policy` (with `maximum_event_age_in_seconds` and `maximum_retry_attempts`). | `any` | `{}` | no |
+| existing\_log\_group\_arn | ARN of an existing CloudWatch log group. Used when `create_log_group` is false. | `string` | `null` | no |
+| log\_group\_kms\_key\_id | KMS key ARN to use for encrypting the CloudWatch log group | `string` | `null` | no |
+| log\_group\_name | Name of the CloudWatch log group. Defaults to `/aws/states/<name>`. | `string` | `null` | no |
+| log\_group\_retention\_in\_days | Number of days to retain log events in the CloudWatch log group | `number` | `30` | no |
+| logging\_enabled | Whether to enable logging for the state machine | `bool` | `true` | no |
+| logging\_include\_execution\_data | Whether the execution data is included in the log output | `bool` | `true` | no |
+| logging\_level | Defines which category of execution history events are logged. Valid values: `ALL`, `ERROR`, `FATAL`, `OFF`. | `string` | `"ALL"` | no |
+| name | Name of the Step Functions state machine | `string` | n/a | yes |
+| ok\_actions | List of ARNs to notify when the alarm transitions to OK state | `list(string)` | `[]` | no |
+| publish | Whether to publish a version of the state machine during creation | `bool` | `false` | no |
+| role\_arn | ARN of an existing IAM role to use. Required if `create_role` is false. | `string` | `null` | no |
+| role\_description | Description of the IAM role | `string` | `null` | no |
+| role\_force\_detach\_policies | Whether to force detaching any policies the IAM role has before destroying it | `bool` | `true` | no |
+| role\_inline\_policies | Map of inline IAM policies to attach to the role. Key is the policy name, value is the JSON policy document. | `map(string)` | `{}` | no |
+| role\_name | Name of the IAM role. Defaults to the state machine name with `-role` suffix. | `string` | `null` | no |
+| role\_path | Path for the IAM role | `string` | `null` | no |
+| role\_permissions\_boundary | ARN of the permissions boundary policy to attach to the IAM role | `string` | `null` | no |
+| role\_policy\_arns | Map of IAM policy ARNs to attach to the role | `map(string)` | `{}` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| tracing\_enabled | Whether to enable X-Ray tracing for the state machine | `bool` | `false` | no |
+| trusted\_account\_arns | List of trusted AWS account ARNs that can assume the role | `list(string)` | `[]` | no |
+| trusted\_service\_principals | List of AWS service principals that can assume the role. Defaults to `states.amazonaws.com`. | `list(string)` | <pre>[<br/>  "states.amazonaws.com"<br/>]</pre> | no |
+| type | Type of the state machine. Valid values: `STANDARD`, `EXPRESS`. | `string` | `"STANDARD"` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| alarm\_execution\_failed\_arn | The ARN of the execution failed CloudWatch alarm |
+| alarm\_execution\_throttled\_arn | The ARN of the execution throttled CloudWatch alarm |
+| alarm\_execution\_timed\_out\_arn | The ARN of the execution timed out CloudWatch alarm |
+| alias\_arns | Map of alias names to their ARNs |
+| alias\_creation\_dates | Map of alias names to their creation dates |
+| event\_role\_arn | The ARN of the IAM role created for EventBridge |
+| event\_rule\_arns | Map of EventBridge rule ARNs |
+| event\_rule\_names | Map of EventBridge rule names |
+| log\_group\_arn | The ARN of the CloudWatch log group |
+| log\_group\_name | The name of the CloudWatch log group |
+| role\_arn | The ARN of the IAM role created for the state machine |
+| role\_id | The ID of the IAM role |
+| role\_name | The name of the IAM role created for the state machine |
+| role\_unique\_id | The unique ID of the IAM role |
+| state\_machine\_arn | The ARN of the state machine |
+| state\_machine\_creation\_date | The date the state machine was created |
+| state\_machine\_id | The ID of the state machine |
+| state\_machine\_name | The name of the state machine |
+| state\_machine\_revision\_id | The revision identifier for the state machine |
+| state\_machine\_status | The current status of the state machine |
+| state\_machine\_version\_arn | The ARN of the state machine version published during creation/update (when publish = true) |
+<!-- END_TF_DOCS -->
+
+</details>

@@ -30,60 +30,6 @@ module "lake_formation" {
 }
 ```
 
-<!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-| ---- | ------- |
-| terraform | >= 1.11.0 |
-| aws | >= 6.49, < 7.0 |
-
-## Providers
-
-| Name | Version |
-| ---- | ------- |
-| aws | >= 6.49, < 7.0 |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
-| admin\_arns | List of IAM principal ARNs to grant Lake Formation administrator privileges | `list(string)` | `[]` | no |
-| allow\_external\_data\_filtering | Whether to allow external engines to filter data in Amazon S3 locations registered with Lake Formation | `bool` | `false` | no |
-| allow\_full\_table\_external\_data\_access | Whether to allow external engines to access full tables registered with Lake Formation | `bool` | `false` | no |
-| authorized\_session\_tag\_value\_list | List of allowed session tag values for third-party engines | `list(string)` | `[]` | no |
-| catalog\_id | AWS account ID for the Glue Data Catalog. Defaults to the caller's account | `string` | `null` | no |
-| create\_database\_default\_permissions | Default permissions for newly created databases. Object with 'permissions' (list) and 'principal' (string) | <pre>object({<br/>    permissions = optional(list(string), ["ALL"])<br/>    principal   = optional(string)<br/>  })</pre> | `null` | no |
-| create\_table\_default\_permissions | Default permissions for newly created tables. Object with 'permissions' (list) and 'principal' (string) | <pre>object({<br/>    permissions = optional(list(string), ["ALL"])<br/>    principal   = optional(string)<br/>  })</pre> | `null` | no |
-| data\_cells\_filters | Map of data cells filters for row/cell-level security. Key is the filter name. Each value needs 'database\_name', 'table\_name', and either 'column\_names' or 'column\_wildcard', plus optional 'row\_filter' | <pre>map(object({<br/>    database_name = string<br/>    table_name    = string<br/>    column_names  = optional(list(string))<br/>    column_wildcard = optional(object({<br/>      excluded_column_names = optional(list(string))<br/>    }))<br/>    row_filter = optional(string)<br/>    catalog_id = optional(string)<br/>    version_id = optional(string)<br/>  }))</pre> | `{}` | no |
-| database\_lf\_tag\_associations | Map of database-level LF-Tag associations. Each value needs 'database\_name' and 'lf\_tags' (list of key/value pairs) | <pre>map(object({<br/>    database_name = string<br/>    catalog_id    = optional(string)<br/>    lf_tags = list(object({<br/>      key        = string<br/>      value      = string<br/>      catalog_id = optional(string)<br/>    }))<br/>  }))</pre> | `{}` | no |
-| database\_permissions | Map of database-level permissions to grant. Each value needs 'principal', 'permissions', 'database\_name', and optionally 'permissions\_with\_grant\_option' | <pre>map(object({<br/>    principal                     = string<br/>    permissions                   = list(string)<br/>    database_name                 = string<br/>    permissions_with_grant_option = optional(list(string), [])<br/>    catalog_id                    = optional(string)<br/>  }))</pre> | `{}` | no |
-| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| external\_data\_filtering\_allow\_list | List of account IDs allowed to perform external data filtering | `list(string)` | `[]` | no |
-| lf\_tag\_permissions | Map of LF-Tag permissions to grant. Each value needs 'principal', 'permissions', 'key', and 'values' | <pre>map(object({<br/>    principal                     = string<br/>    permissions                   = list(string)<br/>    key                           = string<br/>    values                        = list(string)<br/>    permissions_with_grant_option = optional(list(string), [])<br/>    catalog_id                    = optional(string)<br/>  }))</pre> | `{}` | no |
-| lf\_tag\_policy\_permissions | Map of LF-Tag policy-based permissions. Each value needs 'principal', 'permissions', 'resource\_type' (DATABASE or TABLE), and 'expression' (list of key/values) | <pre>map(object({<br/>    principal                     = string<br/>    permissions                   = list(string)<br/>    resource_type                 = string<br/>    permissions_with_grant_option = optional(list(string), [])<br/>    catalog_id                    = optional(string)<br/>    expression = list(object({<br/>      key    = string<br/>      values = list(string)<br/>    }))<br/>  }))</pre> | `{}` | no |
-| lf\_tags | Map of LF-Tags to create. Key is the tag key, value is a list of allowed tag values | `map(list(string))` | `{}` | no |
-| manage\_data\_lake\_settings | Whether this module manages the account-level Lake Formation data lake settings (administrators, default permissions, external data filtering). Defaults to `false` because applying these settings overwrites the entire account/catalog configuration, including admins configured elsewhere. | `bool` | `false` | no |
-| resources | Map of S3 resources to register with Lake Formation. Each value needs 'arn' and optionally 'role\_arn', 'use\_service\_linked\_role', 'hybrid\_access\_enabled' | <pre>map(object({<br/>    arn                     = string<br/>    role_arn                = optional(string)<br/>    use_service_linked_role = optional(bool)<br/>    hybrid_access_enabled   = optional(bool)<br/>  }))</pre> | `{}` | no |
-| table\_lf\_tag\_associations | Map of table-level LF-Tag associations. Each value needs 'database\_name', 'table\_name', and 'lf\_tags' (list of key/value pairs) | <pre>map(object({<br/>    database_name = string<br/>    table_name    = string<br/>    catalog_id    = optional(string)<br/>    lf_tags = list(object({<br/>      key        = string<br/>      value      = string<br/>      catalog_id = optional(string)<br/>    }))<br/>  }))</pre> | `{}` | no |
-| table\_permissions | Map of table-level permissions to grant. Each value needs 'principal', 'permissions', 'database\_name', and either 'table\_name' or 'wildcard' | <pre>map(object({<br/>    principal                     = string<br/>    permissions                   = list(string)<br/>    database_name                 = string<br/>    table_name                    = optional(string)<br/>    wildcard                      = optional(bool)<br/>    permissions_with_grant_option = optional(list(string), [])<br/>    catalog_id                    = optional(string)<br/>  }))</pre> | `{}` | no |
-| table\_with\_columns\_permissions | Map of column-level permissions to grant. Each value needs 'principal', 'permissions', 'database\_name', 'table\_name', and either 'column\_names' or 'wildcard' | <pre>map(object({<br/>    principal                     = string<br/>    permissions                   = list(string)<br/>    database_name                 = string<br/>    table_name                    = string<br/>    column_names                  = optional(list(string))<br/>    excluded_column_names         = optional(list(string))<br/>    wildcard                      = optional(bool)<br/>    permissions_with_grant_option = optional(list(string), [])<br/>    catalog_id                    = optional(string)<br/>  }))</pre> | `{}` | no |
-| trusted\_resource\_owners | List of trusted resource owner account IDs to allow cross-account access | `list(string)` | `[]` | no |
-
-## Outputs
-
-| Name | Description |
-| ---- | ----------- |
-| data\_cells\_filter\_names | Map of data cells filter keys to their names |
-| data\_lake\_settings\_admins | List of Lake Formation administrator principal ARNs |
-| data\_lake\_settings\_id | ID of the Lake Formation data lake settings (same as catalog ID) |
-| database\_permission\_ids | Map of database permission keys to their IDs |
-| lf\_tag\_keys | Map of LF-Tag keys to their values |
-| resource\_arns | Map of registered resource keys to their ARNs |
-| table\_permission\_ids | Map of table permission keys to their IDs |
-| table\_with\_columns\_permission\_ids | Map of column-level permission keys to their IDs |
-<!-- END_TF_DOCS -->
-
 ## Examples
 
 ### Basic Data Lake with Admin and S3 Registration
@@ -219,3 +165,64 @@ module "lake_formation_security" {
   }
 }
 ```
+
+## Reference
+
+<details>
+<summary>Requirements, providers, inputs and outputs (generated by terraform-docs)</summary>
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| admin\_arns | List of IAM principal ARNs to grant Lake Formation administrator privileges | `list(string)` | `[]` | no |
+| allow\_external\_data\_filtering | Whether to allow external engines to filter data in Amazon S3 locations registered with Lake Formation | `bool` | `false` | no |
+| allow\_full\_table\_external\_data\_access | Whether to allow external engines to access full tables registered with Lake Formation | `bool` | `false` | no |
+| authorized\_session\_tag\_value\_list | List of allowed session tag values for third-party engines | `list(string)` | `[]` | no |
+| catalog\_id | AWS account ID for the Glue Data Catalog. Defaults to the caller's account | `string` | `null` | no |
+| create\_database\_default\_permissions | Default permissions for newly created databases. Object with 'permissions' (list) and 'principal' (string) | <pre>object({<br/>    permissions = optional(list(string), ["ALL"])<br/>    principal   = optional(string)<br/>  })</pre> | `null` | no |
+| create\_table\_default\_permissions | Default permissions for newly created tables. Object with 'permissions' (list) and 'principal' (string) | <pre>object({<br/>    permissions = optional(list(string), ["ALL"])<br/>    principal   = optional(string)<br/>  })</pre> | `null` | no |
+| data\_cells\_filters | Map of data cells filters for row/cell-level security. Key is the filter name. Each value needs 'database\_name', 'table\_name', and either 'column\_names' or 'column\_wildcard', plus optional 'row\_filter' | <pre>map(object({<br/>    database_name = string<br/>    table_name    = string<br/>    column_names  = optional(list(string))<br/>    column_wildcard = optional(object({<br/>      excluded_column_names = optional(list(string))<br/>    }))<br/>    row_filter = optional(string)<br/>    catalog_id = optional(string)<br/>    version_id = optional(string)<br/>  }))</pre> | `{}` | no |
+| database\_lf\_tag\_associations | Map of database-level LF-Tag associations. Each value needs 'database\_name' and 'lf\_tags' (list of key/value pairs) | <pre>map(object({<br/>    database_name = string<br/>    catalog_id    = optional(string)<br/>    lf_tags = list(object({<br/>      key        = string<br/>      value      = string<br/>      catalog_id = optional(string)<br/>    }))<br/>  }))</pre> | `{}` | no |
+| database\_permissions | Map of database-level permissions to grant. Each value needs 'principal', 'permissions', 'database\_name', and optionally 'permissions\_with\_grant\_option' | <pre>map(object({<br/>    principal                     = string<br/>    permissions                   = list(string)<br/>    database_name                 = string<br/>    permissions_with_grant_option = optional(list(string), [])<br/>    catalog_id                    = optional(string)<br/>  }))</pre> | `{}` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| external\_data\_filtering\_allow\_list | List of account IDs allowed to perform external data filtering | `list(string)` | `[]` | no |
+| lf\_tag\_permissions | Map of LF-Tag permissions to grant. Each value needs 'principal', 'permissions', 'key', and 'values' | <pre>map(object({<br/>    principal                     = string<br/>    permissions                   = list(string)<br/>    key                           = string<br/>    values                        = list(string)<br/>    permissions_with_grant_option = optional(list(string), [])<br/>    catalog_id                    = optional(string)<br/>  }))</pre> | `{}` | no |
+| lf\_tag\_policy\_permissions | Map of LF-Tag policy-based permissions. Each value needs 'principal', 'permissions', 'resource\_type' (DATABASE or TABLE), and 'expression' (list of key/values) | <pre>map(object({<br/>    principal                     = string<br/>    permissions                   = list(string)<br/>    resource_type                 = string<br/>    permissions_with_grant_option = optional(list(string), [])<br/>    catalog_id                    = optional(string)<br/>    expression = list(object({<br/>      key    = string<br/>      values = list(string)<br/>    }))<br/>  }))</pre> | `{}` | no |
+| lf\_tags | Map of LF-Tags to create. Key is the tag key, value is a list of allowed tag values | `map(list(string))` | `{}` | no |
+| manage\_data\_lake\_settings | Whether this module manages the account-level Lake Formation data lake settings (administrators, default permissions, external data filtering). Defaults to `false` because applying these settings overwrites the entire account/catalog configuration, including admins configured elsewhere. | `bool` | `false` | no |
+| resources | Map of S3 resources to register with Lake Formation. Each value needs 'arn' and optionally 'role\_arn', 'use\_service\_linked\_role', 'hybrid\_access\_enabled' | <pre>map(object({<br/>    arn                     = string<br/>    role_arn                = optional(string)<br/>    use_service_linked_role = optional(bool)<br/>    hybrid_access_enabled   = optional(bool)<br/>  }))</pre> | `{}` | no |
+| table\_lf\_tag\_associations | Map of table-level LF-Tag associations. Each value needs 'database\_name', 'table\_name', and 'lf\_tags' (list of key/value pairs) | <pre>map(object({<br/>    database_name = string<br/>    table_name    = string<br/>    catalog_id    = optional(string)<br/>    lf_tags = list(object({<br/>      key        = string<br/>      value      = string<br/>      catalog_id = optional(string)<br/>    }))<br/>  }))</pre> | `{}` | no |
+| table\_permissions | Map of table-level permissions to grant. Each value needs 'principal', 'permissions', 'database\_name', and either 'table\_name' or 'wildcard' | <pre>map(object({<br/>    principal                     = string<br/>    permissions                   = list(string)<br/>    database_name                 = string<br/>    table_name                    = optional(string)<br/>    wildcard                      = optional(bool)<br/>    permissions_with_grant_option = optional(list(string), [])<br/>    catalog_id                    = optional(string)<br/>  }))</pre> | `{}` | no |
+| table\_with\_columns\_permissions | Map of column-level permissions to grant. Each value needs 'principal', 'permissions', 'database\_name', 'table\_name', and either 'column\_names' or 'wildcard' | <pre>map(object({<br/>    principal                     = string<br/>    permissions                   = list(string)<br/>    database_name                 = string<br/>    table_name                    = string<br/>    column_names                  = optional(list(string))<br/>    excluded_column_names         = optional(list(string))<br/>    wildcard                      = optional(bool)<br/>    permissions_with_grant_option = optional(list(string), [])<br/>    catalog_id                    = optional(string)<br/>  }))</pre> | `{}` | no |
+| trusted\_resource\_owners | List of trusted resource owner account IDs to allow cross-account access | `list(string)` | `[]` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| data\_cells\_filter\_names | Map of data cells filter keys to their names |
+| data\_lake\_settings\_admins | List of Lake Formation administrator principal ARNs |
+| data\_lake\_settings\_id | ID of the Lake Formation data lake settings (same as catalog ID) |
+| database\_permission\_ids | Map of database permission keys to their IDs |
+| lf\_tag\_keys | Map of LF-Tag keys to their values |
+| resource\_arns | Map of registered resource keys to their ARNs |
+| table\_permission\_ids | Map of table permission keys to their IDs |
+| table\_with\_columns\_permission\_ids | Map of column-level permission keys to their IDs |
+<!-- END_TF_DOCS -->
+
+</details>

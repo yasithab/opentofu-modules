@@ -278,104 +278,6 @@ Works with all Tailscale apps  - macOS, Windows, Linux, iOS, Android.
 | `headscale/` | Coordination server (this module) |
 | `headscale/subnet-router/` | Standalone Tailscale subnet router for remote VPCs/accounts |
 
-
-<!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-| ---- | ------- |
-| terraform | >= 1.11.0 |
-| aws | >= 6.49, < 7.0 |
-| cloudinit | >= 2.0 |
-
-## Providers
-
-| Name | Version |
-| ---- | ------- |
-| aws | >= 6.49, < 7.0 |
-| cloudinit | >= 2.0 |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
-| acl\_policy | Headscale ACL policy JSON. When empty, a default allow-all policy is used. | `string` | `""` | no |
-| acm\_certificate\_arn | ACM certificate ARN for HTTPS. When empty, Headscale uses built-in Let's Encrypt (requires port 80 open). | `string` | `""` | no |
-| additional\_security\_group\_ids | Additional security group IDs to attach to the Headscale instance. | `list(string)` | `[]` | no |
-| alarm\_enabled | Create a CloudWatch alarm that fires when the Headscale instance is unhealthy. | `bool` | `true` | no |
-| alarm\_sns\_topic\_arn | SNS topic ARN for CloudWatch alarms (ASG health). Leave empty to create a new topic. | `string` | `""` | no |
-| allowed\_cidr\_blocks | CIDR blocks allowed to reach the Headscale HTTPS/gRPC port (443). Empty by default - you must explicitly allow client networks (use ["0.0.0.0/0"] for a public coordination server). | `list(string)` | `[]` | no |
-| ami\_id | Custom AMI ID. When null, the latest Amazon Linux 2023 ARM64 AMI is auto-detected. | `string` | `null` | no |
-| associate\_public\_ip\_address | Whether to associate a public IP address with the instance. | `bool` | `true` | no |
-| attach\_ssm\_policy | Attach SSM Session Manager permissions to the IAM role for remote access. | `bool` | `true` | no |
-| base\_domain | Base domain for MagicDNS (e.g., 'tailnet.example.com'). Devices get <hostname>.<base\_domain>. | `string` | `""` | no |
-| cloud\_init\_parts | Additional cloud-init parts to append after the Headscale setup script. | <pre>list(object({<br/>    content      = string<br/>    content_type = string<br/>  }))</pre> | `[]` | no |
-| cloudwatch\_logs\_enabled | Export Headscale and cloud-init logs to CloudWatch Logs via the unified CloudWatch agent. | `bool` | `true` | no |
-| cloudwatch\_logs\_kms\_key\_id | KMS key ARN for encrypting the Headscale CloudWatch log group. Uses default CloudWatch encryption when null. | `string` | `null` | no |
-| cloudwatch\_logs\_retention\_days | Number of days to retain CloudWatch logs. | `number` | `30` | no |
-| create\_eip | Create an Elastic IP for the Headscale instance. Recommended for production  - keeps the IP stable across instance replacements. | `bool` | `false` | no |
-| derp\_enabled | Enable the built-in DERP relay server for NAT traversal. | `bool` | `true` | no |
-| derp\_stun\_port | STUN port for the built-in DERP server. | `number` | `3478` | no |
-| ebs\_data\_volume\_size | Data EBS volume size in GB for Headscale database and state. Set to 0 to disable. | `number` | `10` | no |
-| ebs\_root\_volume\_size | Root EBS volume size in GB. | `number` | `8` | no |
-| eip\_allocation\_id | Existing EIP allocation ID to associate. When set, create\_eip is ignored. | `string` | `""` | no |
-| enable\_instance\_refresh | Enable ASG instance refresh (rolling, 90% min healthy) so launch template changes roll out automatically. | `bool` | `true` | no |
-| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| encryption | Whether to encrypt EBS volumes. | `bool` | `true` | no |
-| exit\_node\_enabled | Advertise this node as a Tailscale exit node. Routes ALL client traffic through this instance (not just subnet routes). Only used when subnet\_router\_enabled is true. | `bool` | `false` | no |
-| headscale\_version | Headscale version to install (e.g., '0.25.1'). | `string` | `"0.28.0"` | no |
-| instance\_type | EC2 instance type. Graviton (t4g) recommended for cost savings. | `string` | `"t4g.nano"` | no |
-| ip\_prefixes | IP prefixes to allocate to Tailscale nodes. | `list(string)` | <pre>[<br/>  "100.64.0.0/10",<br/>  "fd7a:115c:a1e0::/48"<br/>]</pre> | no |
-| kms\_key\_id | KMS key ID for EBS volume encryption. Uses the default EBS key when null. | `string` | `null` | no |
-| letsencrypt\_email | Email for Let's Encrypt certificate registration. Only used when acm\_certificate\_arn is empty. | `string` | `""` | no |
-| metrics\_port | Port for Headscale Prometheus metrics endpoint (bound to 127.0.0.1). | `number` | `9090` | no |
-| name | Name for all Headscale resources. | `string` | n/a | yes |
-| oidc | OIDC configuration for user authentication. Set to null to disable. WARNING: an inline client\_secret is rendered into the instance user\_data and stored in OpenTofu state; prefer secrets\_manager\_arn + secrets\_manager\_oidc\_key to fetch it from Secrets Manager at boot. | <pre>object({<br/>    issuer        = string<br/>    client_id     = string<br/>    client_secret = optional(string, "")<br/>    allowed_users = optional(list(string), [])<br/>    expiry        = optional(string, "24h")<br/>  })</pre> | `null` | no |
-| publish\_auth\_key | Generate a tagged ephemeral pre-auth key at boot and publish it to Secrets Manager. Used for cross-account subnet router automation. | `bool` | `false` | no |
-| route53\_private\_zone | Whether the Route53 zone is a private hosted zone. When true, the A record uses the instance's private IP. | `bool` | `false` | no |
-| route53\_record\_name | DNS record name (e.g., 'headscale'). Combined with the zone to form the FQDN. | `string` | `"headscale"` | no |
-| route53\_record\_ttl | TTL in seconds for the Route53 DNS record. | `number` | `300` | no |
-| route53\_zone\_id | Route53 hosted zone ID for creating a DNS record. Leave empty to skip. | `string` | `""` | no |
-| secrets\_manager\_arn | ARN of a Secrets Manager secret containing a JSON object with sensitive values. The module reads specific keys at boot. Leave empty to use inline values instead. | `string` | `""` | no |
-| secrets\_manager\_oidc\_key | JSON key in the Secrets Manager secret that holds the OIDC client\_secret (e.g., 'oidc\_client\_secret'). Only used when secrets\_manager\_arn is set and OIDC is enabled. | `string` | `"oidc_client_secret"` | no |
-| server\_url | Public URL for Headscale (e.g., 'https://headscale.example.com'). Clients use this to connect. | `string` | n/a | yes |
-| snapshot\_enabled | Enable daily EBS snapshots of the data volume via Amazon Data Lifecycle Manager. | `bool` | `true` | no |
-| snapshot\_retention\_days | Number of days to retain daily EBS snapshots. | `number` | `7` | no |
-| snapshot\_time | UTC time to take daily snapshots in HH:MM format (e.g., '03:00'). | `string` | `"03:00"` | no |
-| subnet\_id | Subnet ID for the Headscale instance. Use a public subnet for direct client connectivity. | `string` | n/a | yes |
-| subnet\_router\_advertise\_routes | CIDR ranges to advertise via the built-in subnet router (e.g., ['10.0.0.0/16']). Required when subnet\_router\_enabled is true. | `list(string)` | `[]` | no |
-| subnet\_router\_enabled | Install Tailscale on the Headscale instance and register it as a subnet router. Exposes the VPC CIDR to all tailnet clients. | `bool` | `false` | no |
-| subnet\_router\_user | Headscale user for the built-in subnet router node. | `string` | `"subnet-routers"` | no |
-| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| tailscale\_version | Tailscale client version to install for the built-in subnet router. | `string` | `"1.96.4"` | no |
-| use\_spot\_instances | Use spot instances for cost savings (~70% cheaper). Safe because ASG replaces terminated instances and EBS data volume persists. | `bool` | `false` | no |
-| vpc\_id | VPC ID to deploy Headscale into. | `string` | n/a | yes |
-
-## Outputs
-
-| Name | Description |
-| ---- | ----------- |
-| alarm\_arn | CloudWatch alarm ARN (null when alarm is disabled) |
-| ami\_id | Resolved AMI ID |
-| autoscaling\_group\_arn | ASG ARN |
-| autoscaling\_group\_name | ASG name |
-| data\_volume\_id | EBS data volume ID (null when data volume is disabled) |
-| dns\_fqdn | Fully qualified domain name (when Route53 is configured) |
-| dns\_ip | IP address used for DNS records. Use this to configure external DNS providers (Cloudflare, etc.). Returns EIP public IP. |
-| eip\_allocation\_id | Elastic IP allocation ID (null when EIP is not used) |
-| eip\_public\_ip | Elastic IP address (null when EIP is not used). Returns the IP for both created and existing EIPs. |
-| iam\_role\_arn | IAM role ARN |
-| iam\_role\_name | IAM role name |
-| instance\_profile\_arn | Instance profile ARN |
-| launch\_template\_id | Launch template ID |
-| log\_group\_name | CloudWatch log group name (null when logs are disabled) |
-| metrics\_url | Prometheus metrics endpoint URL (accessible only from the instance itself via SSM) |
-| security\_group\_id | Security group ID |
-| server\_url | Headscale server URL for client configuration |
-| snapshot\_policy\_id | DLM lifecycle policy ID for data volume snapshots (null when snapshots are disabled) |
-| sns\_topic\_arn | SNS topic ARN for alarm notifications (null when using existing topic or alarm is disabled) |
-<!-- END_TF_DOCS -->
-
 ## Examples
 
 ## Basic  - Public instance with Let's Encrypt
@@ -736,3 +638,107 @@ sudo headscale routes enable --route <route-id>
 ```
 
 Once routes are active, all Tailscale clients can access VPC resources (RDS, ECS, internal ALBs, etc.) as if they were on the local network.
+
+## Reference
+
+<details>
+<summary>Requirements, providers, inputs and outputs (generated by terraform-docs)</summary>
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+| cloudinit | >= 2.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+| cloudinit | >= 2.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| acl\_policy | Headscale ACL policy JSON. When empty, a default allow-all policy is used. | `string` | `""` | no |
+| acm\_certificate\_arn | ACM certificate ARN for HTTPS. When empty, Headscale uses built-in Let's Encrypt (requires port 80 open). | `string` | `""` | no |
+| additional\_security\_group\_ids | Additional security group IDs to attach to the Headscale instance. | `list(string)` | `[]` | no |
+| alarm\_enabled | Create a CloudWatch alarm that fires when the Headscale instance is unhealthy. | `bool` | `true` | no |
+| alarm\_sns\_topic\_arn | SNS topic ARN for CloudWatch alarms (ASG health). Leave empty to create a new topic. | `string` | `""` | no |
+| allowed\_cidr\_blocks | CIDR blocks allowed to reach the Headscale HTTPS/gRPC port (443). Empty by default - you must explicitly allow client networks (use ["0.0.0.0/0"] for a public coordination server). | `list(string)` | `[]` | no |
+| ami\_id | Custom AMI ID. When null, the latest Amazon Linux 2023 ARM64 AMI is auto-detected. | `string` | `null` | no |
+| associate\_public\_ip\_address | Whether to associate a public IP address with the instance. | `bool` | `true` | no |
+| attach\_ssm\_policy | Attach SSM Session Manager permissions to the IAM role for remote access. | `bool` | `true` | no |
+| base\_domain | Base domain for MagicDNS (e.g., 'tailnet.example.com'). Devices get <hostname>.<base\_domain>. | `string` | `""` | no |
+| cloud\_init\_parts | Additional cloud-init parts to append after the Headscale setup script. | <pre>list(object({<br/>    content      = string<br/>    content_type = string<br/>  }))</pre> | `[]` | no |
+| cloudwatch\_logs\_enabled | Export Headscale and cloud-init logs to CloudWatch Logs via the unified CloudWatch agent. | `bool` | `true` | no |
+| cloudwatch\_logs\_kms\_key\_id | KMS key ARN for encrypting the Headscale CloudWatch log group. Uses default CloudWatch encryption when null. | `string` | `null` | no |
+| cloudwatch\_logs\_retention\_days | Number of days to retain CloudWatch logs. | `number` | `30` | no |
+| create\_eip | Create an Elastic IP for the Headscale instance. Recommended for production  - keeps the IP stable across instance replacements. | `bool` | `false` | no |
+| derp\_enabled | Enable the built-in DERP relay server for NAT traversal. | `bool` | `true` | no |
+| derp\_stun\_port | STUN port for the built-in DERP server. | `number` | `3478` | no |
+| ebs\_data\_volume\_size | Data EBS volume size in GB for Headscale database and state. Set to 0 to disable. | `number` | `10` | no |
+| ebs\_root\_volume\_size | Root EBS volume size in GB. | `number` | `8` | no |
+| eip\_allocation\_id | Existing EIP allocation ID to associate. When set, create\_eip is ignored. | `string` | `""` | no |
+| enable\_instance\_refresh | Enable ASG instance refresh (rolling, 90% min healthy) so launch template changes roll out automatically. | `bool` | `true` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| encryption | Whether to encrypt EBS volumes. | `bool` | `true` | no |
+| exit\_node\_enabled | Advertise this node as a Tailscale exit node. Routes ALL client traffic through this instance (not just subnet routes). Only used when subnet\_router\_enabled is true. | `bool` | `false` | no |
+| headscale\_version | Headscale version to install (e.g., '0.25.1'). | `string` | `"0.28.0"` | no |
+| instance\_type | EC2 instance type. Graviton (t4g) recommended for cost savings. | `string` | `"t4g.nano"` | no |
+| ip\_prefixes | IP prefixes to allocate to Tailscale nodes. | `list(string)` | <pre>[<br/>  "100.64.0.0/10",<br/>  "fd7a:115c:a1e0::/48"<br/>]</pre> | no |
+| kms\_key\_id | KMS key ID for EBS volume encryption. Uses the default EBS key when null. | `string` | `null` | no |
+| letsencrypt\_email | Email for Let's Encrypt certificate registration. Only used when acm\_certificate\_arn is empty. | `string` | `""` | no |
+| metrics\_port | Port for Headscale Prometheus metrics endpoint (bound to 127.0.0.1). | `number` | `9090` | no |
+| name | Name for all Headscale resources. | `string` | n/a | yes |
+| oidc | OIDC configuration for user authentication. Set to null to disable. WARNING: an inline client\_secret is rendered into the instance user\_data and stored in OpenTofu state; prefer secrets\_manager\_arn + secrets\_manager\_oidc\_key to fetch it from Secrets Manager at boot. | <pre>object({<br/>    issuer        = string<br/>    client_id     = string<br/>    client_secret = optional(string, "")<br/>    allowed_users = optional(list(string), [])<br/>    expiry        = optional(string, "24h")<br/>  })</pre> | `null` | no |
+| publish\_auth\_key | Generate a tagged ephemeral pre-auth key at boot and publish it to Secrets Manager. Used for cross-account subnet router automation. | `bool` | `false` | no |
+| route53\_private\_zone | Whether the Route53 zone is a private hosted zone. When true, the A record uses the instance's private IP. | `bool` | `false` | no |
+| route53\_record\_name | DNS record name (e.g., 'headscale'). Combined with the zone to form the FQDN. | `string` | `"headscale"` | no |
+| route53\_record\_ttl | TTL in seconds for the Route53 DNS record. | `number` | `300` | no |
+| route53\_zone\_id | Route53 hosted zone ID for creating a DNS record. Leave empty to skip. | `string` | `""` | no |
+| secrets\_manager\_arn | ARN of a Secrets Manager secret containing a JSON object with sensitive values. The module reads specific keys at boot. Leave empty to use inline values instead. | `string` | `""` | no |
+| secrets\_manager\_oidc\_key | JSON key in the Secrets Manager secret that holds the OIDC client\_secret (e.g., 'oidc\_client\_secret'). Only used when secrets\_manager\_arn is set and OIDC is enabled. | `string` | `"oidc_client_secret"` | no |
+| server\_url | Public URL for Headscale (e.g., 'https://headscale.example.com'). Clients use this to connect. | `string` | n/a | yes |
+| snapshot\_enabled | Enable daily EBS snapshots of the data volume via Amazon Data Lifecycle Manager. | `bool` | `true` | no |
+| snapshot\_retention\_days | Number of days to retain daily EBS snapshots. | `number` | `7` | no |
+| snapshot\_time | UTC time to take daily snapshots in HH:MM format (e.g., '03:00'). | `string` | `"03:00"` | no |
+| subnet\_id | Subnet ID for the Headscale instance. Use a public subnet for direct client connectivity. | `string` | n/a | yes |
+| subnet\_router\_advertise\_routes | CIDR ranges to advertise via the built-in subnet router (e.g., ['10.0.0.0/16']). Required when subnet\_router\_enabled is true. | `list(string)` | `[]` | no |
+| subnet\_router\_enabled | Install Tailscale on the Headscale instance and register it as a subnet router. Exposes the VPC CIDR to all tailnet clients. | `bool` | `false` | no |
+| subnet\_router\_user | Headscale user for the built-in subnet router node. | `string` | `"subnet-routers"` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| tailscale\_version | Tailscale client version to install for the built-in subnet router. | `string` | `"1.96.4"` | no |
+| use\_spot\_instances | Use spot instances for cost savings (~70% cheaper). Safe because ASG replaces terminated instances and EBS data volume persists. | `bool` | `false` | no |
+| vpc\_id | VPC ID to deploy Headscale into. | `string` | n/a | yes |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| alarm\_arn | CloudWatch alarm ARN (null when alarm is disabled) |
+| ami\_id | Resolved AMI ID |
+| autoscaling\_group\_arn | ASG ARN |
+| autoscaling\_group\_name | ASG name |
+| data\_volume\_id | EBS data volume ID (null when data volume is disabled) |
+| dns\_fqdn | Fully qualified domain name (when Route53 is configured) |
+| dns\_ip | IP address used for DNS records. Use this to configure external DNS providers (Cloudflare, etc.). Returns EIP public IP. |
+| eip\_allocation\_id | Elastic IP allocation ID (null when EIP is not used) |
+| eip\_public\_ip | Elastic IP address (null when EIP is not used). Returns the IP for both created and existing EIPs. |
+| iam\_role\_arn | IAM role ARN |
+| iam\_role\_name | IAM role name |
+| instance\_profile\_arn | Instance profile ARN |
+| launch\_template\_id | Launch template ID |
+| log\_group\_name | CloudWatch log group name (null when logs are disabled) |
+| metrics\_url | Prometheus metrics endpoint URL (accessible only from the instance itself via SSM) |
+| security\_group\_id | Security group ID |
+| server\_url | Headscale server URL for client configuration |
+| snapshot\_policy\_id | DLM lifecycle policy ID for data volume snapshots (null when snapshots are disabled) |
+| sns\_topic\_arn | SNS topic ARN for alarm notifications (null when using existing topic or alarm is disabled) |
+<!-- END_TF_DOCS -->
+
+</details>

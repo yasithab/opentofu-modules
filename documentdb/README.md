@@ -49,92 +49,6 @@ module "documentdb" {
 }
 ```
 
-<!-- BEGIN_TF_DOCS -->
-## Requirements
-
-| Name | Version |
-| ---- | ------- |
-| terraform | >= 1.11.0 |
-| aws | >= 6.49, < 7.0 |
-
-## Providers
-
-| Name | Version |
-| ---- | ------- |
-| aws | >= 6.49, < 7.0 |
-
-## Inputs
-
-| Name | Description | Type | Default | Required |
-| ---- | ----------- | ---- | ------- | :------: |
-| allow\_major\_version\_upgrade | Whether to allow major engine version upgrades when changing engine versions. | `bool` | `false` | no |
-| apply\_immediately | Whether to apply cluster modifications immediately or during the next maintenance window. | `bool` | `false` | no |
-| auto\_minor\_version\_upgrade | Whether minor engine upgrades are applied automatically during the maintenance window. | `bool` | `true` | no |
-| backup\_retention\_period | Number of days to retain automated backups. | `number` | `7` | no |
-| ca\_cert\_identifier | The CA certificate identifier for the DB instances. | `string` | `null` | no |
-| cloudwatch\_log\_group\_class | Specified the log class of the log group. Possible values are: STANDARD or INFREQUENT\_ACCESS | `string` | `null` | no |
-| cloudwatch\_log\_group\_kms\_key\_id | The ARN of the KMS Key to use when encrypting log data | `string` | `null` | no |
-| cloudwatch\_log\_group\_retention\_in\_days | The number of days to retain CloudWatch logs for the DocumentDB cluster | `number` | `7` | no |
-| cloudwatch\_log\_group\_skip\_destroy | Set to true if you do not wish the log group to be deleted at destroy time | `bool` | `null` | no |
-| cloudwatch\_log\_group\_tags | Additional tags for the CloudWatch log group(s) | `map(string)` | `{}` | no |
-| cluster\_parameter\_group\_family | The family of the cluster parameter group (e.g. docdb5.0). | `string` | `"docdb5.0"` | no |
-| cluster\_parameter\_group\_name | Name of the cluster parameter group. If null, uses var.name-cluster. | `string` | `null` | no |
-| cluster\_parameters | List of cluster parameter maps to apply. | <pre>list(object({<br/>    name         = string<br/>    value        = string<br/>    apply_method = optional(string)<br/>  }))</pre> | <pre>[<br/>  {<br/>    "name": "tls",<br/>    "value": "enabled"<br/>  },<br/>  {<br/>    "name": "audit_logs",<br/>    "value": "enabled"<br/>  }<br/>]</pre> | no |
-| create\_cloudwatch\_log\_group | Determines whether a CloudWatch log group is created for each `enabled_cloudwatch_logs_exports` | `bool` | `false` | no |
-| create\_cluster\_parameter\_group | Whether to create a cluster parameter group. | `bool` | `true` | no |
-| create\_security\_group | Whether to create a security group for the DocumentDB cluster. | `bool` | `true` | no |
-| create\_subnet\_group | Whether to create a new subnet group for the cluster. | `bool` | `true` | no |
-| deletion\_protection | Whether deletion protection is enabled on the cluster. Enabled by default. | `bool` | `true` | no |
-| enable\_performance\_insights | Whether to enable Performance Insights for cluster instances. | `bool` | `false` | no |
-| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
-| enabled\_cloudwatch\_logs\_exports | List of log types to export to CloudWatch. Valid values: audit, profiler. | `list(string)` | <pre>[<br/>  "audit",<br/>  "profiler"<br/>]</pre> | no |
-| engine\_version | The DocumentDB engine version (e.g. 5.0.0). | `string` | `"5.0.0"` | no |
-| final\_snapshot\_identifier | Name of the final cluster snapshot created when the cluster is deleted. | `string` | `null` | no |
-| instance\_class | Default instance class for cluster instances (e.g. db.r6g.large). | `string` | `"db.r6g.large"` | no |
-| instances | Map of cluster instance configurations. Each entry creates an instance with optional overrides. | `any` | `{}` | no |
-| kms\_key\_id | ARN of the KMS key to use for storage encryption. If null, the default aws/rds key is used. | `string` | `null` | no |
-| manage\_master\_user\_password | Set to true to allow AWS to manage the master user password in Secrets Manager. Conflicts with master\_password\_wo. | `bool` | `null` | no |
-| master\_password\_wo | Write-only master password for the DocumentDB cluster. Never stored in state. Conflicts with manage\_master\_user\_password. | `string` | `null` | no |
-| master\_password\_wo\_version | Version counter for the master password. Increment to trigger a password rotation. | `number` | `1` | no |
-| master\_username | Master username for the DocumentDB cluster. | `string` | `"docdbadmin"` | no |
-| name | Name of the DocumentDB cluster and used as a default for related resources. | `string` | n/a | yes |
-| performance\_insights\_kms\_key\_id | ARN of the KMS key to encrypt Performance Insights data. | `string` | `null` | no |
-| preferred\_backup\_window | Daily time range during which automated backups are created (UTC). | `string` | `"02:00-03:00"` | no |
-| preferred\_maintenance\_window | Weekly time range during which system maintenance can occur (UTC). | `string` | `"sun:05:00-sun:06:00"` | no |
-| security\_group\_rules | Map of security group rules for the DocumentDB cluster. | <pre>map(object({<br/>    type                         = optional(string, "ingress")<br/>    ip_protocol                  = optional(string, "tcp")<br/>    from_port                    = optional(number)<br/>    to_port                      = optional(number)<br/>    cidr_ipv4                    = optional(string)<br/>    cidr_ipv6                    = optional(string)<br/>    description                  = optional(string)<br/>    prefix_list_id               = optional(string)<br/>    referenced_security_group_id = optional(string)<br/>    tags                         = optional(map(string), {})<br/>  }))</pre> | `{}` | no |
-| security\_group\_use\_name\_prefix | Whether the security group name (`<name>-docdb`) is used as a name prefix. Enabled by default so create\_before\_destroy replacements do not collide on the fixed name. | `bool` | `true` | no |
-| skip\_final\_snapshot | Whether to skip the final snapshot when the cluster is deleted. | `bool` | `false` | no |
-| snapshot\_identifier | Snapshot identifier to restore from when creating the cluster. | `string` | `null` | no |
-| storage\_encrypted | Whether to encrypt cluster storage at rest. Enabled by default for production security. | `bool` | `true` | no |
-| storage\_type | The storage type to associate with the cluster. Valid values: standard, iopt1. | `string` | `null` | no |
-| subnet\_group\_name | Name of the subnet group. If null, uses var.name. | `string` | `null` | no |
-| subnet\_ids | List of VPC subnet IDs for the subnet group. | `list(string)` | `[]` | no |
-| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
-| vpc\_id | ID of the VPC where the security group will be created. | `string` | `null` | no |
-| vpc\_security\_group\_ids | List of additional VPC security group IDs to associate with the cluster. | `list(string)` | `[]` | no |
-
-## Outputs
-
-| Name | Description |
-| ---- | ----------- |
-| cloudwatch\_log\_group\_arns | Map of CloudWatch log group names to ARNs. |
-| cluster\_arn | The ARN of the DocumentDB cluster. |
-| cluster\_endpoint | The DNS address of the DocumentDB cluster (writer endpoint). |
-| cluster\_id | The DocumentDB cluster identifier. |
-| cluster\_instances | Map of cluster instances and their attributes. |
-| cluster\_master\_user\_secret | Details of the Secrets Manager secret containing the master user password when manage\_master\_user\_password is true. |
-| cluster\_master\_username | The master username for the DocumentDB cluster. |
-| cluster\_name | The cluster identifier (name). |
-| cluster\_parameter\_group\_arn | The ARN of the DocumentDB cluster parameter group. |
-| cluster\_parameter\_group\_id | The name (ID) of the DocumentDB cluster parameter group. |
-| cluster\_port | The port on which the cluster accepts connections. |
-| cluster\_reader\_endpoint | A read-only endpoint for the DocumentDB cluster, automatically load-balanced across replicas. |
-| cluster\_resource\_id | The resource ID of the DocumentDB cluster. |
-| security\_group\_id | The ID of the security group created for the DocumentDB cluster. |
-| subnet\_group\_arn | The ARN of the DocumentDB subnet group. |
-| subnet\_group\_id | The name (ID) of the DocumentDB subnet group. |
-<!-- END_TF_DOCS -->
-
 ## Examples
 
 ### Basic DocumentDB Cluster
@@ -237,3 +151,96 @@ module "documentdb_encrypted" {
   }
 }
 ```
+
+## Reference
+
+<details>
+<summary>Requirements, providers, inputs and outputs (generated by terraform-docs)</summary>
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| allow\_major\_version\_upgrade | Whether to allow major engine version upgrades when changing engine versions. | `bool` | `false` | no |
+| apply\_immediately | Whether to apply cluster modifications immediately or during the next maintenance window. | `bool` | `false` | no |
+| auto\_minor\_version\_upgrade | Whether minor engine upgrades are applied automatically during the maintenance window. | `bool` | `true` | no |
+| backup\_retention\_period | Number of days to retain automated backups. | `number` | `7` | no |
+| ca\_cert\_identifier | The CA certificate identifier for the DB instances. | `string` | `null` | no |
+| cloudwatch\_log\_group\_class | Specified the log class of the log group. Possible values are: STANDARD or INFREQUENT\_ACCESS | `string` | `null` | no |
+| cloudwatch\_log\_group\_kms\_key\_id | The ARN of the KMS Key to use when encrypting log data | `string` | `null` | no |
+| cloudwatch\_log\_group\_retention\_in\_days | The number of days to retain CloudWatch logs for the DocumentDB cluster | `number` | `7` | no |
+| cloudwatch\_log\_group\_skip\_destroy | Set to true if you do not wish the log group to be deleted at destroy time | `bool` | `null` | no |
+| cloudwatch\_log\_group\_tags | Additional tags for the CloudWatch log group(s) | `map(string)` | `{}` | no |
+| cluster\_parameter\_group\_family | The family of the cluster parameter group (e.g. docdb5.0). | `string` | `"docdb5.0"` | no |
+| cluster\_parameter\_group\_name | Name of the cluster parameter group. If null, uses var.name-cluster. | `string` | `null` | no |
+| cluster\_parameters | List of cluster parameter maps to apply. | <pre>list(object({<br/>    name         = string<br/>    value        = string<br/>    apply_method = optional(string)<br/>  }))</pre> | <pre>[<br/>  {<br/>    "name": "tls",<br/>    "value": "enabled"<br/>  },<br/>  {<br/>    "name": "audit_logs",<br/>    "value": "enabled"<br/>  }<br/>]</pre> | no |
+| create\_cloudwatch\_log\_group | Determines whether a CloudWatch log group is created for each `enabled_cloudwatch_logs_exports` | `bool` | `false` | no |
+| create\_cluster\_parameter\_group | Whether to create a cluster parameter group. | `bool` | `true` | no |
+| create\_security\_group | Whether to create a security group for the DocumentDB cluster. | `bool` | `true` | no |
+| create\_subnet\_group | Whether to create a new subnet group for the cluster. | `bool` | `true` | no |
+| deletion\_protection | Whether deletion protection is enabled on the cluster. Enabled by default. | `bool` | `true` | no |
+| enable\_performance\_insights | Whether to enable Performance Insights for cluster instances. | `bool` | `false` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| enabled\_cloudwatch\_logs\_exports | List of log types to export to CloudWatch. Valid values: audit, profiler. | `list(string)` | <pre>[<br/>  "audit",<br/>  "profiler"<br/>]</pre> | no |
+| engine\_version | The DocumentDB engine version (e.g. 5.0.0). | `string` | `"5.0.0"` | no |
+| final\_snapshot\_identifier | Name of the final cluster snapshot created when the cluster is deleted. | `string` | `null` | no |
+| instance\_class | Default instance class for cluster instances (e.g. db.r6g.large). | `string` | `"db.r6g.large"` | no |
+| instances | Map of cluster instance configurations. Each entry creates an instance with optional overrides. | `any` | `{}` | no |
+| kms\_key\_id | ARN of the KMS key to use for storage encryption. If null, the default aws/rds key is used. | `string` | `null` | no |
+| manage\_master\_user\_password | Set to true to allow AWS to manage the master user password in Secrets Manager. Conflicts with master\_password\_wo. | `bool` | `null` | no |
+| master\_password\_wo | Write-only master password for the DocumentDB cluster. Never stored in state. Conflicts with manage\_master\_user\_password. | `string` | `null` | no |
+| master\_password\_wo\_version | Version counter for the master password. Increment to trigger a password rotation. | `number` | `1` | no |
+| master\_username | Master username for the DocumentDB cluster. | `string` | `"docdbadmin"` | no |
+| name | Name of the DocumentDB cluster and used as a default for related resources. | `string` | n/a | yes |
+| performance\_insights\_kms\_key\_id | ARN of the KMS key to encrypt Performance Insights data. | `string` | `null` | no |
+| preferred\_backup\_window | Daily time range during which automated backups are created (UTC). | `string` | `"02:00-03:00"` | no |
+| preferred\_maintenance\_window | Weekly time range during which system maintenance can occur (UTC). | `string` | `"sun:05:00-sun:06:00"` | no |
+| security\_group\_rules | Map of security group rules for the DocumentDB cluster. | <pre>map(object({<br/>    type                         = optional(string, "ingress")<br/>    ip_protocol                  = optional(string, "tcp")<br/>    from_port                    = optional(number)<br/>    to_port                      = optional(number)<br/>    cidr_ipv4                    = optional(string)<br/>    cidr_ipv6                    = optional(string)<br/>    description                  = optional(string)<br/>    prefix_list_id               = optional(string)<br/>    referenced_security_group_id = optional(string)<br/>    tags                         = optional(map(string), {})<br/>  }))</pre> | `{}` | no |
+| security\_group\_use\_name\_prefix | Whether the security group name (`<name>-docdb`) is used as a name prefix. Enabled by default so create\_before\_destroy replacements do not collide on the fixed name. | `bool` | `true` | no |
+| skip\_final\_snapshot | Whether to skip the final snapshot when the cluster is deleted. | `bool` | `false` | no |
+| snapshot\_identifier | Snapshot identifier to restore from when creating the cluster. | `string` | `null` | no |
+| storage\_encrypted | Whether to encrypt cluster storage at rest. Enabled by default for production security. | `bool` | `true` | no |
+| storage\_type | The storage type to associate with the cluster. Valid values: standard, iopt1. | `string` | `null` | no |
+| subnet\_group\_name | Name of the subnet group. If null, uses var.name. | `string` | `null` | no |
+| subnet\_ids | List of VPC subnet IDs for the subnet group. | `list(string)` | `[]` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| vpc\_id | ID of the VPC where the security group will be created. | `string` | `null` | no |
+| vpc\_security\_group\_ids | List of additional VPC security group IDs to associate with the cluster. | `list(string)` | `[]` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| cloudwatch\_log\_group\_arns | Map of CloudWatch log group names to ARNs. |
+| cluster\_arn | The ARN of the DocumentDB cluster. |
+| cluster\_endpoint | The DNS address of the DocumentDB cluster (writer endpoint). |
+| cluster\_id | The DocumentDB cluster identifier. |
+| cluster\_instances | Map of cluster instances and their attributes. |
+| cluster\_master\_user\_secret | Details of the Secrets Manager secret containing the master user password when manage\_master\_user\_password is true. |
+| cluster\_master\_username | The master username for the DocumentDB cluster. |
+| cluster\_name | The cluster identifier (name). |
+| cluster\_parameter\_group\_arn | The ARN of the DocumentDB cluster parameter group. |
+| cluster\_parameter\_group\_id | The name (ID) of the DocumentDB cluster parameter group. |
+| cluster\_port | The port on which the cluster accepts connections. |
+| cluster\_reader\_endpoint | A read-only endpoint for the DocumentDB cluster, automatically load-balanced across replicas. |
+| cluster\_resource\_id | The resource ID of the DocumentDB cluster. |
+| security\_group\_id | The ID of the security group created for the DocumentDB cluster. |
+| subnet\_group\_arn | The ARN of the DocumentDB subnet group. |
+| subnet\_group\_id | The name (ID) of the DocumentDB subnet group. |
+<!-- END_TF_DOCS -->
+
+</details>
