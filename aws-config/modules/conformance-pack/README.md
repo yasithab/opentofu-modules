@@ -51,29 +51,43 @@ module "org_conformance_pack" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|----------|
-| `name` | Name for the conformance pack | `string` | n/a | yes |
-| `template_body` | Inline YAML or JSON template body (exactly one of `template_body` or `template_s3_uri` must be provided) | `string` | `null` | no |
-| `template_s3_uri` | S3 URI of the conformance pack template (exactly one of `template_body` or `template_s3_uri` must be provided) | `string` | `null` | no |
-| `input_parameters` | Map of parameter name to value passed to the template | `map(string)` | `{}` | no |
-| `delivery_s3_bucket` | S3 bucket for conformance pack results | `string` | `null` | no |
-| `delivery_s3_key_prefix` | S3 key prefix for conformance pack delivery | `string` | `null` | no |
-| `create_organization_conformance_pack` | Set to true to create an organization-level conformance pack | `bool` | `false` | no |
-| `excluded_account_ids` | List of AWS account IDs to exclude from the organization conformance pack | `list(string)` | `[]` | no |
-| `enabled` | Set to false to disable all resources in this module | `bool` | `true` | no |
+| ---- | ----------- | ---- | ------- | :------: |
+| create\_organization\_conformance\_pack | Set to true to create an aws\_config\_organization\_conformance\_pack instead of<br/>an account-level aws\_config\_conformance\_pack. Requires AWS Organizations and<br/>that AWS Config is enabled in all member accounts. | `bool` | `false` | no |
+| delivery\_s3\_bucket | S3 bucket for conformance pack results. Required for organization conformance packs. | `string` | `null` | no |
+| delivery\_s3\_key\_prefix | S3 key prefix for conformance pack delivery. | `string` | `null` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| excluded\_account\_ids | List of AWS account IDs to exclude from the organization conformance pack. | `list(string)` | `[]` | no |
+| input\_parameters | Map of parameter name to value passed to the conformance pack template. | `map(string)` | `{}` | no |
+| name | Name for the conformance pack. | `string` | n/a | yes |
+| template\_body | Inline YAML or JSON template body for the conformance pack.<br/>Exactly one of template\_body or template\_s3\_uri must be provided. | `string` | `null` | no |
+| template\_s3\_uri | S3 URI (s3://bucket/key) of the conformance pack template.<br/>Exactly one of template\_body or template\_s3\_uri must be provided. | `string` | `null` | no |
 
 ## Outputs
 
 | Name | Description |
-|------|-------------|
-| `conformance_pack_arn` | ARN of the account-level conformance pack (null when organization pack) |
-| `conformance_pack_id` | ID of the account-level conformance pack (null when organization pack) |
-| `organization_conformance_pack_arn` | ARN of the organization conformance pack (null when account-level pack) |
-| `organization_conformance_pack_id` | ID of the organization conformance pack (null when account-level pack) |
-
+| ---- | ----------- |
+| conformance\_pack\_arn | ARN of the account-level conformance pack. Empty when create\_organization\_conformance\_pack is true. |
+| conformance\_pack\_id | ID (name) of the account-level conformance pack. Empty when create\_organization\_conformance\_pack is true. |
+| organization\_conformance\_pack\_arn | ARN of the organization conformance pack. Empty when create\_organization\_conformance\_pack is false. |
+| organization\_conformance\_pack\_id | ID (name) of the organization conformance pack. Empty when create\_organization\_conformance\_pack is false. |
+<!-- END_TF_DOCS -->
 
 ## Examples
 

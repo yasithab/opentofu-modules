@@ -67,39 +67,53 @@ module "memcached_cache" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|----------|
-| `name` | Unique identifier for the serverless cache | `string` | `null` | no |
-| `engine` | Cache engine (`redis` or `memcached`) | `string` | `"redis"` | no |
-| `major_engine_version` | The version of the cache engine | `string` | `null` | no |
-| `description` | User-created description for the serverless cache | `string` | `null` | no |
-| `cache_usage_limits` | Cache usage limits for storage and eCPU | `map(any)` | `{}` | no |
-| `subnet_ids` | List of subnet IDs for the VPC endpoint | `list(string)` | `[]` | no |
-| `security_group_ids` | List of VPC security group IDs | `list(string)` | `[]` | no |
-| `kms_key_id` | ARN of a customer managed KMS key for encryption at rest | `string` | `null` | no |
-| `user_group_id` | Identifier of the UserGroup for Redis access control | `string` | `null` | no |
-| `daily_snapshot_time` | Daily time for automatic snapshots (Redis only) | `string` | `null` | no |
-| `snapshot_retention_limit` | Number of snapshots to retain (Redis only) | `number` | `null` | no |
-| `snapshot_arns_to_restore` | List of snapshot ARNs to restore from (Redis only) | `list(string)` | `null` | no |
-| `timeouts` | Map of create, update, and delete timeouts | `map(string)` | `{}` | no |
-| `region` | Region where the resources will be managed | `string` | `null` | no |
-| `enabled` | Whether to create the serverless cache | `bool` | `true` | no |
-| `tags` | Map of tags to apply to all resources | `map(string)` | `{}` | no |
+| ---- | ----------- | ---- | ------- | :------: |
+| cache\_usage\_limits | Sets the cache usage limits for storage and ElastiCache Processing Units for the cache. | `map(any)` | `{}` | no |
+| daily\_snapshot\_time | The daily time that snapshots will be created from the new serverless cache. Only supported for engine type `redis`. Defaults to 0. | `string` | `null` | no |
+| description | User-created description for the serverless cache. | `string` | `null` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| engine | Name of the cache engine to be used for this cache cluster. Valid values are `memcached`, `redis` or `valkey`. | `string` | `"redis"` | no |
+| kms\_key\_id | ARN of the customer managed key for encrypting the data at rest. If no KMS key is provided, a default service key is used. | `string` | `null` | no |
+| major\_engine\_version | The version of the cache engine that will be used to create the serverless cache. | `string` | `null` | no |
+| name | The name which serves as a unique identifier to the serverless cache. | `string` | `null` | no |
+| region | Region where the resource(s) will be managed. Defaults to the region set in the provider configuration | `string` | `null` | no |
+| security\_group\_ids | One or more VPC security groups associated with the serverless cache. | `list(string)` | `[]` | no |
+| snapshot\_arns\_to\_restore | The list of ARN(s) of the snapshot that the new serverless cache will be created from. Available for Redis only. | `list(string)` | `null` | no |
+| snapshot\_retention\_limit | (Redis only) The number of snapshots that will be retained for the serverless cache that is being created. | `number` | `null` | no |
+| subnet\_ids | A list of the identifiers of the subnets where the VPC endpoint for the serverless cache will be deployed. | `list(string)` | `[]` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| timeouts | Define maximum timeout for creating, updating, and deleting serverless resources. | `map(string)` | `{}` | no |
+| user\_group\_id | The identifier of the UserGroup to be associated with the serverless cache. Available for Redis only. Default is NULL. | `string` | `null` | no |
 
 ## Outputs
 
 | Name | Description |
-|------|-------------|
-| `serverless_cache_arn` | The ARN of the serverless cache |
-| `serverless_cache_create_time` | Timestamp of when the serverless cache was created |
-| `serverless_cache_endpoint` | Connection endpoint information for the cache |
-| `serverless_cache_full_engine_version` | The full engine version of the serverless cache |
-| `serverless_cache_major_engine_version` | The major engine version of the serverless cache |
-| `serverless_cache_reader_endpoint` | Reader endpoint information for the cache |
-| `serverless_cache_status` | The current status of the serverless cache |
-
+| ---- | ----------- |
+| serverless\_cache\_arn | The amazon resource name of the serverless cache |
+| serverless\_cache\_create\_time | Timestamp of when the serverless cache was created |
+| serverless\_cache\_endpoint | Represents the information required for client programs to connect to a cache node |
+| serverless\_cache\_full\_engine\_version | The name and version number of the engine the serverless cache is compatible with |
+| serverless\_cache\_major\_engine\_version | The version number of the engine the serverless cache is compatible with |
+| serverless\_cache\_reader\_endpoint | Represents the information required for client programs to connect to a cache node |
+| serverless\_cache\_status | The current status of the serverless cache. The allowed values are CREATING, AVAILABLE, DELETING, CREATE-FAILED and MODIFYING |
+<!-- END_TF_DOCS -->
 
 ## Examples
 

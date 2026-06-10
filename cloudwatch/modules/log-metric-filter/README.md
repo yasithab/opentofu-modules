@@ -46,25 +46,40 @@ module "error_metric_filter" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|----------|
-| `name` | The name of the CloudWatch Log Metric Filter | `string` | n/a | yes |
-| `pattern` | A valid CloudWatch Logs filter pattern for extracting metric data | `string` | n/a | yes |
-| `log_group_name` | The name of the log group to associate the metric filter with | `string` | n/a | yes |
-| `metric_transformation_name` | The name of the CloudWatch metric to publish | `string` | n/a | yes |
-| `metric_transformation_namespace` | The destination namespace of the CloudWatch metric | `string` | n/a | yes |
-| `metric_transformation_value` | The value to publish to the CloudWatch metric | `string` | `"1"` | no |
-| `metric_transformation_default_value` | The value to emit when no log events match (conflicts with dimensions) | `string` | `null` | no |
-| `metric_transformation_unit` | The unit to assign to the metric | `string` | `null` | no |
-| `metric_transformation_dimensions` | Map of fields to use as dimensions (conflicts with default_value) | `map(string)` | `null` | no |
-| `enabled` | Set to false to prevent the module from creating any resources | `bool` | `true` | no |
+| ---- | ----------- | ---- | ------- | :------: |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| log\_group\_name | The name of the log group to associate the metric filter with. | `string` | n/a | yes |
+| metric\_transformation\_default\_value | The value to emit when a filter pattern does not match a log event. Conflicts with `metric_transformation_dimensions`. | `string` | `null` | no |
+| metric\_transformation\_dimensions | Map of fields to use as dimensions for the metric. Conflicts with `metric_transformation_default_value`. | `map(string)` | `null` | no |
+| metric\_transformation\_name | The name of the CloudWatch metric to which the monitored log information should be published. | `string` | n/a | yes |
+| metric\_transformation\_namespace | The destination namespace of the CloudWatch metric. | `string` | n/a | yes |
+| metric\_transformation\_unit | The unit to assign to the metric. | `string` | `null` | no |
+| metric\_transformation\_value | The value to publish to the CloudWatch metric. Each log event is assigned this value. | `string` | `"1"` | no |
+| name | The name of the CloudWatch Log Metric Filter. | `string` | n/a | yes |
+| pattern | A valid CloudWatch Logs filter pattern for extracting metric data out of ingested log events. | `string` | n/a | yes |
 
 ## Outputs
 
 | Name | Description |
-|------|-------------|
-| `metric_filter_id` | The ID of the CloudWatch Log Metric Filter |
-| `metric_filter_name` | The name of the CloudWatch Log Metric Filter |
-| `metric_filter_log_group_name` | The name of the log group associated with the metric filter |
+| ---- | ----------- |
+| metric\_filter\_id | The ID of the CloudWatch Log Metric Filter. |
+| metric\_filter\_log\_group\_name | The name of the log group associated with the metric filter. |
+| metric\_filter\_name | The name of the CloudWatch Log Metric Filter. |
+<!-- END_TF_DOCS -->

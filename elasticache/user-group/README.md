@@ -77,29 +77,43 @@ module "elasticache_user_group" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|----------|
-| `user_group_id` | The ID of the user group | `string` | `null` | no |
-| `engine` | The cache engine (currently only `REDIS` is supported) | `string` | `"REDIS"` | no |
-| `create_group` | Whether to create the user group | `bool` | `true` | no |
-| `users` | A map of users to create, each with access_string and authentication_mode | `any` | `{}` | no |
-| `create_default_user` | Whether to create a default user | `bool` | `true` | no |
-| `default_user` | A map of default user attributes | `any` | `{}` | no |
-| `default_user_id` | The ID of an existing default user (used when `create_default_user` is false) | `string` | `"default"` | no |
-| `region` | Region where the resources will be managed | `string` | `null` | no |
-| `enabled` | Set to false to prevent the module from creating any resources | `bool` | `true` | no |
-| `tags` | Map of tags to apply to all resources | `map(string)` | `{}` | no |
+| ---- | ----------- | ---- | ------- | :------: |
+| create\_default\_user | Determines whether a default user will be created | `bool` | `true` | no |
+| create\_group | Determines whether a user group will be created | `bool` | `true` | no |
+| default\_user | A map of default user attributes | `any` | `{}` | no |
+| default\_user\_id | The ID of the default user | `string` | `"default"` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| engine | The engine the user group applies to. Valid values are `REDIS` and `VALKEY` | `string` | `"REDIS"` | no |
+| region | Region where the resource(s) will be managed. Defaults to the region set in the provider configuration | `string` | `null` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| user\_group\_id | The ID of the user group | `string` | `null` | no |
+| users | A map of users to create. May contain plaintext passwords - prefer authentication\_mode type `iam` | `any` | `{}` | no |
 
 ## Outputs
 
 | Name | Description |
-|------|-------------|
-| `group_arn` | The ARN that identifies the user group |
-| `group_id` | The user group identifier |
-| `users` | A map of users created and their attributes |
-
+| ---- | ----------- |
+| group\_arn | The ARN that identifies the user group |
+| group\_id | The user group identifier |
+| users | A map of users created and their attributes |
+<!-- END_TF_DOCS -->
 
 ## Examples
 

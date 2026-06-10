@@ -80,38 +80,53 @@ module "error_rate_alarm" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|----------|
-| `name` | The descriptive name for the alarm | `string` | n/a | yes |
-| `comparison_operator` | The arithmetic operation to use when comparing the specified statistic and threshold | `string` | n/a | yes |
-| `evaluation_periods` | The number of periods over which data is compared to the specified threshold | `number` | n/a | yes |
-| `alarm_description` | The description for the alarm | `string` | `null` | no |
-| `threshold` | The value against which the specified statistic is compared (exactly one of `threshold` or `threshold_metric_id` must be set) | `number` | `null` | no |
-| `threshold_metric_id` | ID of the ANOMALY_DETECTION_BAND function for anomaly detection alarms (exactly one of `threshold` or `threshold_metric_id` must be set) | `string` | `null` | no |
-| `metric_name` | The name for the alarm's associated metric | `string` | `null` | no |
-| `namespace` | The namespace for the alarm's associated metric | `string` | `null` | no |
-| `period` | The period in seconds over which the specified statistic is applied | `number` | `null` | no |
-| `statistic` | The statistic to apply to the alarm's associated metric (SampleCount, Average, Sum, Minimum, Maximum). Conflicts with `extended_statistic` | `string` | `null` | no |
-| `extended_statistic` | The percentile statistic for the metric (e.g., p99.9). Conflicts with `statistic` | `string` | `null` | no |
-| `dimensions` | The dimensions for the alarm's associated metric | `map(string)` | `null` | no |
-| `actions_enabled` | Whether actions should be executed during state changes | `bool` | `true` | no |
-| `alarm_actions` | Actions to execute on ALARM state transition | `list(string)` | `null` | no |
-| `ok_actions` | Actions to execute on OK state transition | `list(string)` | `null` | no |
-| `insufficient_data_actions` | Actions to execute on INSUFFICIENT_DATA state transition | `list(string)` | `null` | no |
-| `datapoints_to_alarm` | The number of datapoints that must be breaching to trigger the alarm | `number` | `null` | no |
-| `treat_missing_data` | How to handle missing data points (missing, ignore, breaching, notBreaching) | `string` | `"missing"` | no |
-| `evaluate_low_sample_count_percentiles` | Used only for percentile-based alarms (evaluate, ignore) | `string` | `null` | no |
-| `metric_query` | List of metric query objects for metric math expression alarms | `list(object)` | `[]` | no |
-| `unit` | The unit for the alarm's associated metric | `string` | `null` | no |
-| `enabled` | Set to false to prevent the module from creating any resources | `bool` | `true` | no |
-| `tags` | Map of tags to apply to all resources | `map(string)` | `{}` | no |
+| ---- | ----------- | ---- | ------- | :------: |
+| actions\_enabled | Indicates whether actions should be executed during any changes to the alarm's state. | `bool` | `true` | no |
+| alarm\_actions | The list of actions to execute when this alarm transitions into an ALARM state from any other state. | `list(string)` | `null` | no |
+| alarm\_description | The description for the alarm. | `string` | `null` | no |
+| comparison\_operator | The arithmetic operation to use when comparing the specified statistic and threshold. | `string` | n/a | yes |
+| datapoints\_to\_alarm | The number of datapoints that must be breaching to trigger the alarm. | `number` | `null` | no |
+| dimensions | The dimensions for the alarm's associated metric. | `map(string)` | `null` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| evaluate\_low\_sample\_count\_percentiles | Used only for alarms based on percentiles. Valid values: evaluate, ignore. | `string` | `null` | no |
+| evaluation\_periods | The number of periods over which data is compared to the specified threshold. | `number` | n/a | yes |
+| extended\_statistic | The percentile statistic for the metric associated with the alarm (e.g. p99.9). | `string` | `null` | no |
+| insufficient\_data\_actions | The list of actions to execute when this alarm transitions into an INSUFFICIENT\_DATA state from any other state. | `list(string)` | `null` | no |
+| metric\_name | The name for the alarm's associated metric. | `string` | `null` | no |
+| metric\_query | Enables you to create an alarm based on a metric math expression. A list of metric query objects. | <pre>list(object({<br/>    id          = string<br/>    account_id  = optional(string)<br/>    expression  = optional(string)<br/>    label       = optional(string)<br/>    return_data = optional(bool)<br/>    period      = optional(number)<br/>    metric = optional(object({<br/>      metric_name = string<br/>      namespace   = string<br/>      period      = number<br/>      stat        = string<br/>      unit        = optional(string)<br/>      dimensions  = optional(map(string))<br/>    }))<br/>  }))</pre> | `[]` | no |
+| name | The descriptive name for the alarm. | `string` | n/a | yes |
+| namespace | The namespace for the alarm's associated metric. | `string` | `null` | no |
+| ok\_actions | The list of actions to execute when this alarm transitions into an OK state from any other state. | `list(string)` | `null` | no |
+| period | The period in seconds over which the specified statistic is applied. | `number` | `null` | no |
+| statistic | The statistic to apply to the alarm's associated metric. Valid values: SampleCount, Average, Sum, Minimum, Maximum. | `string` | `null` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| threshold | The value against which the specified statistic is compared. Required if metric\_query is not provided. | `number` | `null` | no |
+| threshold\_metric\_id | If this is an alarm based on an anomaly detection model, make this value match the ID of the ANOMALY\_DETECTION\_BAND function. | `string` | `null` | no |
+| treat\_missing\_data | Sets how this alarm is to handle missing data points. | `string` | `"missing"` | no |
+| unit | The unit for the alarm's associated metric. | `string` | `null` | no |
 
 ## Outputs
 
 | Name | Description |
-|------|-------------|
-| `alarm_arn` | The ARN of the CloudWatch Metric Alarm |
-| `alarm_id` | The ID of the CloudWatch Metric Alarm |
-| `alarm_name` | The name of the CloudWatch Metric Alarm |
+| ---- | ----------- |
+| alarm\_arn | The ARN of the CloudWatch Metric Alarm. |
+| alarm\_id | The ID of the CloudWatch Metric Alarm. |
+| alarm\_name | The name of the CloudWatch Metric Alarm. |
+<!-- END_TF_DOCS -->

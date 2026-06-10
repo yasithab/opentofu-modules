@@ -46,6 +46,52 @@ module "identity_center" {
 ```
 
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| account\_assignments | Map of account assignment configurations. Each entry maps a principal (user or group) to permission sets and account IDs. | <pre>map(object({<br/>    principal_name  = string<br/>    principal_type  = string<br/>    principal_idp   = string # INTERNAL or EXTERNAL<br/>    permission_sets = list(string)<br/>    account_ids     = list(string)<br/>  }))</pre> | `{}` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| existing\_google\_sso\_users | Map of existing Google SSO users to reference from IAM Identity Center. Keys are logical names. | <pre>map(object({<br/>    user_name        = string<br/>    group_membership = optional(list(string), null)<br/>  }))</pre> | `{}` | no |
+| existing\_permission\_sets | Map of existing permission sets to reference from IAM Identity Center. Keys are logical names. | <pre>map(object({<br/>    permission_set_name = string<br/>  }))</pre> | `{}` | no |
+| existing\_sso\_groups | Map of existing groups to reference from IAM Identity Center. Keys are logical names. | <pre>map(object({<br/>    group_name = string<br/>  }))</pre> | `{}` | no |
+| existing\_sso\_users | Map of existing users to reference from IAM Identity Center. Keys are logical names. | <pre>map(object({<br/>    user_name        = string<br/>    group_membership = optional(list(string), null)<br/>  }))</pre> | `{}` | no |
+| permission\_sets | Map of permission sets to create in IAM Identity Center. Keys are permission set names. Unknown attributes are rejected (previously silently dropped). | <pre>map(object({<br/>    description               = optional(string)<br/>    relay_state               = optional(string)<br/>    session_duration          = optional(string)<br/>    tags                      = optional(map(string), {})<br/>    aws_managed_policies      = optional(list(string), [])<br/>    customer_managed_policies = optional(list(string), [])<br/>    inline_policy             = optional(string)<br/>    permissions_boundary = optional(object({<br/>      managed_policy_arn = optional(string)<br/>      customer_managed_policy_reference = optional(object({<br/>        name = string<br/>        path = optional(string, "/")<br/>      }))<br/>    }))<br/>  }))</pre> | `{}` | no |
+| sso\_applications | Map of SSO applications to create in IAM Identity Center. Keys are logical names. | <pre>map(object({<br/>    name                     = string<br/>    application_provider_arn = string<br/>    description              = optional(string)<br/>    portal_options = optional(object({<br/>      sign_in_options = optional(object({<br/>        application_url = optional(string)<br/>        origin          = string<br/>      }))<br/>      visibility = optional(string)<br/>    }))<br/>    status              = string # ENABLED or DISABLED<br/>    client_token        = optional(string)<br/>    tags                = optional(map(string))<br/>    assignment_required = bool<br/>    assignments_access_scope = optional(list(object({<br/>      authorized_targets = optional(list(string))<br/>      scope              = string<br/>    })))<br/>    group_assignments = optional(list(string))<br/>    user_assignments  = optional(list(string))<br/>  }))</pre> | `{}` | no |
+| sso\_groups | Map of groups to create in IAM Identity Center. Keys are logical names. | <pre>map(object({<br/>    group_name        = string<br/>    group_description = optional(string, null)<br/>  }))</pre> | `{}` | no |
+| sso\_instance\_access\_control\_attributes | List of access control attributes for the SSO instance. Each entry requires attribute\_name and source. | <pre>list(object({<br/>    attribute_name = string<br/>    source         = set(string)<br/>  }))</pre> | `[]` | no |
+| sso\_users | Map of users to create in IAM Identity Center. Keys are logical names. | <pre>map(object({<br/>    display_name     = optional(string)<br/>    user_name        = string<br/>    group_membership = list(string)<br/>    # Name<br/>    given_name       = string<br/>    middle_name      = optional(string, null)<br/>    family_name      = string<br/>    name_formatted   = optional(string)<br/>    honorific_prefix = optional(string, null)<br/>    honorific_suffix = optional(string, null)<br/>    # Email<br/>    email            = string<br/>    email_type       = optional(string, null)<br/>    is_primary_email = optional(bool, true)<br/>    # Phone Number<br/>    phone_number            = optional(string, null)<br/>    phone_number_type       = optional(string, null)<br/>    is_primary_phone_number = optional(bool, true)<br/>    # Address<br/>    country            = optional(string)<br/>    locality           = optional(string)<br/>    address_formatted  = optional(string)<br/>    postal_code        = optional(string)<br/>    is_primary_address = optional(bool, true)<br/>    region             = optional(string)<br/>    street_address     = optional(string)<br/>    address_type       = optional(string, null)<br/>    # Additional<br/>    user_type          = optional(string, null)<br/>    title              = optional(string, null)<br/>    locale             = optional(string, null)<br/>    nickname           = optional(string, null)<br/>    preferred_language = optional(string, null)<br/>    profile_url        = optional(string, null)<br/>    timezone           = optional(string, null)<br/>  }))</pre> | `{}` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| trusted\_token\_issuers | Map of trusted token issuers to create in IAM Identity Center. Keys are logical names. | <pre>map(object({<br/>    name                      = string<br/>    trusted_token_issuer_type = string # e.g. OIDC_JWT<br/>    oidc_jwt_configuration = optional(object({<br/>      claim_attribute_path          = string<br/>      identity_store_attribute_path = string<br/>      issuer_url                    = string<br/>      jwks_retrieval_option         = string # OPEN_ID_DISCOVERY or JWKS_ENDPOINT<br/>    }))<br/>    tags = optional(map(string), {})<br/>  }))</pre> | `{}` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| account\_assignment\_data | Tuple containing account assignment data |
+| permission\_sets\_arns | A map of permission set ARNs created by this module, keyed by permission set name |
+| principals\_and\_assignments | Map containing account assignment data |
+| sso\_applications\_arns | A map of SSO Applications ARNs created by this module |
+| sso\_applications\_group\_assignments | A map of SSO Applications assignments with groups created by this module |
+| sso\_applications\_user\_assignments | A map of SSO Applications assignments with users created by this module |
+| sso\_groups\_ids | A map of SSO groups ids created by this module |
+| trusted\_token\_issuer\_arns | A map of trusted token issuer ARNs created by this module |
+<!-- END_TF_DOCS -->
+
 ## Examples
 
 ## Basic Usage

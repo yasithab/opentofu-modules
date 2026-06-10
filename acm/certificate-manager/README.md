@@ -29,6 +29,65 @@ module "certificate" {
 ```
 
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| acm\_certificate\_domain\_validation\_options | A list of domain\_validation\_options created by the ACM certificate to create required Route53 records from it (used when create\_route53\_records\_only is set to true) | `any` | `{}` | no |
+| certificate\_body | Certificate's PEM-formatted public key. Required when importing an existing certificate. | `string` | `null` | no |
+| certificate\_chain | Certificate's PEM-formatted chain. Optional when importing an existing certificate. | `string` | `null` | no |
+| certificate\_export | Whether the certificate can be exported. Valid values: ENABLED, DISABLED | `string` | `null` | no |
+| certificate\_transparency\_logging\_preference | Specifies whether certificate details should be added to a certificate transparency log | `bool` | `true` | no |
+| create\_route53\_records | When validation is set to DNS, define whether to create the DNS records internally via Route53 or externally using any DNS provider | `bool` | `true` | no |
+| create\_route53\_records\_only | Whether to create only Route53 records (e.g. using separate AWS provider) | `bool` | `false` | no |
+| distinct\_domain\_names | List of distinct domains and SANs (used when create\_route53\_records\_only is set to true) | `list(string)` | `[]` | no |
+| dns\_ttl | The TTL of DNS recursive resolvers to cache information about this record. | `number` | `60` | no |
+| domain\_name | A domain name for which the certificate should be issued | `string` | `null` | no |
+| early\_renewal\_duration | Amount of time to start automatic renewal process before expiration. Represented in RFC3339 duration format (e.g. 2160h = 90 days). | `string` | `null` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| key\_algorithm | Specifies the algorithm of the public and private key pair that your Amazon issued certificate uses to encrypt data | `string` | `null` | no |
+| private\_authority\_arn | Private Certificate Authority ARN for issuing private certificates | `string` | `null` | no |
+| private\_key | Certificate's PEM-formatted private key. Required when importing an existing certificate. | `string` | `null` | no |
+| region | Region to create the resources into | `string` | `null` | no |
+| subject\_alternative\_names | A list of domains that should be SANs in the issued certificate | `list(string)` | `[]` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| validate\_certificate | Whether to validate certificate by creating Route53 record | `bool` | `true` | no |
+| validation\_allow\_overwrite\_records | Whether to allow overwrite of Route53 records. BREAKING: previously defaulted to true; now defaults to false so existing DNS records are never silently overwritten - set to true explicitly if you rely on overwriting | `bool` | `false` | no |
+| validation\_method | Which method to use for validation. DNS, EMAIL or NONE are valid. NONE is used for certificates that were imported into ACM. This parameter must not be set for certificates that were imported into ACM and then into Terraform. | `string` | `null` | no |
+| validation\_option | The domain name that you want ACM to use to send you validation emails. This domain name is the suffix of the email addresses that you want ACM to use. The map key is used as the domain\_name when not set explicitly. | <pre>map(object({<br/>    domain_name       = optional(string)<br/>    validation_domain = string<br/>  }))</pre> | `{}` | no |
+| validation\_record\_fqdns | When validation is set to DNS and the DNS validation records are set externally, provide the fqdns for the validation | `list(string)` | `[]` | no |
+| validation\_timeout | Define maximum timeout to wait for the validation to complete | `string` | `null` | no |
+| wait\_for\_validation | Whether to wait for the validation to complete | `bool` | `true` | no |
+| zone\_id | The ID of the hosted zone to contain this record. Required when validating via Route53 | `string` | `null` | no |
+| zones | Map containing the Route53 Zone IDs for additional domains. | `map(string)` | `{}` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| acm\_certificate\_arn | The ARN of the certificate |
+| acm\_certificate\_domain\_validation\_options | A list of attributes to feed into other resources to complete certificate validation. Can have more than one element, e.g. if SANs are defined. Only set if DNS-validation was used. |
+| acm\_certificate\_status | Status of the certificate. |
+| acm\_certificate\_validation\_emails | A list of addresses that received a validation E-Mail. Only set if EMAIL-validation was used. |
+| distinct\_domain\_names | List of distinct domains names used for the validation. |
+| validation\_domains | List of distinct domain validation options. This is useful if subject alternative names contain wildcards. |
+| validation\_route53\_record\_fqdns | List of FQDNs built using the zone domain and name. |
+<!-- END_TF_DOCS -->
+
 ## Examples
 
 ## Basic Usage

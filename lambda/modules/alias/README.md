@@ -31,40 +31,59 @@ module "alias" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| enabled | Controls whether resources should be created | `bool` | `true` | no |
-| tags | A map of tags to assign to resources (merged with `ManagedBy = "opentofu"` and applied to event source mappings) | `map(string)` | `{}` | no |
-| name | Name for the alias | `string` | `null` | no |
-| description | Description of the alias | `string` | `null` | no |
-| function_name | The function ARN of the Lambda function | `string` | `null` | no |
-| function_version | Lambda function version for the alias. Pattern: ($LATEST\|[0-9]+) | `string` | `null` | no |
-| use_existing_alias | Whether to use an existing alias instead of creating a new one | `bool` | `false` | no |
-| refresh_alias | Whether to refresh the function version used in the alias | `bool` | `true` | no |
-| routing_additional_version_weights | Map defining the proportion of events sent to different function versions | `map(number)` | `{}` | no |
-| create_async_event_config | Controls whether async event configuration should be created | `bool` | `false` | no |
-| maximum_event_age_in_seconds | Maximum age of a request for processing in seconds (60-21600) | `number` | `null` | no |
-| maximum_retry_attempts | Maximum number of retries when the function returns an error (0-2) | `number` | `null` | no |
-| destination_on_failure | ARN of the destination for failed asynchronous invocations | `string` | `null` | no |
-| destination_on_success | ARN of the destination for successful asynchronous invocations | `string` | `null` | no |
-| allowed_triggers | Map of allowed triggers to create Lambda permissions | `map(any)` | `{}` | no |
-| event_source_mapping | Map of event source mappings | `any` | `{}` | no |
+| ---- | ----------- | ---- | ------- | :------: |
+| allowed\_triggers | Map of allowed triggers to create Lambda permissions | `map(any)` | `{}` | no |
+| create\_async\_event\_config | Controls whether async event configuration for Lambda Function/Alias should be created | `bool` | `false` | no |
+| create\_qualified\_alias\_allowed\_triggers | Whether to allow triggers on qualified alias | `bool` | `true` | no |
+| create\_qualified\_alias\_async\_event\_config | Whether to allow async event configuration on qualified alias | `bool` | `true` | no |
+| create\_version\_allowed\_triggers | Whether to allow triggers on version of Lambda Function used by alias (this will revoke permissions from previous version because Terraform manages only current resources) | `bool` | `true` | no |
+| create\_version\_async\_event\_config | Whether to allow async event configuration on version of Lambda Function used by alias (this will revoke permissions from previous version because Terraform manages only current resources) | `bool` | `true` | no |
+| description | Description of the alias. | `string` | `null` | no |
+| destination\_on\_failure | Amazon Resource Name (ARN) of the destination resource for failed asynchronous invocations | `string` | `null` | no |
+| destination\_on\_success | Amazon Resource Name (ARN) of the destination resource for successful asynchronous invocations | `string` | `null` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| event\_source\_mapping | Map of event source mapping | `any` | `{}` | no |
+| function\_name | The function ARN of the Lambda function for which you want to create an alias. | `string` | `null` | no |
+| function\_version | Lambda function version for which you are creating the alias. Pattern: ($LATEST\|[0-9]+). | `string` | `null` | no |
+| maximum\_event\_age\_in\_seconds | Maximum age of a request that Lambda sends to a function for processing in seconds. Valid values between 60 and 21600. | `number` | `null` | no |
+| maximum\_retry\_attempts | Maximum number of times to retry when the function returns an error. Valid values between 0 and 2. Defaults to 2. | `number` | `null` | no |
+| name | Name for the alias you are creating. | `string` | `null` | no |
+| refresh\_alias | Whether to refresh function version used in the alias. Useful when using this module together with external tool do deployments (eg, AWS CodeDeploy). | `bool` | `true` | no |
+| routing\_additional\_version\_weights | A map that defines the proportion of events that should be sent to different versions of a lambda function. | `map(number)` | `{}` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| use\_existing\_alias | Whether to manage existing alias instead of creating a new one. Useful when using this module together with external tool do deployments (eg, AWS CodeDeploy). | `bool` | `false` | no |
 
 ## Outputs
 
 | Name | Description |
-|------|-------------|
-| lambda_alias_name | The name of the Lambda Function Alias |
-| lambda_alias_arn | The ARN of the Lambda Function Alias |
-| lambda_alias_invoke_arn | The ARN for invoking the Lambda Function from API Gateway |
-| lambda_alias_description | Description of the alias |
-| lambda_alias_function_version | Lambda function version which the alias uses |
-| lambda_alias_event_source_mapping_function_arn | The ARN of the Lambda function the event source mapping sends events to |
-| lambda_alias_event_source_mapping_state | The state of the event source mapping |
-| lambda_alias_event_source_mapping_uuid | The UUID of the created event source mapping |
-
+| ---- | ----------- |
+| lambda\_alias\_arn | The ARN of the Lambda Function Alias |
+| lambda\_alias\_description | Description of alias |
+| lambda\_alias\_event\_source\_mapping\_function\_arn | The the ARN of the Lambda function the event source mapping is sending events to |
+| lambda\_alias\_event\_source\_mapping\_state | The state of the event source mapping |
+| lambda\_alias\_event\_source\_mapping\_state\_transition\_reason | The reason the event source mapping is in its current state |
+| lambda\_alias\_event\_source\_mapping\_uuid | The UUID of the created event source mapping |
+| lambda\_alias\_function\_version | Lambda function version which the alias uses |
+| lambda\_alias\_invoke\_arn | The ARN to be used for invoking Lambda Function from API Gateway |
+| lambda\_alias\_name | The name of the Lambda Function Alias |
+<!-- END_TF_DOCS -->
 
 ## Examples
 

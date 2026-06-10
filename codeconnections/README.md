@@ -30,6 +30,49 @@ module "codeconnections" {
 > **Note:** After creation, the connection must be manually authorized in the AWS Console to transition from `PENDING` to `AVAILABLE`.
 
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| connection\_timeouts | Timeout configuration for the codeconnections connection resource. | <pre>object({<br/>    create = optional(string, "30m")<br/>    delete = optional(string, "30m")<br/>  })</pre> | `{}` | no |
+| create\_host | Whether to create a codeconnections host (for self-hosted VCS like GitHub Enterprise Server). | `bool` | `false` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| github\_organization\_name | The GitHub organization name | `string` | `null` | no |
+| host\_arn | ARN of the codeconnections host to use for GitHubEnterpriseServer/GitLabSelfManaged connections. When set, provider\_type is derived from the host. | `string` | `null` | no |
+| host\_name | Name of the codeconnections host. | `string` | `null` | no |
+| host\_provider\_endpoint | Endpoint of the infrastructure where the provider type is installed (e.g., https://my-github-enterprise.example.com). | `string` | `null` | no |
+| host\_provider\_type | Provider type for the host. Valid values: GitHubEnterpriseServer, GitLabSelfManaged. | `string` | `null` | no |
+| host\_timeouts | Timeout configuration for the codeconnections host resource. | <pre>object({<br/>    create = optional(string, "30m")<br/>    delete = optional(string, "30m")<br/>  })</pre> | `{}` | no |
+| host\_vpc\_configuration | VPC configuration for the codeconnections host (required for VPC-hosted providers). | <pre>object({<br/>    security_group_ids = list(string)<br/>    subnet_ids         = list(string)<br/>    vpc_id             = string<br/>    tls_certificate    = optional(string)<br/>  })</pre> | `null` | no |
+| name | Name for the codeconnections connection. Defaults to '<github\_organization\_name>-github' when not set. | `string` | `null` | no |
+| provider\_type | The provider type | `string` | `"GitHub"` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| connection\_arn | ARN of the codeconnections connection |
+| connection\_id | ARN of the codeconnections connection (id is deprecated; arn is the canonical identifier) |
+| connection\_status | Status of the codeconnections connection |
+| host\_arn | ARN of the codeconnections host |
+| host\_id | ARN of the codeconnections host (id is deprecated; arn is the canonical identifier) |
+<!-- END_TF_DOCS -->
+
 ## Examples
 
 ## Basic Usage - GitHub Connection

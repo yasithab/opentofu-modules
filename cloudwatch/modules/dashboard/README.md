@@ -42,6 +42,36 @@ module "dashboard" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| dashboard\_body | The dashboard body in JSON format. Use jsonencode() with the widget structure or provide a raw JSON string. | `string` | n/a | yes |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| name | The name of the CloudWatch dashboard. | `string` | n/a | yes |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| dashboard\_arn | ARN of the CloudWatch dashboard. |
+| dashboard\_name | Name of the CloudWatch dashboard. |
+<!-- END_TF_DOCS -->
+
 ## Examples
 
 ### Multi-Widget Dashboard

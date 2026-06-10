@@ -30,6 +30,48 @@ module "vpc_peering" {
 ```
 
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| acceptor\_allow\_remote\_vpc\_dns\_resolution | Allow acceptor VPC to resolve public DNS hostnames to private IP addresses when queried from instances in the requestor VPC | `bool` | `true` | no |
+| acceptor\_aws\_account\_id | The AWS account id of the acceptor | `string` | `null` | no |
+| acceptor\_aws\_region | The AWS region of the acceptor VPC | `string` | `null` | no |
+| acceptor\_cidr\_blocks | accepter cidr blocks | `list(string)` | `[]` | no |
+| acceptor\_vpc\_id | Acceptor VPC ID | `string` | `null` | no |
+| auto\_accept | Accept the peering request on the requestor side (only valid for same-account, same-region peering) | `bool` | `false` | no |
+| create\_accepter | Create an aws\_vpc\_peering\_connection\_accepter resource to accept the peering request (requires the provider to have access to the acceptor VPC) | `bool` | `false` | no |
+| create\_timeout | VPC peering connection create timeout. For more details, see https://www.terraform.io/docs/configuration/resources.html#operation-timeouts | `string` | `"3m"` | no |
+| delete\_timeout | VPC peering connection delete timeout. For more details, see https://www.terraform.io/docs/configuration/resources.html#operation-timeouts | `string` | `"5m"` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| requestor\_allow\_remote\_vpc\_dns\_resolution | Allow requestor VPC to resolve public DNS hostnames to private IP addresses when queried from instances in the acceptor VPC | `bool` | `true` | no |
+| requestor\_route\_table\_tags | Only add peer routes to requestor VPC route tables matching these tags | `map(string)` | `{}` | no |
+| requestor\_vpc\_id | Requestor VPC ID | `string` | `null` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| update\_timeout | VPC peering connection update timeout. For more details, see https://www.terraform.io/docs/configuration/resources.html#operation-timeouts | `string` | `"3m"` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| accept\_status | The status of the VPC peering connection request |
+| connection\_id | VPC peering connection ID |
+<!-- END_TF_DOCS -->
+
 ## Examples
 
 ## Basic Usage

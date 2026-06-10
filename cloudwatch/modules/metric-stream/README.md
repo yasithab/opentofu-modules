@@ -59,27 +59,42 @@ module "metric_stream" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|----------|
-| `firehose_arn` | ARN of the Amazon Kinesis Firehose delivery stream | `string` | n/a | yes |
-| `role_arn` | ARN of the IAM role for accessing Kinesis Firehose | `string` | n/a | yes |
-| `output_format` | Output format for the metric stream (json, opentelemetry0.7, opentelemetry1.0) | `string` | n/a | yes |
-| `name` | The name of the CloudWatch Metric Stream (conflicts with `name_prefix`) | `string` | `null` | no |
-| `name_prefix` | Creates a unique name beginning with the specified prefix (conflicts with `name`) | `string` | `null` | no |
-| `exclude_filter` | Map of exclusive metric filters keyed by namespace (conflicts with `include_filter`) | `map(object({ metric_names = optional(list(string), []) }))` | `{}` | no |
-| `include_filter` | Map of inclusive metric filters keyed by namespace (conflicts with `exclude_filter`) | `map(object({ metric_names = optional(list(string), []) }))` | `{}` | no |
-| `statistics_configuration` | List of objects with `additional_statistics` and `include_metric` | `list(object)` | `[]` | no |
-| `enabled` | Set to false to prevent the module from creating any resources | `bool` | `true` | no |
-| `tags` | Map of tags to apply to all resources | `map(string)` | `{}` | no |
+| ---- | ----------- | ---- | ------- | :------: |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| exclude\_filter | Map of exclusive metric filters. Each key is the namespace (e.g. AWS/EC2), and the value is an object with an optional `metric_names` list. Conflicts with `include_filter`. | <pre>map(object({<br/>    metric_names = optional(list(string), [])<br/>  }))</pre> | `{}` | no |
+| firehose\_arn | ARN of the Amazon Kinesis Firehose delivery stream to use for this metric stream. | `string` | n/a | yes |
+| include\_filter | Map of inclusive metric filters. Each key is the namespace (e.g. AWS/EC2), and the value is an object with an optional `metric_names` list. Conflicts with `exclude_filter`. | <pre>map(object({<br/>    metric_names = optional(list(string), [])<br/>  }))</pre> | `{}` | no |
+| name | The name of the CloudWatch Metric Stream. Conflicts with `name_prefix`. At least one of `name` or `name_prefix` must be specified. | `string` | `null` | no |
+| name\_prefix | Creates a unique name beginning with the specified prefix. Conflicts with `name`. At least one of `name` or `name_prefix` must be specified. | `string` | `null` | no |
+| output\_format | Output format for the metric stream. | `string` | n/a | yes |
+| role\_arn | ARN of the IAM role that this metric stream will use to access Amazon Kinesis Firehose resources. | `string` | n/a | yes |
+| statistics\_configuration | List of statistics configurations for additional statistics to stream. Each element is an object with `additional_statistics` (list) and `include_metric` (list of objects with `metric_name` and `namespace`). | <pre>list(object({<br/>    additional_statistics = list(string)<br/>    include_metric = list(object({<br/>      metric_name = string<br/>      namespace   = string<br/>    }))<br/>  }))</pre> | `[]` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
 
 ## Outputs
 
 | Name | Description |
-|------|-------------|
-| `metric_stream_arn` | The ARN of the CloudWatch Metric Stream |
-| `metric_stream_name` | The name of the CloudWatch Metric Stream |
-| `metric_stream_creation_date` | The date the metric stream was created |
-| `metric_stream_last_update_date` | The date the metric stream was last updated |
-| `metric_stream_state` | The state of the metric stream (running or stopped) |
+| ---- | ----------- |
+| metric\_stream\_arn | The ARN of the CloudWatch Metric Stream. |
+| metric\_stream\_creation\_date | The date the metric stream was created. |
+| metric\_stream\_last\_update\_date | The date the metric stream was last updated. |
+| metric\_stream\_name | The name of the CloudWatch Metric Stream. |
+| metric\_stream\_state | The state of the metric stream (running or stopped). |
+<!-- END_TF_DOCS -->

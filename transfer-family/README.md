@@ -42,6 +42,76 @@ module "transfer" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| address\_allocation\_ids | List of Elastic IP allocation IDs for VPC endpoint. | `list(string)` | `[]` | no |
+| certificate\_arn | ARN of the ACM certificate for FTPS protocol. | `string` | `null` | no |
+| connectors | Map of outbound SFTP connectors used to transfer files to remote SFTP servers. `url` is the remote endpoint (sftp://...), `access_role` is the IAM role the connector assumes, `user_secret_id` is the Secrets Manager secret holding the SFTP credentials, and `trusted_host_keys` pins the remote server's public host keys. | <pre>map(object({<br/>    url                  = string<br/>    access_role          = string<br/>    logging_role         = optional(string)<br/>    security_policy_name = optional(string)<br/>    trusted_host_keys    = optional(list(string))<br/>    user_secret_id       = optional(string)<br/>  }))</pre> | `{}` | no |
+| create\_logging\_role | Whether to create an IAM role for CloudWatch logging. | `bool` | `true` | no |
+| directory\_id | Directory ID for AWS Directory Service identity provider. | `string` | `null` | no |
+| domain | Storage domain. Valid values: `S3`, `EFS`. | `string` | `"S3"` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| endpoint\_type | Endpoint type. Valid values: `PUBLIC`, `VPC`. | `string` | `"PUBLIC"` | no |
+| force\_destroy | Whether to force-destroy the server even if it contains users. | `bool` | `false` | no |
+| host\_key | RSA, ECDSA, or ED25519 private key for the server. | `string` | `null` | no |
+| identity\_provider\_function\_arn | ARN of the Lambda function for custom identity provider (AWS\_LAMBDA type). | `string` | `null` | no |
+| identity\_provider\_invocation\_role\_arn | IAM role ARN for invoking the API Gateway identity provider. | `string` | `null` | no |
+| identity\_provider\_type | Identity provider type. Valid values: `SERVICE_MANAGED`, `API_GATEWAY`, `AWS_DIRECTORY_SERVICE`, `AWS_LAMBDA`. | `string` | `"SERVICE_MANAGED"` | no |
+| identity\_provider\_url | URL of the API Gateway for custom identity provider (API\_GATEWAY type). | `string` | `null` | no |
+| logging\_role\_arn | ARN of an existing IAM role for CloudWatch logging. Used when `create_logging_role` is false. | `string` | `null` | no |
+| name | Name used as a prefix for all Transfer Family resources. | `string` | n/a | yes |
+| post\_authentication\_display\_banner | Banner message displayed after authentication. | `string` | `null` | no |
+| pre\_authentication\_login\_banner | Banner message displayed before authentication. | `string` | `null` | no |
+| protocol\_details | Protocol-specific settings including passive IP, SetStat option, TLS session resumption, and AS2 transports. | `any` | `null` | no |
+| protocols | List of file transfer protocols. Valid values: `SFTP`, `FTPS`, `FTP`, `AS2`. | `list(string)` | <pre>[<br/>  "SFTP"<br/>]</pre> | no |
+| route53\_records | Map of Route53 record configurations for custom hostnames. | `any` | `{}` | no |
+| s3\_storage\_options | S3 storage options including directory listing optimization. | `any` | `null` | no |
+| security\_group\_ids | List of security group IDs for VPC endpoint. | `list(string)` | `[]` | no |
+| security\_policy\_name | Name of the security policy attached to the server. See AWS documentation for valid values. | `string` | `"TransferSecurityPolicy-2024-01"` | no |
+| structured\_log\_destinations | List of CloudWatch Log Group ARNs for structured JSON logging. | `list(string)` | `[]` | no |
+| subnet\_ids | List of subnet IDs for VPC endpoint. | `list(string)` | `[]` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| users | Map of Transfer Family user configurations including home directory, policy, and SSH keys. | <pre>map(object({<br/>    user_name           = string<br/>    role                = string<br/>    home_directory      = optional(string)<br/>    home_directory_type = optional(string)<br/>    policy              = optional(string)<br/>    home_directory_mappings = optional(list(object({<br/>      entry  = string<br/>      target = string<br/>    })), [])<br/>    posix_profile = optional(object({<br/>      gid            = number<br/>      uid            = number<br/>      secondary_gids = optional(list(number))<br/>    }))<br/>    ssh_public_key = optional(string)<br/>  }))</pre> | `{}` | no |
+| vpc\_id | VPC ID for VPC endpoint type. Required when `endpoint_type` is `VPC`. | `string` | `null` | no |
+| workflow\_on\_partial\_upload | Workflow configuration triggered on partial file upload. | <pre>object({<br/>    execution_role = string<br/>    workflow_id    = string<br/>  })</pre> | `null` | no |
+| workflow\_on\_upload | Workflow configuration triggered on file upload. | <pre>object({<br/>    execution_role = string<br/>    workflow_id    = string<br/>  })</pre> | `null` | no |
+| workflows | Map of workflow configurations with steps and exception handling. | `any` | `{}` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| connector\_arns | Map of Transfer Family connector ARNs. |
+| connector\_ids | Map of Transfer Family connector IDs. |
+| logging\_role\_arn | The ARN of the Transfer Family logging IAM role. |
+| route53\_record\_fqdns | Map of Route53 record FQDNs for custom hostnames. |
+| server\_arn | The ARN of the Transfer Family server. |
+| server\_endpoint | The endpoint of the Transfer Family server. |
+| server\_host\_key\_fingerprint | The host key fingerprint of the Transfer Family server. |
+| server\_id | The ID of the Transfer Family server. |
+| server\_name | The name of the Transfer Family server. |
+| user\_arns | Map of Transfer Family user ARNs. |
+| user\_names | Map of Transfer Family user names. |
+| workflow\_arns | Map of Transfer Family workflow ARNs. |
+| workflow\_ids | Map of Transfer Family workflow IDs. |
+<!-- END_TF_DOCS -->
+
 ## Examples
 
 ### SFTP Server with VPC Endpoint

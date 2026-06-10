@@ -24,6 +24,53 @@ module "key_pair" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+| tls | >= 4.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+| tls | >= 4.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| create\_private\_key | Whether to create a TLS private key and derive the public key automatically. | `bool` | `false` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| name | Name to use for the key pair. If not provided, a name will be generated using `name_prefix`. | `string` | `null` | no |
+| name\_prefix | Name prefix to use for the key pair when `name` is not provided. | `string` | `null` | no |
+| private\_key\_algorithm | Algorithm to use for the TLS private key. Valid values: `RSA`, `ED25519`. | `string` | `"RSA"` | no |
+| private\_key\_rsa\_bits | Number of bits for the RSA private key. Only used when `private_key_algorithm` is `RSA`. | `number` | `4096` | no |
+| public\_key | The public key material. Required unless `create_private_key` is true. | `string` | `null` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| key\_pair\_arn | The key pair ARN |
+| key\_pair\_fingerprint | The MD5 public key fingerprint |
+| key\_pair\_id | The key pair ID |
+| key\_pair\_name | The key pair name |
+| key\_pair\_type | The key pair type |
+| private\_key\_id | Unique identifier for the TLS private key |
+| private\_key\_openssh | Private key data in OpenSSH PEM format. Sensitive. |
+| private\_key\_pem | Private key data in PEM format. Sensitive. |
+| public\_key\_fingerprint\_md5 | MD5 fingerprint of the public key |
+| public\_key\_fingerprint\_sha256 | SHA256 fingerprint of the public key |
+| public\_key\_openssh | Public key data in OpenSSH authorized\_keys format |
+| public\_key\_pem | Public key data in PEM format |
+<!-- END_TF_DOCS -->
+
 ## Examples
 
 ### Import Existing Public Key

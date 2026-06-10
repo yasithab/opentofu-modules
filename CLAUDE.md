@@ -18,6 +18,8 @@ Collection of 128+ reusable OpenTofu modules for AWS infrastructure. All modules
 | `task test` | Run Terratest validate on all modules (no AWS creds needed) |
 | `task test-plan` | Run Terratest plan on all modules (requires AWS creds) |
 | `task security` | Trivy CRITICAL/HIGH misconfiguration scan |
+| `task docs` | Regenerate README Requirements/Providers/Inputs/Outputs tables via terraform-docs (`.terraform-docs.yml`) |
+| `task new-module -- <name>` | Scaffold a new module skeleton (refuses if the directory exists) |
 | `task ci` | Run all of the above in parallel |
 | `pre-commit run --all-files` | Run all pre-commit hooks manually |
 
@@ -36,6 +38,14 @@ Every module follows this structure:
 - `providers.tf` - version constraints (OpenTofu + AWS provider)
 - `README.md` - module documentation with usage examples covering all patterns
 - `test/test.tfvars` - realistic variable values for Terratest `tofu plan` in CI
+
+### Test fixture conventions (see test/README.md)
+
+- `test/test.tfvars` - default plan fixture; the plan must contain at least one resource change (opt-out marker: `test/allow-empty-plan`)
+- `test/fixtures/plan-<case>.tfvars` - optional extra plan paths; each is a complete standalone var set, planned on its own
+- `test/fixtures/invalid-<case>.tfvars` - negative fixture that MUST fail plan on exactly one variable validation; include the happy-path required vars so only the targeted validation fires (no AWS creds needed - validations fire before provider auth)
+- Modules declaring `variable "enabled"` are automatically plan-tested with `enabled = false` and must plan zero changes (`TestDisabledAllModules`)
+- When adding a variable validation, add a matching `invalid-*.tfvars` fixture to prove it fires
 
 ### Required patterns in every module
 

@@ -28,35 +28,52 @@ module "user_data" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+| cloudinit | ~> 2.0 |
+| null | ~> 3.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| cloudinit | ~> 2.0 |
+| null | ~> 3.0 |
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| enabled | Set to false to prevent the module from creating any resources or generating user data | `bool` | `true` | no |
-| platform | Identifies the OS platform as `bottlerocket`, `linux`, `al2023`, or `windows`. Used as a fallback when ami_type cannot be determined | `string` | `null` | no |
-| ami_type | Type of Amazon Machine Image (AMI) associated with the EKS Node Group | `string` | `null` | no |
-| is_eks_managed_node_group | Determines whether the user data is used on nodes in an EKS managed node group | `bool` | `true` | no |
-| cluster_name | Name of the EKS cluster | `string` | `null` | no |
-| cluster_endpoint | Endpoint of the EKS cluster | `string` | `null` | no |
-| cluster_auth_base64 | Base64 encoded CA of associated EKS cluster | `string` | `null` | no |
-| cluster_ip_family | The IP family used to assign Kubernetes pod and service addresses | `string` | `"ipv4"` | no |
-| cluster_service_cidr | The CIDR block used to assign Kubernetes pod and service IP addresses | `string` | `null` | no |
-| additional_cluster_dns_ips | Additional DNS IP addresses to add to the cluster DNS configuration | `list(string)` | `[]` | no |
-| enable_bootstrap_user_data | Determines whether the provided user data will be merged with the EKS bootstrap user data | `bool` | `false` | no |
-| pre_bootstrap_user_data | User data injected ahead of the EKS bootstrap script | `string` | `null` | no |
-| post_bootstrap_user_data | User data appended after the EKS bootstrap script | `string` | `null` | no |
-| bootstrap_extra_args | Additional arguments to pass to the EKS bootstrap script | `string` | `null` | no |
-| user_data_template_path | Path to a custom user data template file | `string` | `null` | no |
-| cloudinit_pre_nodeadm | Additional cloud-init configuration to merge before nodeadm bootstrap | `list(object)` | `[]` | no |
-| cloudinit_post_nodeadm | Additional cloud-init configuration to merge after nodeadm bootstrap | `list(object)` | `[]` | no |
+| ---- | ----------- | ---- | ------- | :------: |
+| additional\_cluster\_dns\_ips | Additional DNS IP addresses to add to the cluster DNS configuration. | `list(string)` | `[]` | no |
+| ami\_type | Type of Amazon Machine Image (AMI) associated with the EKS Node Group. | `string` | `null` | no |
+| bootstrap\_extra\_args | Additional arguments to pass to the EKS bootstrap script. | `string` | `null` | no |
+| cloudinit\_post\_nodeadm | Additional `cloud-init` configuration in MIME multi-part format to merge after nodeadm bootstrap. | <pre>list(object({<br/>    content      = string<br/>    content_type = optional(string, "text/x-shellscript")<br/>    filename     = optional(string)<br/>    merge_type   = optional(string)<br/>  }))</pre> | `[]` | no |
+| cloudinit\_pre\_nodeadm | Additional `cloud-init` configuration in MIME multi-part format to merge before nodeadm bootstrap. | <pre>list(object({<br/>    content      = string<br/>    content_type = optional(string, "text/x-shellscript")<br/>    filename     = optional(string)<br/>    merge_type   = optional(string)<br/>  }))</pre> | `[]` | no |
+| cluster\_auth\_base64 | Base64 encoded CA of associated EKS cluster. | `string` | `null` | no |
+| cluster\_endpoint | Endpoint of the EKS cluster. | `string` | `null` | no |
+| cluster\_ip\_family | The IP family used to assign Kubernetes pod and service addresses. | `string` | `"ipv4"` | no |
+| cluster\_name | Name of the EKS cluster. | `string` | `null` | no |
+| cluster\_service\_cidr | The CIDR block (IPv4 or IPv6) used to assign Kubernetes pod and service IP addresses. | `string` | `null` | no |
+| enable\_bootstrap\_user\_data | Determines whether the provided user data will be merged with the EKS bootstrap user data. | `bool` | `false` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| is\_eks\_managed\_node\_group | Determines whether the user data is used on nodes in an EKS managed node group. | `bool` | `true` | no |
+| platform | Identifies the OS platform as `bottlerocket`, `linux`, `al2023`, or `windows`. Used as a fallback when ami\_type cannot be determined. | `string` | `null` | no |
+| post\_bootstrap\_user\_data | User data that is appended to the user data script after the EKS bootstrap script. | `string` | `null` | no |
+| pre\_bootstrap\_user\_data | User data that is injected into the user data script ahead of the EKS bootstrap script. | `string` | `null` | no |
+| user\_data\_template\_path | Path to a local, custom user data template file to use when rendering user data. | `string` | `null` | no |
 
 ## Outputs
 
 | Name | Description |
-|------|-------------|
-| user_data | Base64 encoded user data rendered for the provided inputs |
-| platform | Identifies the OS platform as `bottlerocket`, `linux`, `al2023`, or `windows` |
-
+| ---- | ----------- |
+| platform | [DEPRECATED - Will be removed in `v21.0`] Identifies the OS platform as `bottlerocket`, `linux` (AL2), `al2023, or `windows |
+| user\_data | Base64 encoded user data rendered for the provided inputs |
+<!-- END_TF_DOCS -->
 
 ## Examples
 

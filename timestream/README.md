@@ -33,6 +33,47 @@ module "timestream" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| default\_magnetic\_store\_retention\_days | Default number of days data is retained in the magnetic store. Defaults to 365; raise it explicitly for longer retention (max 73000). | `number` | `365` | no |
+| default\_memory\_store\_retention\_hours | Default number of hours data is retained in the memory store before being moved to magnetic store. | `number` | `24` | no |
+| enable\_magnetic\_store\_writes | Whether to enable magnetic store writes by default for tables that do not specify their own magnetic\_store\_write\_properties. | `bool` | `false` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| kms\_key\_id | ARN of the KMS key used to encrypt data in the Timestream database. If null, the default AWS-managed key is used. | `string` | `null` | no |
+| name | Name of the Timestream database. | `string` | n/a | yes |
+| tables | Map of Timestream table configurations. Each entry creates a table with retention policies and optional schema/magnetic store settings. | <pre>map(object({<br/>    table_name                    = string<br/>    memory_store_retention_hours  = optional(number)<br/>    magnetic_store_retention_days = optional(number)<br/>    magnetic_store_write_properties = optional(object({<br/>      enable_magnetic_store_writes = optional(bool, true)<br/>      magnetic_store_rejected_data_location = optional(object({<br/>        s3_bucket_name       = optional(string)<br/>        s3_encryption_option = optional(string)<br/>        s3_kms_key_id        = optional(string)<br/>        s3_object_key_prefix = optional(string)<br/>      }))<br/>    }))<br/>    schema = optional(object({<br/>      composite_partition_key = optional(object({<br/>        enforcement_in_record = optional(string)<br/>        name                  = optional(string)<br/>        type                  = optional(string, "DIMENSION")<br/>      }))<br/>    }))<br/>    tags = optional(map(string), {})<br/>  }))</pre> | `{}` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| database\_arn | The ARN of the Timestream database. |
+| database\_id | The name (ID) of the Timestream database. |
+| database\_kms\_key\_id | The KMS key ID used to encrypt the Timestream database. |
+| database\_name | The name of the Timestream database. |
+| database\_table\_count | The total number of tables in the Timestream database. |
+| table\_arns | Map of table names to their ARNs. |
+| table\_names | Map of table keys to their names. |
+| tables | Map of created Timestream tables and their attributes. |
+<!-- END_TF_DOCS -->
+
 ## Examples
 
 ### Basic Timestream Database with Single Table

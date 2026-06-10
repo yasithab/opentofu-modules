@@ -106,6 +106,147 @@ tasks:
         echo "OPA policies available in policy/ directory."
         echo "Usage: tofu plan -out=plan.bin && tofu show -json plan.bin | conftest test --policy policy/ -"
 
+  docs:
+    desc: Regenerate Requirements/Providers/Inputs/Outputs in every module README (terraform-docs)
+    cmds:
+      - |
+        if ! command -v terraform-docs &> /dev/null; then
+          echo "terraform-docs is not installed."
+          echo "  macOS:  brew install terraform-docs"
+          echo "  Linux:  https://terraform-docs.io/user-guide/installation/"
+          exit 1
+        fi
+        find . -type f -name "main.tf" \
+          -not -path "*/.terraform/*" \
+          -not -path "*/.terraform-plugin-cache/*" -print0 | \
+          xargs -0 -I TFMAIN bash -c '
+            dir=$(dirname "TFMAIN")
+            echo "Generating docs: $dir"
+            terraform-docs --config "{{.ROOT_DIR}}/.terraform-docs.yml" "$dir" > /dev/null
+          '
+
+  new-module:
+    desc: "Scaffold a new module skeleton (usage: task new-module -- <name>)"
+    silent: true
+    cmds:
+      - |
+        NAME="{{.CLI_ARGS}}"
+        if [ -z "$NAME" ]; then
+          echo "Usage: task new-module -- <name>"
+          exit 1
+        fi
+        if ! echo "$NAME" | grep -Eq '^[a-z][a-z0-9-]*$'; then
+          echo "Module name must be lowercase alphanumeric with hyphens (e.g. my-module)."
+          exit 1
+        fi
+        DIR="{{.ROOT_DIR}}/$NAME"
+        if [ -e "$DIR" ]; then
+          echo "Refusing to scaffold: $DIR already exists."
+          exit 1
+        fi
+        mkdir -p "$DIR/test"
+
+        cat > "$DIR/providers.tf" <<EOF
+        terraform {
+          required_version = ">= 1.11.0"
+
+          required_providers {
+            aws = {
+              source  = "hashicorp/aws"
+              version = ">= 6.49, < 7.0"
+            }
+          }
+        }
+        EOF
+
+        cat > "$DIR/variables.tf" <<EOF
+        variable "enabled" {
+          description = "Set to false to prevent the module from creating any resources."
+          type        = bool
+          default     = true
+        }
+
+        variable "name" {
+          description = "The name of the $NAME to create"
+          type        = string
+
+          validation {
+            condition     = length(trimspace(var.name)) > 0
+            error_message = "name must be a non-empty string."
+          }
+        }
+
+        variable "tags" {
+          description = "Map of tags to apply to all resources."
+          type        = map(string)
+          default     = {}
+        }
+        EOF
+
+        cat > "$DIR/main.tf" <<EOF
+        data "aws_region" "current" {}
+
+        locals {
+          enabled = var.enabled
+          name    = var.name
+
+          tags = merge(var.tags, {
+            ManagedBy = "opentofu"
+            Region    = data.aws_region.current.region
+          })
+        }
+
+        ################################################################################
+        # $NAME
+        ################################################################################
+
+        # TODO: add resources here.
+        # Gate single resources with \`lifecycle { enabled = local.enabled }\` and
+        # for_each resources with \`for_each = { for k, v in var.items : k => v if local.enabled }\`.
+        EOF
+
+        cat > "$DIR/outputs.tf" <<EOF
+        # TODO: expose all useful resource attributes via try(), e.g.
+        #
+        # output "id" {
+        #   description = "The ID of the $NAME"
+        #   value       = try(aws_xxx.this.id, "")
+        # }
+        EOF
+
+        cat > "$DIR/README.md" <<EOF
+        # $NAME
+
+        OpenTofu module to create and manage AWS $NAME.
+
+        ## Usage
+
+        \`\`\`hcl
+        module "$(echo "$NAME" | tr '-' '_')" {
+          source = "git::https://github.com/yasithab/opentofu-modules.git//$NAME?depth=1&ref=master"
+
+          name = "example"
+
+          tags = {
+            Environment = "production"
+          }
+        }
+        \`\`\`
+
+        <!-- BEGIN_TF_DOCS -->
+        <!-- END_TF_DOCS -->
+        EOF
+
+        cat > "$DIR/test/test.tfvars" <<EOF
+        name = "terratest-plan"
+        EOF
+
+        echo "Scaffolded module: $DIR"
+        echo "Next steps:"
+        echo "  1. Add resources to $NAME/main.tf and outputs to $NAME/outputs.tf"
+        echo "  2. Run: task format && task validate"
+        echo "  3. Run: task docs   # populate README Inputs/Outputs"
+
   ci:
     desc: Run all CI tasks (format + validate + lint + test + security)
     deps: [format, validate, lint, test, security]

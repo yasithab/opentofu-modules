@@ -72,7 +72,7 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ env.TF_PLUGIN_CACHE_DIR }}
-          key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/providers.tf', '**/versions.tf') }}
+          key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
           restore-keys: |
             opentofu-providers-${{ runner.os }}-
 
@@ -162,6 +162,42 @@ jobs:
           echo "Updated tag: $UPDATED_TAG"
           echo "UPDATED_TAG=$UPDATED_TAG" >> "$GITHUB_OUTPUT"
 
+      - name: Build per-module release notes
+        id: release_notes
+        run: |
+          # List every module dir touched since the previous tag. Each changed
+          # file is walked up to its nearest ancestor containing a main.tf, so
+          # submodule/fixture/README changes attribute to the owning module.
+          PREV_TAG="${{ steps.current_tag.outputs.current_tag }}"
+          NOTES_FILE=/tmp/release-notes.md
+          : > "$NOTES_FILE"
+          if [ -n "$PREV_TAG" ]; then
+            CHANGED_MODULES=$(git diff --name-only "$PREV_TAG"..HEAD | \
+              xargs -r -n1 dirname | sort -u | \
+              while read -r dir; do
+                d="$dir"
+                while [ "$d" != "." ] && [ "$d" != "/" ]; do
+                  if [ -f "$d/main.tf" ]; then
+                    echo "$d"
+                    break
+                  fi
+                  d=$(dirname "$d")
+                done
+              done | sort -u)
+            if [ -n "$CHANGED_MODULES" ]; then
+              {
+                echo "## Changed modules"
+                echo ""
+                echo "Modules changed since \`$PREV_TAG\`:"
+                echo ""
+                echo "$CHANGED_MODULES" | sed 's/^/- `/; s/$/`/'
+                echo ""
+              } >> "$NOTES_FILE"
+            fi
+          fi
+          echo "Release notes preamble:"
+          cat "$NOTES_FILE"
+
       - name: Create new tag
         run: |
           git config --global user.name 'GitHub Actions'
@@ -173,7 +209,11 @@ jobs:
 
       - name: Create a release
         run: |
-          gh release create "${{ steps.determine_version.outputs.UPDATED_TAG }}" --generate-notes
+          # --notes-file content is prepended to the auto-generated notes
+          # (GitHub appends generated notes after a provided body).
+          gh release create "${{ steps.determine_version.outputs.UPDATED_TAG }}" \
+            --generate-notes \
+            --notes-file /tmp/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

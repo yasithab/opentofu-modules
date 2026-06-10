@@ -43,6 +43,43 @@ module "tag_policy" {
 ```
 
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| attach\_ous | List of OU IDs to attach the tag policies to | `list(string)` | `[]` | no |
+| attach\_to\_org | Whether to attach the tag policy to the organization (set to false if you want to attach to OUs) | `bool` | `false` | no |
+| description | Description of the tag policy | `string` | `null` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| name | Name to use for resource naming and tagging. | `string` | n/a | yes |
+| skip\_destroy | If set to true, the policy will not be deleted when the resource is destroyed. This is useful to prevent accidental deletion of tag policies attached to the organization. | `bool` | `false` | no |
+| tag\_policy | List of tag policies to create | <pre>map(object({<br/>    enforced_for                                      = optional(list(string), [])<br/>    enforced_for_operator                             = optional(string)<br/>    enforced_for_operators_allowed_for_child_policies = optional(list(string))<br/>    tag_key                                           = string<br/>    tag_key_operator                                  = optional(string)<br/>    tag_key_operators_allowed_for_child_policies      = optional(list(string))<br/>    values                                            = optional(list(string))<br/>    values_operator                                   = optional(string)<br/>    values_operators_allowed_for_child_policies       = optional(list(string))<br/>  }))</pre> | n/a | yes |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| attached\_org\_root\_id | Organization root ID the policy is attached to if the policy is attached to the root |
+| attached\_ou\_ids | List of OU IDs the policy is attached to |
+| policy\_arn | The ARN of the created tag policy |
+| policy\_id | ID of the created tag policy |
+<!-- END_TF_DOCS -->
+
 ## Examples
 
 ## Basic Usage
@@ -192,4 +229,3 @@ module "tag_policy_delegated" {
   }
 }
 ```
-

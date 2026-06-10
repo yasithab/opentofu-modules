@@ -38,6 +38,53 @@ module "eks_pod_identity" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| additional\_trust\_policy\_statements | Additional IAM policy statements to add to the trust policy | `list(any)` | `[]` | no |
+| associations | Map of pod identity associations to create. Each association maps a service account to the IAM role.<br/>Key is used as an identifier. Value object:<br/>  - namespace       : Kubernetes namespace<br/>  - service\_account : Kubernetes service account name | <pre>map(object({<br/>    namespace       = string<br/>    service_account = string<br/>  }))</pre> | `{}` | no |
+| cluster\_name | Name of the EKS cluster | `string` | n/a | yes |
+| create\_role | Whether to create the IAM role for pod identity | `bool` | `true` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| existing\_role\_arn | ARN of an existing IAM role to use instead of creating one. When set, `create_role` is ignored for the association. | `string` | `null` | no |
+| inline\_policies | Map of inline policy names to policy JSON documents to attach to the role | `map(string)` | `{}` | no |
+| managed\_policy\_arns | List of IAM managed policy ARNs to attach to the role | `list(string)` | `[]` | no |
+| name | Name prefix used for IAM role and related resources | `string` | n/a | yes |
+| role\_description | Description of the IAM role | `string` | `null` | no |
+| role\_max\_session\_duration | Maximum session duration (in seconds) for the IAM role. Value can be between 3600 and 43200. | `number` | `3600` | no |
+| role\_name | Name of the IAM role. If null, uses `var.name`. | `string` | `null` | no |
+| role\_path | Path for the IAM role | `string` | `"/"` | no |
+| role\_permissions\_boundary\_arn | ARN of the permissions boundary policy to attach to the IAM role | `string` | `null` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| associations | Map of pod identity association attributes |
+| role\_arn | ARN of the IAM role |
+| role\_create\_date | Creation date of the IAM role |
+| role\_id | ID of the IAM role |
+| role\_name | Name of the IAM role |
+| role\_path | Path of the IAM role |
+| role\_unique\_id | Unique ID of the IAM role |
+<!-- END_TF_DOCS -->
+
 ## Examples
 
 ## Basic Pod Identity for S3 Access

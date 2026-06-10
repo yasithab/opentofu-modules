@@ -30,43 +30,64 @@ module "docker_build" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+| docker | >= 3.0, < 4.0 |
+| null | >= 3.0, < 4.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+| docker | >= 3.0, < 4.0 |
+| null | >= 3.0, < 4.0 |
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| enabled | Controls whether resources should be created | `bool` | `true` | no |
-| create_ecr_repo | Controls whether an ECR repository should be created | `bool` | `false` | no |
-| ecr_repo | Name of the ECR repository to use or create | `string` | `null` | no |
-| ecr_address | Address of ECR repository for cross-account pulling | `string` | `null` | no |
-| source_path | Path to folder containing application code | `string` | `null` | no |
-| docker_file_path | Path to Dockerfile in the source package | `string` | `"Dockerfile"` | no |
-| image_tag | Image tag to use. Defaults to a hash of the `source_path` contents when set, otherwise a timestamp | `string` | `null` | no |
-| use_image_tag | Controls whether to use an image tag or deploy via digest (sha256) | `bool` | `true` | no |
-| build_args | A map of Docker build arguments | `map(string)` | `{}` | no |
-| platform | The target architecture platform to build the image for | `string` | `null` | no |
-| image_tag_mutability | Tag mutability setting for the repository (MUTABLE, IMMUTABLE, MUTABLE_WITH_EXCLUSION, IMMUTABLE_WITH_EXCLUSION) | `string` | `"IMMUTABLE"` | no |
-| scan_on_push | Whether images are scanned after being pushed | `bool` | `true` | no |
-| ecr_force_delete | If true, deletes the repository even if it contains images | `bool` | `false` | no |
-| ecr_repo_lifecycle_policy | A JSON formatted ECR lifecycle policy | `string` | `null` | no |
-| keep_remotely | Whether to keep the image in the remote registry on destroy | `bool` | `false` | no |
-| force_remove | Whether to remove the image forcibly on destroy | `bool` | `false` | no |
-| keep_locally | Whether to keep the Docker image locally on destroy | `bool` | `false` | no |
-| triggers | Map of strings that, when changed, force the image to be rebuilt | `map(string)` | `{}` | no |
-| create_sam_metadata | Controls whether the SAM metadata null resource should be created | `bool` | `false` | no |
-| tags | Map of tags to apply to all resources | `map(string)` | `{}` | no |
+| ---- | ----------- | ---- | ------- | :------: |
+| build\_args | A map of Docker build arguments. | `map(string)` | `{}` | no |
+| create\_ecr\_repo | Controls whether ECR repository for Lambda image should be created | `bool` | `false` | no |
+| create\_sam\_metadata | Controls whether the SAM metadata null resource should be created | `bool` | `false` | no |
+| docker\_file\_path | Path to Dockerfile in source package | `string` | `"Dockerfile"` | no |
+| ecr\_address | Address of ECR repository for cross-account container image pulling (optional). Option `create_ecr_repo` must be `false` | `string` | `null` | no |
+| ecr\_force\_delete | If true, will delete the repository even if it contains images. | `bool` | `false` | no |
+| ecr\_repo | Name of ECR repository to use or to create | `string` | `null` | no |
+| ecr\_repo\_lifecycle\_policy | A JSON formatted ECR lifecycle policy to automate the cleaning up of unused images. | `string` | `null` | no |
+| ecr\_repo\_tags | A map of tags to assign to ECR repository | `map(string)` | `{}` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| encryption\_configuration | Encryption configuration block for the ECR repository. Supports encryption\_type (AES256 or KMS) and kms\_key (ARN). | `any` | `null` | no |
+| force\_remove | Whether to remove image forcibly when the resource is destroyed. | `bool` | `false` | no |
+| image\_tag | Image tag to use. If not specified, a hash of the source\_path contents is used when source\_path is set; otherwise the current timestamp in format 'YYYYMMDDhhmmss' will be used (which can lead to unnecessary rebuilds). | `string` | `null` | no |
+| image\_tag\_mutability | The tag mutability setting for the repository. Must be one of: `MUTABLE`, `IMMUTABLE`, `MUTABLE_WITH_EXCLUSION`, or `IMMUTABLE_WITH_EXCLUSION` | `string` | `"IMMUTABLE"` | no |
+| image\_tag\_mutability\_exclusion\_filter | Configuration block for tag mutability exclusion filter. Required when image\_tag\_mutability is MUTABLE\_WITH\_EXCLUSION or IMMUTABLE\_WITH\_EXCLUSION. Contains filter (pattern string) and filter\_type (WILDCARD). | `any` | `null` | no |
+| keep\_locally | Whether to delete the Docker image locally on destroy operation. | `bool` | `false` | no |
+| keep\_remotely | Whether to keep Docker image in the remote registry on destroy operation. | `bool` | `false` | no |
+| platform | The target architecture platform to build the image for. | `string` | `null` | no |
+| scan\_on\_push | Indicates whether images are scanned after being pushed to the repository | `bool` | `true` | no |
+| source\_path | Path to folder containing application code | `string` | `null` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| triggers | A map of arbitrary strings that, when changed, will force the docker\_image resource to be replaced. This can be used to rebuild an image when contents of source code folders change | `map(string)` | `{}` | no |
+| use\_image\_tag | Controls whether to use image tag in ECR repository URI or not. Disable this to deploy latest image using ID (sha256:...) | `bool` | `true` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| image\_id | The ID of the Docker image |
+| image\_uri | The ECR image URI for deploying lambda |
+<!-- END_TF_DOCS -->
 
 ## Notes
 
 - **BREAKING default changes:** `ecr_force_delete` now defaults to `false` (repositories with images are no longer deleted on destroy), `scan_on_push` now defaults to `true`, and `image_tag_mutability` now defaults to `IMMUTABLE`. Set them explicitly to restore the previous behavior.
 - When `image_tag` is not set and `source_path` is set, the tag is derived from a content hash of the source directory, so the image is only rebuilt when sources change. Without `source_path`, a timestamp tag is used, which rebuilds and pushes the image on every apply.
-
-## Outputs
-
-| Name | Description |
-|------|-------------|
-| image_uri | The ECR image URI for deploying the Lambda function |
-| image_id | The ID of the Docker image |
-
 
 ## Examples
 

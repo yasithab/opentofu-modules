@@ -62,7 +62,7 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ env.TF_PLUGIN_CACHE_DIR }}
-          key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/providers.tf', '**/versions.tf') }}
+          key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
           restore-keys: |
             opentofu-providers-${{ runner.os }}-
 

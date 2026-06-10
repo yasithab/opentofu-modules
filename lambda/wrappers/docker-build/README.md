@@ -34,19 +34,33 @@ module "docker_build" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+| docker | >= 3.0 |
+| null | >= 3.0 |
+
+## Providers
+
+No providers.
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
-| defaults | Map of default values which will be used for each item | `any` | `{}` | no |
-| items | Maps of items to create a wrapper from. Values are passed through to the module | `any` | `{}` | no |
+| ---- | ----------- | ---- | ------- | :------: |
+| defaults | Map of default values which will be used for each item. | `any` | `{}` | no |
+| items | Maps of items to create a wrapper from. Values are passed through to the module. | `any` | `{}` | no |
 
 ## Outputs
 
 | Name | Description |
-|------|-------------|
-| wrapper | Map of outputs of the wrapper, keyed by each item's key |
-
+| ---- | ----------- |
+| wrapper | Map of outputs of a wrapper. |
+<!-- END_TF_DOCS -->
 
 ## Examples
 

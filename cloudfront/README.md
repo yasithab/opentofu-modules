@@ -105,190 +105,104 @@ module "cloudfront" {
 
 ---
 
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 | Name | Version |
-|------|---------|
-| OpenTofu | `>= 1.11.0` |
-| AWS provider | `~> 6.34` |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
 
----
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
 
 ## Inputs
 
-### Distribution
-
-| Variable | Description | Type | Default |
-|----------|-------------|------|---------|
-| `enabled` | Create the module resources | `bool` | `true` |
-| `distribution_enabled` | Whether the distribution accepts end user requests (decoupled from `enabled`) | `bool` | `true` |
-| `comment` | Distribution comment | `string` | `null` |
-| `aliases` | Alternate domain names (CNAMEs) | `list(string)` | `null` |
-| `default_root_object` | Default root object (e.g. `index.html`) | `string` | `null` |
-| `price_class` | `PriceClass_All`, `PriceClass_200`, or `PriceClass_100` | `string` | `null` |
-| `http_version` | `http2`, `http2and3`, `http3`, `http1.1` | `string` | `"http2"` |
-| `is_ipv6_enabled` | Enable IPv6 | `bool` | `null` |
-| `web_acl_id` | WAFv2 web ACL ARN. Changes are managed by this module (no longer ignored via `ignore_changes`) | `string` | `null` |
-| `staging` | Mark as a staging distribution | `bool` | `false` |
-| `continuous_deployment_policy_id` | Continuous deployment policy ID (production only) | `string` | `null` |
-| `anycast_ip_list_id` | Anycast static IP list ID | `string` | `null` |
-| `retain_on_delete` | Disable instead of delete on destroy | `bool` | `false` |
-| `wait_for_deployment` | Wait for `Deployed` status after changes | `bool` | `true` |
-| `tags` | Tags applied to all taggable resources | `map(string)` | `{}` |
-
-### Origins
-
-| Variable | Description | Type | Default |
-|----------|-------------|------|---------|
-| `origin` | Map of origins (typed schema). Key is used as `origin_id` unless overridden. Each entry supports: `domain_name` (required), `origin_id`, `origin_path`, `connection_attempts`, `connection_timeout`, `response_completion_timeout`, `origin_access_control_id` (or `origin_access_control` — name of an inline OAC), `custom_headers` (`map(string)` name => value), `custom_origin_config` (object: `http_port` default `80`, `https_port` default `443`, `origin_protocol_policy` default `"https-only"`, `origin_ssl_protocols` default `["TLSv1.2"]`, `origin_keepalive_timeout`, `origin_read_timeout`, `ip_address_type`), `s3_origin_config` (object: `cloudfront_access_identity_path` or `origin_access_identity` — name of an inline OAI), `origin_shield` (object: `enabled` default `true`, `origin_shield_region`), `vpc_origin_config` (object: `vpc_origin_id` or `vpc_origin` — name of an inline VPC origin, `origin_keepalive_timeout`, `origin_read_timeout`, `owner_account_id`) | `map(object)` | `{}` |
-| `origin_group` | Map of origin groups (typed schema). Key is used as `origin_id` unless overridden. Each entry: `origin_id`, `failover_status_codes` (required), `primary_member_origin_id` (required), `secondary_member_origin_id` (required) | `map(object)` | `{}` |
-
-### Cache Behaviors
-
-| Variable | Description | Type | Default |
-|----------|-------------|------|---------|
-| `default_cache_behavior` | Default cache behavior (**required**, typed schema). Attributes: `target_origin_id` (required), `viewer_protocol_policy` (default `"redirect-to-https"`), `allowed_methods` (default `["GET", "HEAD", "OPTIONS"]`), `cached_methods` (default `["GET", "HEAD"]`), `compress` (default `true`), `cache_policy_id`/`cache_policy_name` (**one required** — see [Policy Name Resolution](#policy-name-resolution)), `origin_request_policy_id`/`origin_request_policy_name`, `response_headers_policy_id`/`response_headers_policy_name`, `realtime_log_config_arn`/`realtime_log_config_name`, `function_association` (list of objects: `event_type` required, `function_arn` or `function_name`), `lambda_function_association` (list of objects: `event_type` and `lambda_arn` required, `include_body`), `trusted_key_groups`, `trusted_signers`, `field_level_encryption_id`, `smooth_streaming`, `grpc_config` (object: `enabled`). Legacy `forwarded_values` and behavior-level TTLs are **not supported** | `object` | n/a |
-| `ordered_cache_behavior` | List of ordered cache behaviors (typed schema), same attributes as `default_cache_behavior` plus the required `path_pattern`. Evaluated top to bottom (topmost = precedence 0) | `list(object)` | `[]` |
-
-### Policies (inline creation)
-
-| Variable | Description | Type | Default |
-|----------|-------------|------|---------|
-| `cache_policies` | Map of cache policies to create. Key = policy name. Supports: `comment`, `default_ttl`, `max_ttl`, `min_ttl`, `cookie_behavior`, `cookies_items`, `header_behavior`, `headers_items`, `query_string_behavior`, `query_strings_items`, `enable_accept_encoding_brotli`, `enable_accept_encoding_gzip` | `any` | `{}` |
-| `origin_request_policies` | Map of origin request policies to create. Key = policy name. Supports: `comment`, `cookie_behavior`, `cookies_items`, `header_behavior`, `headers_items`, `query_string_behavior`, `query_strings_items` | `any` | `{}` |
-| `response_headers_policies` | Map of response headers policies to create. Key = policy name. Supports: `comment`, `cors` (object), `custom_headers` (list), `remove_headers` (set), `content_security_policy_header`, `content_type_options_header`, `frame_options_header`, `referrer_policy_header`, `strict_transport_security_header`, `xss_protection_header`, `server_timing_header` | `any` | `{}` |
-
-### Functions and Edge Computing
-
-| Variable | Description | Type | Default |
-|----------|-------------|------|---------|
-| `key_value_stores` | Map of CloudFront Key-Value Stores. Key = store name. Supports: `comment` | `any` | `{}` |
-| `functions` | Map of CloudFront Functions. Key = function name. Required: `runtime` (e.g. `cloudfront-js-2.0`), `code` (JS source). Optional: `comment`, `publish` (default `true`), `key_value_store_associations` (list of inline KVS names or ARNs) | `any` | `{}` |
-
-### Signed URLs / Cookies
-
-| Variable | Description | Type | Default |
-|----------|-------------|------|---------|
-| `public_keys` | Map of CloudFront Public Keys. Key = key name. Required: `encoded_key` (PEM-encoded RSA public key). Optional: `comment` | `any` | `{}` |
-| `key_groups` | Map of CloudFront Key Groups. Key = group name. Required: `items` (list of inline public key names or explicit IDs). Optional: `comment` | `any` | `{}` |
-
-### Real-time Logging
-
-| Variable | Description | Type | Default |
-|----------|-------------|------|---------|
-| `realtime_log_configs` | Map of real-time log configs. Key = config name. Required: `sampling_rate` (1-100), `fields` (list), `kinesis_stream_config` (object with `role_arn` + `stream_arn`). Optional: `stream_type` (default `"Kinesis"`) | `any` | `{}` |
-
-### Continuous Deployment
-
-| Variable | Description | Type | Default |
-|----------|-------------|------|---------|
-| `continuous_deployment_policies` | Map of continuous deployment policies. Key = identifier. Required: `policy_enabled` (bool). Optional: `staging_distribution_dns_names` (object with `items` + `quantity`), `traffic_config` (object with `type` and one of `single_weight_config` or `single_header_config`) | `any` | `{}` |
-
-### Origin Access
-
-| Variable | Description | Type | Default |
-|----------|-------------|------|---------|
-| `create_origin_access_control` | Create OAC resources | `bool` | `false` |
-| `origin_access_control` | Map of OAC configs. Each entry requires: `description`, `origin_type`, `signing_behavior`, `signing_protocol` | `map(object)` | S3 default |
-| `create_origin_access_identity` | Create legacy OAI resources | `bool` | `false` |
-| `origin_access_identities` | Map of OAIs (value = comment) | `map(string)` | `{}` |
-
-### VPC Origins
-
-| Variable | Description | Type | Default |
-|----------|-------------|------|---------|
-| `create_vpc_origin` | Create VPC origin resources | `bool` | `false` |
-| `vpc_origin` | Map of VPC origins. Each entry requires: `name`, `arn`, `http_port`, `https_port`, `origin_protocol_policy`, `origin_ssl_protocols` (object with `items` + `quantity`) | `map(object)` | `{}` |
-
-### SSL / Viewer Certificate
-
-| Variable | Description | Type | Default |
-|----------|-------------|------|---------|
-| `viewer_certificate` | SSL configuration. Supports: `cloudfront_default_certificate`, `acm_certificate_arn`, `iam_certificate_id`, `ssl_support_method`, `minimum_protocol_version` (default `TLSv1.2_2021`) | `object` | CloudFront default cert, `TLSv1.2_2021` |
-| `viewer_mtls_config` | mTLS configuration. Supports: `mode`, `trust_store_config` (object with `trust_store_id`, `advertise_trust_store_ca_names`, `ignore_certificate_expiry`) | `any` | `null` |
-
-### Other Distribution Settings
-
-| Variable | Description | Type | Default |
-|----------|-------------|------|---------|
-| `geo_restriction` | Geo restriction config. Supports: `restriction_type` (`whitelist`/`blacklist`/`none`), `locations` (list of ISO 3166-1 alpha-2 codes) | `any` | `{}` |
-| `custom_error_response` | List of custom error response objects. Each supports: `error_code` (required), `response_code`, `response_page_path`, `error_caching_min_ttl` | `list(object)` | `[]` |
-| `logging_config` | Access log config. Supports: `bucket` (required), `prefix`, `include_cookies`. Strongly recommended for production | `object` | `null` |
-| `connection_function_association_id` | ID of a connection-level CloudFront Function (v6.28+) | `string` | `null` |
-| `create_monitoring_subscription` | Enable extended CloudWatch metrics | `bool` | `false` |
-| `realtime_metrics_subscription_status` | `Enabled` or `Disabled` | `string` | `"Enabled"` |
-
----
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| aliases | Extra CNAMEs (alternate domain names), if any, for this distribution. | `list(string)` | `null` | no |
+| anycast\_ip\_list\_id | ID of the Anycast static IP list to associate with the CloudFront distribution | `string` | `null` | no |
+| cache\_policies | Map of CloudFront cache policies to create. Map key is used as the policy name. Supports: comment, default\_ttl, max\_ttl, min\_ttl, cookie\_behavior, cookies\_items, header\_behavior, headers\_items, query\_string\_behavior, query\_strings\_items, enable\_accept\_encoding\_brotli, enable\_accept\_encoding\_gzip. | `any` | `{}` | no |
+| comment | Any comments you want to include about the distribution. | `string` | `null` | no |
+| connection\_function\_association\_id | ID of the CloudFront connection-level function to associate with the distribution (v6.28+) | `string` | `null` | no |
+| continuous\_deployment\_policies | Map of CloudFront Continuous Deployment Policies to create. Map key is used as the policy identifier. Required: policy\_enabled (bool). Optional: staging\_distribution\_dns\_names (object with items and quantity), traffic\_config (object with type and one of single\_weight\_config or single\_header\_config). | `any` | `{}` | no |
+| continuous\_deployment\_policy\_id | Identifier of a continuous deployment policy. This argument should only be set on a production distribution. | `string` | `null` | no |
+| create\_monitoring\_subscription | If enabled, the resource for monitoring subscription will created. | `bool` | `false` | no |
+| create\_origin\_access\_control | Controls if CloudFront origin access control should be created | `bool` | `false` | no |
+| create\_origin\_access\_identity | Controls if CloudFront origin access identity should be created | `bool` | `false` | no |
+| create\_vpc\_origin | If enabled, the resource for VPC origin will be created. | `bool` | `false` | no |
+| custom\_error\_response | List of custom error response elements | <pre>list(object({<br/>    error_code            = number<br/>    response_code         = optional(number)<br/>    response_page_path    = optional(string)<br/>    error_caching_min_ttl = optional(number)<br/>  }))</pre> | `[]` | no |
+| default\_cache\_behavior | The default cache behavior for this distribution (required). A cache policy is mandatory: set `cache_policy_id` (e.g. an AWS managed policy ID) or `cache_policy_name` (inline policy from `cache_policies`, or an AWS/externally managed policy looked up by name). Legacy `forwarded_values` is not supported. The `*_name` variants of origin request, response headers and realtime log config follow the same resolution rules. | <pre>object({<br/>    target_origin_id          = string<br/>    viewer_protocol_policy    = optional(string, "redirect-to-https")<br/>    allowed_methods           = optional(list(string), ["GET", "HEAD", "OPTIONS"])<br/>    cached_methods            = optional(list(string), ["GET", "HEAD"])<br/>    compress                  = optional(bool, true)<br/>    field_level_encryption_id = optional(string)<br/>    smooth_streaming          = optional(bool)<br/>    trusted_signers           = optional(list(string))<br/>    trusted_key_groups        = optional(list(string))<br/><br/>    cache_policy_id              = optional(string)<br/>    cache_policy_name            = optional(string)<br/>    origin_request_policy_id     = optional(string)<br/>    origin_request_policy_name   = optional(string)<br/>    response_headers_policy_id   = optional(string)<br/>    response_headers_policy_name = optional(string)<br/><br/>    realtime_log_config_arn  = optional(string)<br/>    realtime_log_config_name = optional(string)<br/><br/>    function_association = optional(list(object({<br/>      event_type    = string<br/>      function_arn  = optional(string)<br/>      function_name = optional(string)<br/>    })), [])<br/><br/>    lambda_function_association = optional(list(object({<br/>      event_type   = string<br/>      lambda_arn   = string<br/>      include_body = optional(bool)<br/>    })), [])<br/><br/>    grpc_config = optional(object({<br/>      enabled = bool<br/>    }))<br/>  })</pre> | n/a | yes |
+| default\_root\_object | The object that you want CloudFront to return (for example, index.html) when an end user requests the root URL. | `string` | `null` | no |
+| distribution\_enabled | Whether the CloudFront distribution accepts end user requests for content. Decoupled from `enabled` (which controls resource creation), so a distribution can be kept in state but disabled | `bool` | `true` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| functions | Map of CloudFront Functions to create. Map key is used as the function name. Required: runtime (string, e.g. 'cloudfront-js-2.0'), code (string, JS source). Optional: comment (string), publish (bool, default true), key\_value\_store\_associations (list of KVS ARNs or inline KVS names). | `any` | `{}` | no |
+| geo\_restriction | The restriction configuration for this distribution (geo\_restrictions) | `any` | `{}` | no |
+| http\_version | The maximum HTTP version to support on the distribution. Allowed values are http1.1, http2, http2and3, and http3. The default is http2. | `string` | `"http2"` | no |
+| is\_ipv6\_enabled | Whether the IPv6 is enabled for the distribution. | `bool` | `null` | no |
+| key\_groups | Map of CloudFront Key Groups to create. Map key is used as the group name. Required: items (list of public key IDs or inline public key names). Optional: comment (string). | `any` | `{}` | no |
+| key\_value\_stores | Map of CloudFront Key-Value Stores to create. Map key is used as the store name. Supports: comment (string). | `any` | `{}` | no |
+| logging\_config | The logging configuration that controls how logs are written to your distribution (maximum one). Strongly recommended for production distributions. Set to null (default) to disable logging | <pre>object({<br/>    bucket          = string<br/>    prefix          = optional(string)<br/>    include_cookies = optional(bool)<br/>  })</pre> | `null` | no |
+| ordered\_cache\_behavior | An ordered list of cache behaviors for this distribution, evaluated top to bottom (the topmost behavior has precedence 0). Same shape as `default_cache_behavior` plus the required `path_pattern`. A cache policy (`cache_policy_id` or `cache_policy_name`) is mandatory per behavior; legacy `forwarded_values` is not supported. | <pre>list(object({<br/>    path_pattern              = string<br/>    target_origin_id          = string<br/>    viewer_protocol_policy    = optional(string, "redirect-to-https")<br/>    allowed_methods           = optional(list(string), ["GET", "HEAD", "OPTIONS"])<br/>    cached_methods            = optional(list(string), ["GET", "HEAD"])<br/>    compress                  = optional(bool, true)<br/>    field_level_encryption_id = optional(string)<br/>    smooth_streaming          = optional(bool)<br/>    trusted_signers           = optional(list(string))<br/>    trusted_key_groups        = optional(list(string))<br/><br/>    cache_policy_id              = optional(string)<br/>    cache_policy_name            = optional(string)<br/>    origin_request_policy_id     = optional(string)<br/>    origin_request_policy_name   = optional(string)<br/>    response_headers_policy_id   = optional(string)<br/>    response_headers_policy_name = optional(string)<br/><br/>    realtime_log_config_arn  = optional(string)<br/>    realtime_log_config_name = optional(string)<br/><br/>    function_association = optional(list(object({<br/>      event_type    = string<br/>      function_arn  = optional(string)<br/>      function_name = optional(string)<br/>    })), [])<br/><br/>    lambda_function_association = optional(list(object({<br/>      event_type   = string<br/>      lambda_arn   = string<br/>      include_body = optional(bool)<br/>    })), [])<br/><br/>    grpc_config = optional(object({<br/>      enabled = bool<br/>    }))<br/>  }))</pre> | `[]` | no |
+| origin | Map of origins for this distribution. The map key is used as `origin_id` unless overridden. Exactly one of `custom_origin_config`, `s3_origin_config` (legacy OAI), `vpc_origin_config`, or `origin_access_control_id`/`origin_access_control` should be used per origin. `origin_access_control` and `s3_origin_config.origin_access_identity`/`vpc_origin_config.vpc_origin` accept names of OAC/OAI/VPC-origin resources created inline by this module. | <pre>map(object({<br/>    domain_name                 = string<br/>    origin_id                   = optional(string)<br/>    origin_path                 = optional(string, "")<br/>    connection_attempts         = optional(number)<br/>    connection_timeout          = optional(number)<br/>    response_completion_timeout = optional(number)<br/>    origin_access_control_id    = optional(string)<br/>    origin_access_control       = optional(string)<br/>    custom_headers              = optional(map(string), {})<br/>    custom_origin_config = optional(object({<br/>      http_port                = optional(number, 80)<br/>      https_port               = optional(number, 443)<br/>      origin_protocol_policy   = optional(string, "https-only")<br/>      origin_ssl_protocols     = optional(list(string), ["TLSv1.2"])<br/>      origin_keepalive_timeout = optional(number)<br/>      origin_read_timeout      = optional(number)<br/>      ip_address_type          = optional(string)<br/>    }))<br/>    s3_origin_config = optional(object({<br/>      cloudfront_access_identity_path = optional(string)<br/>      origin_access_identity          = optional(string)<br/>    }))<br/>    origin_shield = optional(object({<br/>      enabled              = optional(bool, true)<br/>      origin_shield_region = string<br/>    }))<br/>    vpc_origin_config = optional(object({<br/>      vpc_origin_id            = optional(string)<br/>      vpc_origin               = optional(string)<br/>      origin_keepalive_timeout = optional(number)<br/>      origin_read_timeout      = optional(number)<br/>      owner_account_id         = optional(string)<br/>    }))<br/>  }))</pre> | `{}` | no |
+| origin\_access\_control | Map of CloudFront origin access control | <pre>map(object({<br/>    description      = string<br/>    origin_type      = string<br/>    signing_behavior = string<br/>    signing_protocol = string<br/>  }))</pre> | <pre>{<br/>  "s3": {<br/>    "description": "",<br/>    "origin_type": "s3",<br/>    "signing_behavior": "always",<br/>    "signing_protocol": "sigv4"<br/>  }<br/>}</pre> | no |
+| origin\_access\_identities | Map of CloudFront origin access identities (value as a comment) | `map(string)` | `{}` | no |
+| origin\_group | Map of origin groups for this distribution. The map key is used as `origin_id` unless overridden. | <pre>map(object({<br/>    origin_id                  = optional(string)<br/>    failover_status_codes      = list(number)<br/>    primary_member_origin_id   = string<br/>    secondary_member_origin_id = string<br/>  }))</pre> | `{}` | no |
+| origin\_request\_policies | Map of CloudFront origin request policies to create. Map key is used as the policy name. Supports: comment, cookie\_behavior, cookies\_items, header\_behavior, headers\_items, query\_string\_behavior, query\_strings\_items. | `any` | `{}` | no |
+| price\_class | The price class for this distribution. One of PriceClass\_All, PriceClass\_200, PriceClass\_100 | `string` | `null` | no |
+| public\_keys | Map of CloudFront Public Keys to create. Map key is used as the key name. Required: encoded\_key (string, PEM-encoded public key). Optional: comment (string). | `any` | `{}` | no |
+| realtime\_log\_configs | Map of CloudFront Real-time Log Configs to create. Map key is used as the config name. Required: sampling\_rate (number, 1-100), fields (list of strings), kinesis\_stream\_config (object with role\_arn and stream\_arn). Optional: stream\_type (string, default 'Kinesis'). | `any` | `{}` | no |
+| realtime\_metrics\_subscription\_status | A flag that indicates whether additional CloudWatch metrics are enabled for a given CloudFront distribution. Valid values are `Enabled` and `Disabled`. | `string` | `"Enabled"` | no |
+| response\_headers\_policies | Map of CloudFront response headers policies to create. Map key is used as the policy name. Supports: comment, cors (object), custom\_headers (list), remove\_headers (set), content\_security\_policy\_header, content\_type\_options\_header, frame\_options\_header, referrer\_policy\_header, strict\_transport\_security\_header, xss\_protection\_header, server\_timing\_header. | `any` | `{}` | no |
+| retain\_on\_delete | Disables the distribution instead of deleting it when destroying the resource through Terraform. If this is set, the distribution needs to be deleted manually afterwards. | `bool` | `false` | no |
+| staging | Whether the distribution is a staging distribution. | `bool` | `false` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| viewer\_certificate | The SSL configuration for this distribution. minimum\_protocol\_version defaults to TLSv1.2\_2021; override only if legacy clients require an older protocol | <pre>object({<br/>    acm_certificate_arn            = optional(string)<br/>    cloudfront_default_certificate = optional(bool)<br/>    iam_certificate_id             = optional(string)<br/>    minimum_protocol_version       = optional(string, "TLSv1.2_2021")<br/>    ssl_support_method             = optional(string)<br/>  })</pre> | <pre>{<br/>  "cloudfront_default_certificate": true<br/>}</pre> | no |
+| viewer\_mtls\_config | Configuration for viewer mTLS authentication. Supports 'mode' (string) and 'trust\_store\_config' object with 'trust\_store\_id' (required), 'advertise\_trust\_store\_ca\_names' (bool), and 'ignore\_certificate\_expiry' (bool). | `any` | `null` | no |
+| vpc\_origin | Map of CloudFront VPC origin | <pre>map(object({<br/>    name                   = string<br/>    arn                    = string<br/>    http_port              = number<br/>    https_port             = number<br/>    origin_protocol_policy = string<br/>    origin_ssl_protocols = object({<br/>      items    = list(string)<br/>      quantity = number<br/>    })<br/>  }))</pre> | `{}` | no |
+| wait\_for\_deployment | If enabled, the resource will wait for the distribution status to change from InProgress to Deployed. Setting this to false will skip the process. | `bool` | `true` | no |
+| web\_acl\_id | If you're using AWS WAF to filter CloudFront requests, the Id of the AWS WAF web ACL that is associated with the distribution. The WAF Web ACL must exist in the WAF Global (CloudFront) region and the credentials configuring this argument must have waf:GetWebACL permissions assigned. If using WAFv2, provide the ARN of the web ACL. | `string` | `null` | no |
 
 ## Outputs
 
-### Distribution
-
-| Output | Description |
-|--------|-------------|
-| `cloudfront_distribution_id` | Distribution ID |
-| `cloudfront_distribution_arn` | Distribution ARN |
-| `cloudfront_distribution_domain_name` | CloudFront domain name (e.g. `d1234.cloudfront.net`) |
-| `cloudfront_distribution_hosted_zone_id` | Route 53 hosted zone ID for alias records |
-| `cloudfront_distribution_etag` | Current distribution version (ETag) |
-| `cloudfront_distribution_status` | `Deployed` or `InProgress` |
-| `cloudfront_distribution_last_modified_time` | Last modification timestamp |
-| `cloudfront_distribution_caller_reference` | Internal CloudFront reference |
-| `cloudfront_distribution_in_progress_validation_batches` | Number of in-progress invalidation batches |
-| `cloudfront_distribution_trusted_signers` | Active trusted signers |
-| `cloudfront_distribution_tags` | Distribution tags |
-| `cloudfront_monitoring_subscription_id` | Monitoring subscription ID |
-
-### Policies
-
-| Output | Description |
-|--------|-------------|
-| `cloudfront_cache_policy_ids` | Map of inline cache policy name to ID |
-| `cloudfront_origin_request_policy_ids` | Map of inline origin request policy name to ID |
-| `cloudfront_response_headers_policy_ids` | Map of inline response headers policy name to ID |
-
-### Functions and Edge Computing
-
-| Output | Description |
-|--------|-------------|
-| `cloudfront_key_value_store_arns` | Map of KVS name to ARN |
-| `cloudfront_key_value_store_ids` | Map of KVS name to ID |
-| `cloudfront_function_arns` | Map of function name to ARN |
-| `cloudfront_function_statuses` | Map of function name to status |
-
-### Signing
-
-| Output | Description |
-|--------|-------------|
-| `cloudfront_public_key_ids` | Map of public key name to ID |
-| `cloudfront_public_key_etags` | Map of public key name to ETag |
-| `cloudfront_key_group_ids` | Map of key group name to ID |
-| `cloudfront_key_group_etags` | Map of key group name to ETag |
-
-### Real-time Logging
-
-| Output | Description |
-|--------|-------------|
-| `cloudfront_realtime_log_config_arns` | Map of log config name to ARN |
-
-### Continuous Deployment
-
-| Output | Description |
-|--------|-------------|
-| `cloudfront_continuous_deployment_policy_ids` | Map of policy key to ID |
-| `cloudfront_continuous_deployment_policy_arns` | Map of policy key to ARN |
-
-### Origin Access
-
-| Output | Description |
-|--------|-------------|
-| `cloudfront_origin_access_controls` | Full OAC resource map |
-| `cloudfront_origin_access_controls_ids` | Map of OAC name to ID |
-| `cloudfront_origin_access_identities` | Full OAI resource map |
-| `cloudfront_origin_access_identity_ids` | Map of OAI name to ID |
-| `cloudfront_origin_access_identity_iam_arns` | Map of OAI name to IAM ARN |
-| `cloudfront_vpc_origin_ids` | Map of VPC origin name to ID |
-
+| Name | Description |
+| ---- | ----------- |
+| cloudfront\_cache\_policy\_ids | Map of cache policy name to ID for policies created by this module. |
+| cloudfront\_continuous\_deployment\_policy\_arns | Map of Continuous Deployment Policy key to ARN for policies created by this module. |
+| cloudfront\_continuous\_deployment\_policy\_ids | Map of Continuous Deployment Policy key to ID for policies created by this module. |
+| cloudfront\_distribution\_arn | The ARN (Amazon Resource Name) for the distribution. |
+| cloudfront\_distribution\_caller\_reference | Internal value used by CloudFront to allow future updates to the distribution configuration. |
+| cloudfront\_distribution\_domain\_name | The domain name corresponding to the distribution. |
+| cloudfront\_distribution\_etag | The current version of the distribution's information. |
+| cloudfront\_distribution\_hosted\_zone\_id | The CloudFront Route 53 zone ID that can be used to route an Alias Resource Record Set to. |
+| cloudfront\_distribution\_id | The identifier for the distribution. |
+| cloudfront\_distribution\_in\_progress\_validation\_batches | The number of invalidation batches currently in progress. |
+| cloudfront\_distribution\_last\_modified\_time | The date and time the distribution was last modified. |
+| cloudfront\_distribution\_status | The current status of the distribution. Deployed if the distribution's information is fully propagated throughout the Amazon CloudFront system. |
+| cloudfront\_distribution\_tags | Tags of the distribution's |
+| cloudfront\_distribution\_trusted\_signers | List of nested attributes for active trusted signers, if the distribution is set up to serve private content with signed URLs |
+| cloudfront\_function\_arns | Map of CloudFront Function name to ARN for functions created by this module. |
+| cloudfront\_function\_statuses | Map of CloudFront Function name to status for functions created by this module. |
+| cloudfront\_key\_group\_etags | Map of Key Group name to ETag for key groups created by this module. |
+| cloudfront\_key\_group\_ids | Map of Key Group name to ID for key groups created by this module. |
+| cloudfront\_key\_value\_store\_arns | Map of Key-Value Store name to ARN for stores created by this module. |
+| cloudfront\_key\_value\_store\_ids | Map of Key-Value Store name to ID for stores created by this module. |
+| cloudfront\_monitoring\_subscription\_id | The ID of the CloudFront monitoring subscription, which corresponds to the `distribution_id`. |
+| cloudfront\_origin\_access\_controls | The origin access controls created |
+| cloudfront\_origin\_access\_controls\_ids | The IDS of the origin access identities created |
+| cloudfront\_origin\_access\_identities | The origin access identities created |
+| cloudfront\_origin\_access\_identity\_iam\_arns | The IAM arns of the origin access identities created |
+| cloudfront\_origin\_access\_identity\_ids | The IDS of the origin access identities created |
+| cloudfront\_origin\_request\_policy\_ids | Map of origin request policy name to ID for policies created by this module. |
+| cloudfront\_public\_key\_etags | Map of Public Key name to ETag for public keys created by this module. |
+| cloudfront\_public\_key\_ids | Map of Public Key name to ID for public keys created by this module. |
+| cloudfront\_realtime\_log\_config\_arns | Map of Real-time Log Config name to ARN for configs created by this module. |
+| cloudfront\_response\_headers\_policy\_ids | Map of response headers policy name to ID for policies created by this module. |
+| cloudfront\_vpc\_origin\_ids | The IDS of the VPC origin created |
+<!-- END_TF_DOCS -->
 
 ## Examples
 

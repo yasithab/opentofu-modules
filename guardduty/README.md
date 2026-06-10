@@ -40,6 +40,69 @@ module "guardduty" {
 }
 ```
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| admin\_account\_id | AWS account ID to designate as the GuardDuty delegated administrator. Required when create\_organization\_admin\_account is true | `string` | `null` | no |
+| auto\_enable\_organization\_members | How GuardDuty is auto-enabled for organization member accounts. Valid values: ALL, NEW, NONE | `string` | `"NEW"` | no |
+| create\_organization\_admin\_account | Whether to designate a delegated GuardDuty administrator account for the organization. Apply from the organization management account | `bool` | `false` | no |
+| create\_organization\_configuration | Whether to manage the organization-wide GuardDuty configuration. Apply from the delegated administrator account | `bool` | `false` | no |
+| enable\_ec2\_agent\_management | Enable automatic management of the GuardDuty security agent for EC2 instances | `bool` | `true` | no |
+| enable\_ecs\_fargate\_agent\_management | Enable automatic management of the GuardDuty security agent for ECS Fargate tasks | `bool` | `true` | no |
+| enable\_eks\_addon\_management | Enable automatic management of the GuardDuty security agent add-on for EKS clusters | `bool` | `true` | no |
+| enable\_eks\_protection | Enable EKS audit log monitoring for GuardDuty to detect suspicious activities in EKS clusters | `bool` | `true` | no |
+| enable\_lambda\_protection | Enable Lambda network activity monitoring for GuardDuty to detect suspicious network traffic from Lambda functions | `bool` | `true` | no |
+| enable\_malware\_protection | Enable malware scanning for EC2 instances with EBS volumes when a GuardDuty finding indicates potential malware | `bool` | `true` | no |
+| enable\_rds\_protection | Enable RDS login activity monitoring for GuardDuty to detect suspicious login attempts to RDS databases | `bool` | `true` | no |
+| enable\_runtime\_monitoring | Enable runtime monitoring for GuardDuty to detect threats at the operating system level on EKS, ECS, and EC2 | `bool` | `true` | no |
+| enable\_s3\_protection | Enable S3 data event monitoring for GuardDuty to detect suspicious activities in S3 buckets | `bool` | `true` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| filters | Map of GuardDuty filter configurations. Each key is the filter name. Action must be ARCHIVE or NOOP | <pre>map(object({<br/>    action      = string<br/>    description = optional(string)<br/>    rank        = optional(number, 1)<br/>    criteria = list(object({<br/>      field                 = string<br/>      equals                = optional(list(string))<br/>      not_equals            = optional(list(string))<br/>      greater_than          = optional(string)<br/>      greater_than_or_equal = optional(string)<br/>      less_than             = optional(string)<br/>      less_than_or_equal    = optional(string)<br/>    }))<br/>  }))</pre> | `{}` | no |
+| finding\_publishing\_frequency | Frequency of notifications sent about subsequent finding occurrences. Valid values: FIFTEEN\_MINUTES, ONE\_HOUR, SIX\_HOURS | `string` | `"FIFTEEN_MINUTES"` | no |
+| ipsets | Map of IPSet configurations. Each key is the IPSet name. Format must be one of: TXT, STIX, OTX\_CSV, ALIEN\_VAULT, PROOF\_POINT, FIRE\_EYE | <pre>map(object({<br/>    activate = optional(bool, true)<br/>    format   = string<br/>    location = string<br/>  }))</pre> | `{}` | no |
+| member\_accounts | Map of member account configurations to associate with the GuardDuty detector. Each key is a friendly identifier | <pre>map(object({<br/>    account_id                 = string<br/>    email                      = string<br/>    invite                     = optional(bool, true)<br/>    invitation_message         = optional(string, "GuardDuty member invitation")<br/>    disable_email_notification = optional(bool, true)<br/>  }))</pre> | `{}` | no |
+| name | Name identifier for the GuardDuty deployment, used for naming and tagging conventions | `string` | `null` | no |
+| organization\_configuration\_features | Map of GuardDuty detector features to auto-enable for organization member accounts.<br/>Each key is the feature name (e.g. S3\_DATA\_EVENTS, EKS\_AUDIT\_LOGS, EBS\_MALWARE\_PROTECTION,<br/>RDS\_LOGIN\_EVENTS, LAMBDA\_NETWORK\_LOGS, RUNTIME\_MONITORING). auto\_enable must be ALL, NEW,<br/>or NONE. additional\_configuration supports nested agent-management settings for<br/>RUNTIME\_MONITORING (EKS\_ADDON\_MANAGEMENT, ECS\_FARGATE\_AGENT\_MANAGEMENT, EC2\_AGENT\_MANAGEMENT). | <pre>map(object({<br/>    auto_enable = string<br/>    additional_configuration = optional(list(object({<br/>      name        = string<br/>      auto_enable = string<br/>    })), [])<br/>  }))</pre> | `{}` | no |
+| publishing\_destination | Configuration for exporting GuardDuty findings to an S3 bucket. Requires destination\_arn and kms\_key\_arn | <pre>object({<br/>    destination_arn  = string<br/>    kms_key_arn      = string<br/>    destination_type = optional(string, "S3")<br/>  })</pre> | `null` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| threat\_intel\_sets | Map of ThreatIntelSet configurations. Each key is the ThreatIntelSet name. Format must be one of: TXT, STIX, OTX\_CSV, ALIEN\_VAULT, PROOF\_POINT, FIRE\_EYE | <pre>map(object({<br/>    activate = optional(bool, true)<br/>    format   = string<br/>    location = string<br/>  }))</pre> | `{}` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| detector\_account\_id | AWS account ID of the GuardDuty detector |
+| detector\_arn | ARN of the GuardDuty detector |
+| detector\_id | ID of the GuardDuty detector |
+| filter\_arns | Map of filter names to their ARNs |
+| filter\_ids | Map of filter names to their IDs |
+| ipset\_arns | Map of IPSet names to their ARNs |
+| ipset\_ids | Map of IPSet names to their IDs |
+| member\_account\_ids | Map of member account friendly names to their account IDs |
+| name | Name identifier for the GuardDuty deployment |
+| organization\_admin\_account\_id | AWS account ID of the GuardDuty delegated administrator account |
+| organization\_configuration\_feature\_names | List of GuardDuty feature names managed by the organization configuration |
+| organization\_configuration\_id | ID (detector ID) of the GuardDuty organization configuration |
+| publishing\_destination\_id | ID of the GuardDuty publishing destination |
+| threatintelset\_arns | Map of ThreatIntelSet names to their ARNs |
+| threatintelset\_ids | Map of ThreatIntelSet names to their IDs |
+<!-- END_TF_DOCS -->
+
 ## Examples
 
 ### Basic Detector with All Protections Enabled

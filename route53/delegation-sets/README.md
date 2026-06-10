@@ -25,6 +25,36 @@ module "delegation_sets" {
 ```
 
 
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| delegation\_sets | Map of Route53 delegation set parameters | <pre>map(object({<br/>    reference_name = optional(string)<br/>  }))</pre> | `{}` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| delegation\_set\_id | ID of Route53 delegation set |
+| delegation\_set\_name\_servers | Name servers in the Route53 delegation set |
+| delegation\_set\_reference\_name | Reference name used when the Route53 delegation set has been created |
+<!-- END_TF_DOCS -->
+
 ## Examples
 
 ## Basic Usage

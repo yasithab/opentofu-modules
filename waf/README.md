@@ -136,87 +136,69 @@ module "waf" {
 }
 ```
 
-## Input Variables
+<!-- BEGIN_TF_DOCS -->
+## Requirements
 
-### Standard Variables
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
 
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `enabled` | `bool` | `true` | Set to false to prevent the module from creating any resources. |
-| `name` | `string` | required | Name of the Web ACL. Used as a prefix for related resources. |
-| `tags` | `map(string)` | `{}` | Tags to assign to all resources. |
+## Providers
 
-### Core Settings
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
 
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `description` | `string` | `null` | Friendly description of the Web ACL. |
-| `scope` | `string` | `"REGIONAL"` | `REGIONAL` or `CLOUDFRONT`. CloudFront WACs must be created in us-east-1. |
-| `token_domains` | `list(string)` | `[]` | Domains to accept CAPTCHA/challenge tokens from. |
+## Inputs
 
-### Default Action
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| api\_keys | Map of API keys to create for application integration (CAPTCHA/Challenge JavaScript API).<br/>Map key is a descriptive name. Each value: { token\_domains = list(string) } | <pre>map(object({<br/>    token_domains = list(string)<br/>  }))</pre> | `{}` | no |
+| association\_config | Configuration for resource type-specific request body inspection size limits.<br/>Structure:<br/>  {<br/>    request\_body = {<br/>      api\_gateway              = { default\_size\_inspection\_limit = "KB\_16" }<br/>      app\_runner\_service       = { default\_size\_inspection\_limit = "KB\_16" }<br/>      cloudfront               = { default\_size\_inspection\_limit = "KB\_16" }<br/>      cognito\_user\_pool        = { default\_size\_inspection\_limit = "KB\_16" }<br/>      verified\_access\_instance = { default\_size\_inspection\_limit = "KB\_16" }<br/>    }<br/>  }<br/>Valid values for default\_size\_inspection\_limit: KB\_16, KB\_32, KB\_48, KB\_64 | <pre>object({<br/>    request_body = optional(object({<br/>      api_gateway              = optional(object({ default_size_inspection_limit = string }))<br/>      app_runner_service       = optional(object({ default_size_inspection_limit = string }))<br/>      cloudfront               = optional(object({ default_size_inspection_limit = string }))<br/>      cognito_user_pool        = optional(object({ default_size_inspection_limit = string }))<br/>      verified_access_instance = optional(object({ default_size_inspection_limit = string }))<br/>    }))<br/>  })</pre> | `null` | no |
+| associations | Map of resources to associate with the Web ACL. Map key is a descriptive name,<br/>map value is the resource ARN.<br/>Supported resource types: ALB, API Gateway Stage, AppSync GraphQL API,<br/>App Runner Service, Cognito User Pool, Verified Access Instance.<br/>Note: CloudFront distributions are associated via the distribution's web\_acl\_id attribute. | `map(string)` | `{}` | no |
+| captcha\_config | Specifies how AWS WAF should handle CAPTCHA evaluations at the Web ACL level. Sets the immunity time in seconds. | <pre>object({<br/>    immunity_time = number<br/>  })</pre> | `null` | no |
+| challenge\_config | Specifies how AWS WAF should handle challenge evaluations at the Web ACL level. Sets the immunity time in seconds. | <pre>object({<br/>    immunity_time = number<br/>  })</pre> | `null` | no |
+| custom\_response\_bodies | List of custom response body definitions that can be referenced by name in block rules.<br/>Each entry: { key = string, content = string, content\_type = string }<br/>content\_type: TEXT\_PLAIN, TEXT\_HTML, or APPLICATION\_JSON | <pre>list(object({<br/>    key          = string<br/>    content      = string<br/>    content_type = string<br/>  }))</pre> | `[]` | no |
+| data\_protection\_config | Configuration for data protection applied before logging WAF request data.<br/>Structure:<br/>  {<br/>    data\_protection = [<br/>      {<br/>        action                     = "HASH"   # HASH or SUBSTITUTION<br/>        exclude\_rate\_based\_details = optional(bool)<br/>        exclude\_rule\_match\_details = optional(bool)<br/>        fields = [<br/>          {<br/>            field\_type = "QUERY\_STRING"  # QUERY\_STRING, SINGLE\_HEADER, URI\_PATH, etc.<br/>            field\_keys = optional(list(string))  # For SINGLE\_HEADER: list of header names<br/>          }<br/>        ]<br/>      }<br/>    ]<br/>  } | `any` | `null` | no |
+| default\_action | Action to take on requests that don't match any rules. ALLOW or BLOCK. | `string` | `"ALLOW"` | no |
+| default\_action\_config | Optional configuration for the default action. Use when you want custom headers on<br/>ALLOW or custom response on BLOCK.<br/><br/>For ALLOW with custom headers:<br/>  { allow = { insert\_headers = [{ name = "x-allowed", value = "true" }] } }<br/><br/>For BLOCK with custom response:<br/>  { block = { response\_code = 403, custom\_response\_body\_key = "restricted" } } | <pre>object({<br/>    allow = optional(object({<br/>      insert_headers = optional(list(object({<br/>        name  = string<br/>        value = string<br/>      })), [])<br/>    }))<br/>    block = optional(object({<br/>      response_code            = optional(number)<br/>      custom_response_body_key = optional(string)<br/>    }))<br/>  })</pre> | `null` | no |
+| description | A friendly description of the Web ACL. | `string` | `null` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| ip\_sets | Map of IP sets to create. Map key becomes the IP set name.<br/>Each value: {<br/>  addresses          = list(string)   # CIDR notation<br/>  ip\_address\_version = string         # IPV4 or IPV6<br/>  description        = optional(string)<br/>}<br/>Created IP sets can be referenced by name in rules using ip\_set\_reference\_statement.name. | <pre>map(object({<br/>    addresses          = list(string)<br/>    ip_address_version = string<br/>    description        = optional(string)<br/>  }))</pre> | `{}` | no |
+| logging\_destination\_arns | List of ARNs of logging destinations. Supported: CloudWatch Logs log group,<br/>Kinesis Data Firehose delivery stream, S3 bucket.<br/>Names must start with aws-waf-logs-.<br/>When empty, no logging configuration is created. | `list(string)` | `[]` | no |
+| logging\_filter | Logging filter configuration to selectively log requests. When null, all requests are logged.<br/>Structure:<br/>  {<br/>    default\_behavior = "KEEP" or "DROP"<br/>    filters = [<br/>      {<br/>        behavior    = "KEEP" or "DROP"<br/>        requirement = "MEETS\_ANY" or "MEETS\_ALL"  # default MEETS\_ANY<br/>        conditions  = [<br/>          {<br/>            action\_condition     = { action = "ALLOW" \| "BLOCK" \| "COUNT" \| "CAPTCHA" \| "CHALLENGE" \| "EXCLUDED\_AS\_COUNT" }<br/>            label\_name\_condition = { label\_name = "..." }<br/>          }<br/>        ]<br/>      }<br/>    ]<br/>  } | <pre>object({<br/>    default_behavior = string<br/>    filters = optional(list(object({<br/>      behavior    = string<br/>      requirement = optional(string, "MEETS_ANY")<br/>      conditions = optional(list(object({<br/>        action_condition     = optional(object({ action = string }))<br/>        label_name_condition = optional(object({ label_name = string }))<br/>      })), [])<br/>    })), [])<br/>  })</pre> | `null` | no |
+| logging\_redacted\_fields | List of fields to redact from logs. Each entry specifies which field to redact:<br/>  { uri\_path = {} }<br/>  { query\_string = {} }<br/>  { method = {} }<br/>  { single\_header = { name = "authorization" } } | <pre>list(object({<br/>    uri_path      = optional(object({}))<br/>    query_string  = optional(object({}))<br/>    method        = optional(object({}))<br/>    single_header = optional(object({ name = string }))<br/>  }))</pre> | `[]` | no |
+| name | Name of the Web ACL and prefix for related resources. Required. | `string` | n/a | yes |
+| regex\_pattern\_sets | Map of regex pattern sets to create. Map key becomes the regex pattern set name.<br/>Each value: {<br/>  regular\_expressions = list(string)<br/>  description         = optional(string)<br/>}<br/>Created sets can be referenced by name in rules using regex\_pattern\_set\_reference\_statement.name. | <pre>map(object({<br/>    regular_expressions = list(string)<br/>    description         = optional(string)<br/>  }))</pre> | `{}` | no |
+| rule\_group\_associations | Map of rule group associations to the Web ACL. Map key is a descriptive name.<br/>When this is non-empty, the rule attribute of the Web ACL is added to lifecycle<br/>ignore\_changes to avoid conflicts between inline rules and associated groups.<br/>Each value: {<br/>  priority = number<br/>  rule\_group\_reference = optional({<br/>    arn  = optional(string)   # Use ARN for external rule groups<br/>    name = optional(string)   # Use name for rule groups created by this module<br/>    rule\_action\_overrides = optional(list({ name=string, action\_to\_use=string }))<br/>  })<br/>  managed\_rule\_group = optional({<br/>    name        = string<br/>    vendor\_name = string   # Defaults to "AWS"<br/>    version     = optional(string)<br/>    rule\_action\_overrides = optional(list({ name=string, action\_to\_use=string }))<br/>  })<br/>  override\_action   = optional(string)   # "none" or "count"<br/>  visibility\_config = optional({<br/>    cloudwatch\_metrics\_enabled = bool<br/>    metric\_name                = string<br/>    sampled\_requests\_enabled   = bool<br/>  })<br/>} | `any` | `{}` | no |
+| rule\_groups | Map of rule groups to create. Map key becomes the rule group name.<br/>Each value: {<br/>  capacity    = number              # WCU capacity<br/>  description = optional(string)<br/>  rules\_json  = optional(string)    # Raw JSON; takes precedence over rules<br/>  rules       = optional(any)       # Structured rules list (common statement types)<br/>  cloudwatch\_metrics\_enabled = optional(bool)<br/>  metric\_name                = optional(string)<br/>  sampled\_requests\_enabled   = optional(bool)<br/>  custom\_response\_bodies     = optional(list({ key=string, content=string, content\_type=string }))<br/>}<br/>Created rule groups can be referenced by name in rules using rule\_group\_reference\_statement.name. | <pre>map(object({<br/>    capacity                   = number<br/>    description                = optional(string)<br/>    rules_json                 = optional(string)<br/>    rules                      = optional(any, [])<br/>    cloudwatch_metrics_enabled = optional(bool, true)<br/>    metric_name                = optional(string)<br/>    sampled_requests_enabled   = optional(bool, true)<br/>    custom_response_bodies = optional(list(object({<br/>      key          = string<br/>      content      = string<br/>      content_type = string<br/>    })), [])<br/>  }))</pre> | `{}` | no |
+| rule\_json | Raw JSON string of WAFv2 rules to apply to the Web ACL. When set, takes precedence<br/>over the structured rules variable and rule\_json is passed directly to the provider.<br/>Use this for complex rules that exceed the structured variable schema (e.g., deeply<br/>nested and/or/not statements). | `string` | `null` | no |
+| rules | List of WAFv2 rule objects. Only used when rule\_json is null.<br/>Each rule is an object with the following top-level fields:<br/>  name              = string            (required)<br/>  priority          = number            (required)<br/>  statement         = object            (required - see README "Rule Structure Reference")<br/>  action            = string or object  (one of action/override\_action; "allow"\|"block"\|"count"\|"captcha"\|"challenge" or { allow\|block\|count\|captcha\|challenge = {...} })<br/>  override\_action   = string            ("none" or "count"; for managed/rule-group rules)<br/>  rule\_labels       = list(string)      (optional)<br/>  visibility\_config = object            (optional; { cloudwatch\_metrics\_enabled, metric\_name, sampled\_requests\_enabled }, falls back to var.visibility\_config)<br/>  captcha\_config    = object            (optional; { immunity\_time = number })<br/>  challenge\_config  = object            (optional; { immunity\_time = number })<br/>See README for the full rule structure reference including all statement types. | `any` | `[]` | no |
+| scope | Specifies whether the Web ACL is for an AWS CloudFront distribution (CLOUDFRONT) or for a regional application (REGIONAL). CLOUDFRONT scope must be created in us-east-1. | `string` | `"REGIONAL"` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| token\_domains | List of domains to accept in web requests that contain a CAPTCHA or challenge token. | `list(string)` | `[]` | no |
+| visibility\_config | Visibility configuration for the Web ACL. Also used as the default for rules that<br/>do not specify their own visibility\_config.<br/>Defaults: cloudwatch\_metrics\_enabled=true, metric\_name=var.name, sampled\_requests\_enabled=true. | <pre>object({<br/>    cloudwatch_metrics_enabled = optional(bool, true)<br/>    metric_name                = optional(string)<br/>    sampled_requests_enabled   = optional(bool, true)<br/>  })</pre> | `{}` | no |
 
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `default_action` | `string` | `"ALLOW"` | `ALLOW` or `BLOCK`. Action for requests that match no rules. |
-| `default_action_config` | `object` | `null` | Custom headers for ALLOW (`allow.insert_headers`) or custom response for BLOCK (`block.response_code`, `block.custom_response_body_key`). |
+## Outputs
 
-> **Note**: the default action is `ALLOW` - requests that match no rule are let
-> through. This suits a blocklist-style Web ACL (managed rule groups plus targeted
-> block rules). For an allowlist posture, set `default_action = "BLOCK"` and add
-> explicit allow rules.
-
-### Custom Response Bodies
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `custom_response_bodies` | `list(object)` | `[]` | Reusable response body definitions. Each: `{key, content, content_type}`. |
-
-### Visibility Config
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `visibility_config` | `object` | see description | CloudWatch metrics and sampling config. Default: metrics enabled, metric_name=var.name, sampling enabled. |
-
-### Rules
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `rules` | `any` | `[]` | List of structured rule objects. Used when `rule_json` is null. Top-level schema is enforced by `validation` blocks (see [Why `rules` is `type = any`](#why-rules-is-type--any)); full structure in [Rule Structure Reference](#rule-structure-reference). |
-| `rule_json` | `string` | `null` | Raw JSON rules string. Takes precedence over `rules` when set. |
-
-### Advanced Web ACL Settings
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `association_config` | `object` | `null` | Request body inspection size limits per resource type (`request_body.api_gateway`, `request_body.cloudfront`, etc., each `{ default_size_inspection_limit = "KB_16" | "KB_32" | "KB_48" | "KB_64" }`). |
-| `captcha_config` | `object({immunity_time=number})` | `null` | Web ACL-level CAPTCHA immunity time in seconds. |
-| `challenge_config` | `object({immunity_time=number})` | `null` | Web ACL-level challenge immunity time in seconds. |
-| `data_protection_config` | `any` | `null` | Field-level data protection (hashing/substitution) before logging. |
-
-### Helper Resources
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `ip_sets` | `map(object)` | `{}` | IP sets to create. Map key = name. Referenced by name in rules. |
-| `regex_pattern_sets` | `map(object)` | `{}` | Regex pattern sets to create. Map key = name. Referenced by name in rules. |
-| `rule_groups` | `map(object)` | `{}` | Rule groups to create. Map key = name. Support `rules_json` or structured `rules`. |
-| `api_keys` | `map(object)` | `{}` | API keys for CAPTCHA/Challenge JavaScript SDK. Map key = descriptive name. |
-
-### Associations
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `associations` | `map(string)` | `{}` | Map of name to resource ARN. Associates the Web ACL with ALBs, API stages, etc. |
-| `rule_group_associations` | `any` | `{}` | Map of rule group associations. Triggers `lifecycle ignore_changes = [rule]` on the Web ACL. |
-
-### Logging
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `logging_destination_arns` | `list(string)` | `[]` | ARNs of CloudWatch log groups, Firehose streams, or S3 buckets. Names must start with `aws-waf-logs-`. |
-| `logging_filter` | `object` | `null` | Selective logging filter (`default_behavior` plus `filters` list). `null` = log all requests. |
-| `logging_redacted_fields` | `list(object)` | `[]` | Fields to redact from logs. Each entry sets exactly one of `uri_path`, `query_string`, `method`, or `single_header = { name = "..." }`. |
+| Name | Description |
+| ---- | ----------- |
+| api\_keys | Map of API key name to api\_key value for all API keys created by this module. |
+| association\_ids | Map of association name to resource ID for all Web ACL associations created by this module. |
+| ip\_set\_arns | Map of IP set name to ARN for all IP sets created by this module. |
+| ip\_set\_ids | Map of IP set name to ID for all IP sets created by this module. |
+| regex\_pattern\_set\_arns | Map of regex pattern set name to ARN for all sets created by this module. |
+| regex\_pattern\_set\_ids | Map of regex pattern set name to ID for all sets created by this module. |
+| rule\_group\_arns | Map of rule group name to ARN for all rule groups created by this module. |
+| rule\_group\_association\_ids | Map of rule group association name to resource ID for all rule group associations created by this module. |
+| rule\_group\_ids | Map of rule group name to ID for all rule groups created by this module. |
+| web\_acl\_application\_integration\_url | The URL to use in SDK integrations with managed rule groups (for CAPTCHA and challenge actions). |
+| web\_acl\_arn | The ARN of the Web ACL. Use this ARN to associate the Web ACL with a CloudFront distribution, ALB, or API Gateway stage. |
+| web\_acl\_capacity | The web ACL capacity units (WCUs) currently used by this web ACL. |
+| web\_acl\_id | The unique identifier of the Web ACL. |
+| web\_acl\_name | The name of the Web ACL. |
+<!-- END_TF_DOCS -->
 
 ## Rule Structure Reference
 
@@ -400,33 +382,6 @@ field_to_match = {
   }
 }
 ```
-
-## Outputs
-
-| Name | Description |
-|------|-------------|
-| `web_acl_id` | The unique identifier of the Web ACL. |
-| `web_acl_arn` | The ARN of the Web ACL. Use this to associate with CloudFront. |
-| `web_acl_name` | The name of the Web ACL. |
-| `web_acl_capacity` | WCU capacity currently used by this Web ACL. |
-| `web_acl_application_integration_url` | URL for SDK integration (CAPTCHA/Challenge). |
-| `ip_set_arns` | Map of IP set name to ARN. |
-| `ip_set_ids` | Map of IP set name to ID. |
-| `regex_pattern_set_arns` | Map of regex pattern set name to ARN. |
-| `regex_pattern_set_ids` | Map of regex pattern set name to ID. |
-| `rule_group_arns` | Map of rule group name to ARN. |
-| `rule_group_ids` | Map of rule group name to ID. |
-| `api_keys` | Map of API key name to api_key value. Sensitive. |
-| `association_ids` | Map of association name to resource ID. |
-| `rule_group_association_ids` | Map of rule group association name to resource ID. |
-
-## Requirements
-
-| Name | Version |
-|------|---------|
-| OpenTofu | >= 1.11.0 |
-| AWS provider | ~> 6.34 |
-
 
 ## Examples
 
