@@ -22,6 +22,18 @@ real-time log configs, VPC origins, and continuous deployment policies - all fro
 | `aws_cloudfront_vpc_origin` | `create_vpc_origin` + `vpc_origin` map |
 | `aws_cloudfront_monitoring_subscription` | `create_monitoring_subscription` |
 
+> [!IMPORTANT]
+> - **Every cache behavior must reference a cache policy** via `cache_policy_id` or `cache_policy_name` (enforced by variable validation). Use an AWS managed policy (e.g. `CachingOptimized`, ID `658327ea-f89d-4fab-a63d-7e88639e58f6`; `CachingDisabled`, ID `4135ea2d-6df8-44a3-9df3-4b5a84be39ad`) or define your own under `cache_policies`. Forwarding headers/cookies/query strings to the origin is configured with `origin_request_policy_id`/`origin_request_policy_name` (e.g. AWS managed `AllViewer`, ID `216adef6-5c7f-47e4-b989-5492eafa07d3`). Legacy `forwarded_values` is not supported (deprecated by AWS); TTLs belong to the cache policy.
+> - `origin`, `origin_group`, `default_cache_behavior`, and `ordered_cache_behavior` are fully typed `optional()` object schemas — unknown attributes are rejected at plan time. Origin custom headers are `custom_headers` (`map(string)`); `function_association`/`lambda_function_association` are lists of objects with an explicit `event_type`.
+> - `default_cache_behavior` is required. `viewer_protocol_policy` defaults to `redirect-to-https` and `compress` defaults to `true` on all behaviors.
+> - `distribution_enabled` controls the distribution's own `enabled` argument (whether it serves traffic), decoupled from `enabled` (whether the resource exists).
+> - `viewer_certificate.minimum_protocol_version` defaults to `TLSv1.2_2021`; override only if you must support legacy TLS clients. With `cloudfront_default_certificate = true` CloudFront ignores this setting and uses TLSv1.
+> - `web_acl_id` is fully managed: if a WAF web ACL is attached out-of-band (e.g. by AWS Firewall Manager), the next plan will detach it unless `web_acl_id` matches.
+> - `logging_config` is a typed object defaulting to `null` (omit to disable logging). `custom_error_response` is a typed list. `viewer_certificate` is a typed object.
+
+> [!NOTE]
+> Enable `logging_config` (access logs) for production distributions — logs are the primary forensic trail for CDN traffic.
+
 ## Policy Name Resolution
 
 Policies can be referenced in cache behaviors in three ways (tried in order):
@@ -30,8 +42,19 @@ Policies can be referenced in cache behaviors in three ways (tried in order):
 2. **Inline name** - pass `cache_policy_name` matching a key in `cache_policies` (created in this module call)
 3. **AWS-managed name** - pass `cache_policy_name` not found in `cache_policies` (looked up via data source)
 
-The same three-tier resolution applies to `realtime_log_config_arn`/`realtime_log_config_name`
+The same resolution applies to `realtime_log_config_arn`/`realtime_log_config_name`
 and `function_association.function_arn`/`function_association.function_name`.
+
+A cache policy is **mandatory** on every behavior (legacy `forwarded_values` is gone). If you
+don't need custom caching rules, reference an AWS managed policy either by name
+(`cache_policy_name = "CachingOptimized"`, resolved via data source — requires AWS credentials
+at plan time) or directly by its well-known ID (no lookup needed), e.g.:
+
+| AWS managed cache policy | ID |
+|--------------------------|----|
+| `CachingOptimized` | `658327ea-f89d-4fab-a63d-7e88639e58f6` |
+| `CachingDisabled` | `4135ea2d-6df8-44a3-9df3-4b5a84be39ad` |
+| `CachingOptimizedForUncompressedObjects` | `b2884449-e4de-46a7-ac36-70bc7f1ddd6d` |
 
 ## Usage
 
@@ -97,14 +120,15 @@ module "cloudfront" {
 
 | Variable | Description | Type | Default |
 |----------|-------------|------|---------|
-| `enabled` | Create the CloudFront distribution | `bool` | `true` |
+| `enabled` | Create the module resources | `bool` | `true` |
+| `distribution_enabled` | Whether the distribution accepts end user requests (decoupled from `enabled`) | `bool` | `true` |
 | `comment` | Distribution comment | `string` | `null` |
 | `aliases` | Alternate domain names (CNAMEs) | `list(string)` | `null` |
 | `default_root_object` | Default root object (e.g. `index.html`) | `string` | `null` |
 | `price_class` | `PriceClass_All`, `PriceClass_200`, or `PriceClass_100` | `string` | `null` |
 | `http_version` | `http2`, `http2and3`, `http3`, `http1.1` | `string` | `"http2"` |
 | `is_ipv6_enabled` | Enable IPv6 | `bool` | `null` |
-| `web_acl_id` | WAFv2 web ACL ARN | `string` | `null` |
+| `web_acl_id` | WAFv2 web ACL ARN. Changes are managed by this module (no longer ignored via `ignore_changes`) | `string` | `null` |
 | `staging` | Mark as a staging distribution | `bool` | `false` |
 | `continuous_deployment_policy_id` | Continuous deployment policy ID (production only) | `string` | `null` |
 | `anycast_ip_list_id` | Anycast static IP list ID | `string` | `null` |
@@ -116,15 +140,15 @@ module "cloudfront" {
 
 | Variable | Description | Type | Default |
 |----------|-------------|------|---------|
-| `origin` | Map of origins. Key is used as `origin_id`. Each entry supports: `domain_name` (required), `origin_path`, `origin_access_control` (OAC name), `custom_origin_config`, `s3_origin_config`, `custom_header` (list), `origin_shield`, `vpc_origin_config`, `connection_attempts`, `connection_timeout`, `response_completion_timeout` | `any` | `null` |
-| `origin_group` | Map of origin groups. Each entry requires `failover_status_codes`, `primary_member_origin_id`, `secondary_member_origin_id` | `any` | `{}` |
+| `origin` | Map of origins (typed schema). Key is used as `origin_id` unless overridden. Each entry supports: `domain_name` (required), `origin_id`, `origin_path`, `connection_attempts`, `connection_timeout`, `response_completion_timeout`, `origin_access_control_id` (or `origin_access_control` — name of an inline OAC), `custom_headers` (`map(string)` name => value), `custom_origin_config` (object: `http_port` default `80`, `https_port` default `443`, `origin_protocol_policy` default `"https-only"`, `origin_ssl_protocols` default `["TLSv1.2"]`, `origin_keepalive_timeout`, `origin_read_timeout`, `ip_address_type`), `s3_origin_config` (object: `cloudfront_access_identity_path` or `origin_access_identity` — name of an inline OAI), `origin_shield` (object: `enabled` default `true`, `origin_shield_region`), `vpc_origin_config` (object: `vpc_origin_id` or `vpc_origin` — name of an inline VPC origin, `origin_keepalive_timeout`, `origin_read_timeout`, `owner_account_id`) | `map(object)` | `{}` |
+| `origin_group` | Map of origin groups (typed schema). Key is used as `origin_id` unless overridden. Each entry: `origin_id`, `failover_status_codes` (required), `primary_member_origin_id` (required), `secondary_member_origin_id` (required) | `map(object)` | `{}` |
 
 ### Cache Behaviors
 
 | Variable | Description | Type | Default |
 |----------|-------------|------|---------|
-| `default_cache_behavior` | Default cache behavior. Supports all standard attributes plus `cache_policy_name`, `origin_request_policy_name`, `response_headers_policy_name`, `realtime_log_config_name`, `function_association` (list with `function_name` for inline functions), `lambda_function_association`, `grpc_config` | `any` | `null` |
-| `ordered_cache_behavior` | List of ordered cache behaviors, same attributes as `default_cache_behavior` plus `path_pattern` | `any` | `[]` |
+| `default_cache_behavior` | Default cache behavior (**required**, typed schema). Attributes: `target_origin_id` (required), `viewer_protocol_policy` (default `"redirect-to-https"`), `allowed_methods` (default `["GET", "HEAD", "OPTIONS"]`), `cached_methods` (default `["GET", "HEAD"]`), `compress` (default `true`), `cache_policy_id`/`cache_policy_name` (**one required** — see [Policy Name Resolution](#policy-name-resolution)), `origin_request_policy_id`/`origin_request_policy_name`, `response_headers_policy_id`/`response_headers_policy_name`, `realtime_log_config_arn`/`realtime_log_config_name`, `function_association` (list of objects: `event_type` required, `function_arn` or `function_name`), `lambda_function_association` (list of objects: `event_type` and `lambda_arn` required, `include_body`), `trusted_key_groups`, `trusted_signers`, `field_level_encryption_id`, `smooth_streaming`, `grpc_config` (object: `enabled`). Legacy `forwarded_values` and behavior-level TTLs are **not supported** | `object` | n/a |
+| `ordered_cache_behavior` | List of ordered cache behaviors (typed schema), same attributes as `default_cache_behavior` plus the required `path_pattern`. Evaluated top to bottom (topmost = precedence 0) | `list(object)` | `[]` |
 
 ### Policies (inline creation)
 
@@ -180,7 +204,7 @@ module "cloudfront" {
 
 | Variable | Description | Type | Default |
 |----------|-------------|------|---------|
-| `viewer_certificate` | SSL configuration. Supports: `cloudfront_default_certificate`, `acm_certificate_arn`, `iam_certificate_id`, `ssl_support_method`, `minimum_protocol_version` | `any` | CloudFront default cert |
+| `viewer_certificate` | SSL configuration. Supports: `cloudfront_default_certificate`, `acm_certificate_arn`, `iam_certificate_id`, `ssl_support_method`, `minimum_protocol_version` (default `TLSv1.2_2021`) | `object` | CloudFront default cert, `TLSv1.2_2021` |
 | `viewer_mtls_config` | mTLS configuration. Supports: `mode`, `trust_store_config` (object with `trust_store_id`, `advertise_trust_store_ca_names`, `ignore_certificate_expiry`) | `any` | `null` |
 
 ### Other Distribution Settings
@@ -188,8 +212,8 @@ module "cloudfront" {
 | Variable | Description | Type | Default |
 |----------|-------------|------|---------|
 | `geo_restriction` | Geo restriction config. Supports: `restriction_type` (`whitelist`/`blacklist`/`none`), `locations` (list of ISO 3166-1 alpha-2 codes) | `any` | `{}` |
-| `custom_error_response` | List of custom error response objects. Each supports: `error_code`, `response_code`, `response_page_path`, `error_caching_min_ttl` | `any` | `{}` |
-| `logging_config` | Access log config. Supports: `bucket` (required), `prefix`, `include_cookies` | `any` | `{}` |
+| `custom_error_response` | List of custom error response objects. Each supports: `error_code` (required), `response_code`, `response_page_path`, `error_caching_min_ttl` | `list(object)` | `[]` |
+| `logging_config` | Access log config. Supports: `bucket` (required), `prefix`, `include_cookies`. Strongly recommended for production | `object` | `null` |
 | `connection_function_association_id` | ID of a connection-level CloudFront Function (v6.28+) | `string` | `null` |
 | `create_monitoring_subscription` | Enable extended CloudWatch metrics | `bool` | `false` |
 | `realtime_metrics_subscription_status` | `Enabled` or `Disabled` | `string` | `"Enabled"` |
@@ -695,9 +719,8 @@ module "cloudfront" {
     # Associate the inline function by name
     function_association = [
       {
-        "viewer-request" = {
-          function_name = "url-rewriter"
-        }
+        event_type    = "viewer-request"
+        function_name = "url-rewriter"
       }
     ]
   }
@@ -721,32 +744,23 @@ output "redirect_kvs_arn" {
 ## Signed URLs / Cookies - Public Key and Key Group
 
 Creates a public key and key group for serving private content with signed
-URLs or signed cookies. The key group must be created in a separate module
-call because the distribution needs the key group ID at plan time.
+URLs or signed cookies. The key group is created outside the module call
+because the distribution needs the key group ID at plan time (every module
+sub-resource is gated by `enabled`, so a "signing-only" module call is not
+possible).
 
 ```hcl
-# Step 1: Create the public key and key group
-module "cloudfront_signing" {
-  source = "git::https://github.com/yasithab/opentofu-modules.git//cloudfront?depth=1&ref=master"
+# Step 1: Create the public key and key group as standalone resources
+resource "aws_cloudfront_public_key" "signing" {
+  name        = "signing-key-2024"
+  comment     = "RSA-2048 signing key - rotated annually"
+  encoded_key = file("${path.module}/keys/cloudfront-public-key.pem")
+}
 
-  # Only create signing resources, not a distribution
-  enabled = false
-
-  # Upload the RSA public key (PEM-encoded, 2048-bit minimum)
-  public_keys = {
-    "signing-key-2024" = {
-      comment     = "RSA-2048 signing key - rotated annually"
-      encoded_key = file("${path.module}/keys/cloudfront-public-key.pem")
-    }
-  }
-
-  # Key group references one or more public keys by inline name or explicit ID
-  key_groups = {
-    "content-signing-group" = {
-      comment = "Key group for signed URL enforcement"
-      items   = ["signing-key-2024"] # inline public key name
-    }
-  }
+resource "aws_cloudfront_key_group" "signing" {
+  name    = "content-signing-group"
+  comment = "Key group for signed URL enforcement"
+  items   = [aws_cloudfront_public_key.signing.id]
 }
 
 # Step 2: Create the distribution, referencing the key group from step 1
@@ -780,8 +794,8 @@ module "cloudfront" {
     viewer_protocol_policy = "https-only"
     cache_policy_name      = "CachingOptimized"
     compress               = true
-    # Reference the key group created in the separate module call
-    trusted_key_groups = [module.cloudfront_signing.cloudfront_key_group_ids["content-signing-group"]]
+    # Reference the key group created in step 1
+    trusted_key_groups = [aws_cloudfront_key_group.signing.id]
   }
 
   viewer_certificate = {
@@ -913,29 +927,26 @@ module "cloudfront_staging" {
   }
 }
 
-# Step 2: Create the continuous deployment policy linking staging to production
-module "cloudfront_cd_policy" {
-  source = "git::https://github.com/yasithab/opentofu-modules.git//cloudfront?depth=1&ref=master"
+# Step 2: Create the continuous deployment policy linking staging to production.
+# The policy is a standalone resource (a "policy-only" module call is not
+# possible because every module sub-resource is gated by `enabled`).
+resource "aws_cloudfront_continuous_deployment_policy" "v2_canary" {
+  enabled = true
 
-  # Only create the continuous deployment policy, not a distribution
-  enabled = false
+  staging_distribution_dns_names {
+    items    = [module.cloudfront_staging.cloudfront_distribution_domain_name]
+    quantity = 1
+  }
 
-  continuous_deployment_policies = {
-    "v2-canary" = {
-      policy_enabled = true
-      staging_distribution_dns_names = {
-        items    = [module.cloudfront_staging.cloudfront_distribution_domain_name]
-        quantity = 1
-      }
-      traffic_config = {
-        type = "SingleWeight"
-        single_weight_config = {
-          weight = 0.15 # send 15% of traffic to staging
-          session_stickiness_config = {
-            idle_ttl    = 300
-            maximum_ttl = 600
-          }
-        }
+  traffic_config {
+    type = "SingleWeight"
+
+    single_weight_config {
+      weight = 0.15 # send 15% of traffic to staging
+
+      session_stickiness_config {
+        idle_ttl    = 300
+        maximum_ttl = 600
       }
     }
   }
@@ -950,8 +961,8 @@ module "cloudfront_production" {
   comment     = "Production distribution"
   price_class = "PriceClass_100"
 
-  # Reference the policy created in the separate module call
-  continuous_deployment_policy_id = module.cloudfront_cd_policy.cloudfront_continuous_deployment_policy_ids["v2-canary"]
+  # Reference the policy created in step 2
+  continuous_deployment_policy_id = aws_cloudfront_continuous_deployment_policy.v2_canary.id
 
   create_origin_access_control = true
   origin_access_control = {

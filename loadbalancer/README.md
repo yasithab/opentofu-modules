@@ -11,8 +11,65 @@ OpenTofu module for creating and managing AWS Elastic Load Balancers (ALB, NLB, 
 - **Route53 DNS records** - automatically create alias records pointing to the load balancer
 - **WAF integration** - associate a WAFv2 Web ACL with the load balancer
 - **mTLS trust stores** - create trust stores and revocations for mutual TLS authentication on ALBs
-- **Access and connection logs** - configure S3 bucket logging for access logs, connection logs, and health check logs
+- **Access and connection logs** - configure S3 bucket logging for access logs, connection logs, and health check logs (strongly recommended for production load balancers)
 - **Deletion protection** - enabled by default to prevent accidental destruction
+
+> [!NOTE]
+> Behavioral and security notes:
+>
+> - `internal` defaults to `true` — load balancers are private unless you explicitly set `internal = false`.
+> - Additional listener certificates (`additional_certificate_arns`) are addressed by certificate ARN (`aws_lb_listener_certificate.additional["<listener_key>/<cert_arn>"]`), so adding or removing a certificate mid-list does not detach and reattach the remaining ones. Certificate ARNs must be known at plan time.
+> - The `listeners` and `listener_rules` outputs are marked `sensitive = true` because listener actions can carry OIDC client secrets. Downstream usage in non-sensitive contexts must be wrapped accordingly.
+> - `listeners`, `target_groups`, and `additional_target_group_attachments` are fully typed (`map(object)` with `optional()` attributes); unknown attributes are rejected. See `variables.tf` for the complete schemas. Each listener must define **exactly one** default action key (`forward`, `weighted_forward`, `redirect`, `fixed_response`, `authenticate_cognito`, `authenticate_oidc`, or `jwt_validation`).
+> - Inline OIDC `client_secret` values inside `listeners` (default actions or rule actions) are **rejected** with a validation error. OIDC client secrets must be supplied via the sensitive `listener_auth_oidc_client_secrets` map, and every `authenticate-oidc` action must have a matching entry (validated at plan time).
+> - Route53 alias records support a per-record `evaluate_target_health` override (defaults to `true`).
+
+### OIDC client secrets
+
+OIDC client secrets are provided exclusively via the `listener_auth_oidc_client_secrets` variable — a `sensitive` map keyed by listener key (default actions) or `<listener_key>/<rule_key>` (rule actions). Inline `client_secret` values inside `listeners` are rejected at plan time so secrets never appear in non-sensitive plan output:
+
+```hcl
+module "alb" {
+  # ...
+
+  listeners = {
+    https = {
+      port     = 443
+      protocol = "HTTPS"
+      authenticate_oidc = {
+        authorization_endpoint = "https://idp.example.com/authorize"
+        client_id              = "my-client"
+        issuer                 = "https://idp.example.com"
+        token_endpoint         = "https://idp.example.com/token"
+        user_info_endpoint     = "https://idp.example.com/userinfo"
+        # inline client_secret is rejected - use listener_auth_oidc_client_secrets
+      }
+      rules = {
+        admin = {
+          priority = 10
+          actions = [
+            {
+              type                   = "authenticate-oidc"
+              authorization_endpoint = "https://idp.example.com/authorize"
+              client_id              = "my-client"
+              issuer                 = "https://idp.example.com"
+              token_endpoint         = "https://idp.example.com/token"
+              user_info_endpoint     = "https://idp.example.com/userinfo"
+            },
+            { type = "forward", target_group_key = "app" }
+          ]
+          conditions = [{ path_pattern = { values = ["/admin/*"] } }]
+        }
+      }
+    }
+  }
+
+  listener_auth_oidc_client_secrets = {
+    "https"       = var.oidc_client_secret # listener default action
+    "https/admin" = var.oidc_client_secret # listener rule action
+  }
+}
+```
 
 ## Usage
 

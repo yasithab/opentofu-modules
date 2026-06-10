@@ -1,11 +1,11 @@
 variable "enabled" {
-  description = "Determines whether resources will be created (affects all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
 
 variable "tags" {
-  description = "A map of tags to add to all resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -62,9 +62,12 @@ variable "recovery_window_in_days" {
 }
 
 variable "replica" {
-  description = "Configuration block to support secret replication"
-  type        = map(any)
-  default     = {}
+  description = "Configuration block to support secret replication. The map key is used as the replica region when `region` is not set"
+  type = map(object({
+    kms_key_id = optional(string)
+    region     = optional(string)
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -106,16 +109,31 @@ variable "block_public_policy" {
 ################################################################################
 
 variable "ignore_secret_changes" {
-  description = "Determines whether or not Terraform will ignore changes made externally to `secret_string` or `secret_binary`. Changing this value after creation is a destructive operation"
+  description = "Determines whether or not OpenTofu will ignore changes made externally to `secret_string` or `secret_binary`. Changing this value after creation is a destructive operation"
   type        = bool
   default     = false
+
+  validation {
+    condition = !var.ignore_secret_changes || anytrue([
+      var.create_random_password,
+      var.secret_string != null,
+      var.secret_string_wo != null,
+      var.secret_binary != null,
+    ])
+    error_message = "When `ignore_secret_changes` is true an initial secret value must be provided via `create_random_password`, `secret_string`, `secret_string_wo` or `secret_binary`. No placeholder value is written on your behalf."
+  }
 }
 
 variable "secret_string" {
-  description = "Specifies text data that you want to encrypt and store in this version of the secret. This is required if `secret_binary` or `secret_string_wo` is not set"
+  description = "Specifies text data that you want to encrypt and store in this version of the secret. This is required if `secret_binary` or `secret_string_wo` is not set. Note: this value is stored in the OpenTofu state - prefer `secret_string_wo` where possible"
   type        = string
   default     = null
   sensitive   = true
+
+  validation {
+    condition     = !(var.secret_string != null && var.secret_string_wo != null)
+    error_message = "`secret_string` and `secret_string_wo` are mutually exclusive. Provide only one of them."
+  }
 }
 
 variable "secret_string_wo" {
@@ -170,6 +188,21 @@ variable "enable_rotation" {
   description = "Determines whether secret rotation is enabled"
   type        = bool
   default     = false
+
+  validation {
+    condition     = !var.enable_rotation || var.rotation_lambda_arn != null
+    error_message = "`rotation_lambda_arn` is required when `enable_rotation` is true."
+  }
+
+  validation {
+    condition = !var.enable_rotation || anytrue([
+      var.create_random_password,
+      var.secret_string != null,
+      var.secret_string_wo != null,
+      var.secret_binary != null,
+    ])
+    error_message = "When `enable_rotation` is true an initial secret value must be provided via `create_random_password`, `secret_string`, `secret_string_wo` or `secret_binary`. No placeholder value is written on your behalf."
+  }
 }
 
 variable "rotation_lambda_arn" {
@@ -186,6 +219,10 @@ variable "rotate_immediately" {
 
 variable "rotation_rules" {
   description = "A structure that defines the rotation configuration for this secret"
-  type        = map(any)
-  default     = {}
+  type = object({
+    automatically_after_days = optional(number)
+    duration                 = optional(string)
+    schedule_expression      = optional(string)
+  })
+  default = {}
 }

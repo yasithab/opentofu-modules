@@ -27,7 +27,7 @@ data "external" "archive_prepare" {
     }) : null
 
     artifacts_dir = var.artifacts_dir
-    runtime       = var.runtime
+    runtime       = var.runtime != null ? var.runtime : ""
     source_path   = jsonencode(var.source_path)
     hash_extra    = var.hash_extra
     hash_extra_paths = jsonencode(

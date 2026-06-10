@@ -1,2 +1,2 @@
-dashboard_name = "terratest-plan"
+name           = "terratest-plan"
 dashboard_body = "{\"widgets\":[]}"

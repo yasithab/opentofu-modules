@@ -2,6 +2,10 @@
 
 Provisions AWS Cost and Usage Reports (CUR) with configurable report definitions, S3 bucket delivery, compression formats, and schema elements.
 
+> **Region constraint — us-east-1 only:** the `aws_cur_report_definition` API is only available in `us-east-1`. The module enforces this with a precondition and will fail the plan if the AWS provider is configured for any other region. Configure the provider (or an aliased provider passed to this module) for `us-east-1`; `s3_region` controls where reports are delivered and may be any region.
+
+> **Custom lifecycle rules:** set `s3_lifecycle_rules` to fully control the report bucket's lifecycle configuration (multiple rules, prefixes, transitions). When unset, a default rule (GLACIER transition after `s3_lifecycle_glacier_transition_days`, expiration after `s3_lifecycle_expiration_days`) is used. Rules only apply when `enable_s3_lifecycle = true`.
+
 ## Features
 
 - **Report Definition** - Create CUR reports with configurable time granularity (hourly, daily, monthly)

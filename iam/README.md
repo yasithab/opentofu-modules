@@ -14,7 +14,7 @@ Parent module containing submodules for managing AWS Identity and Access Managem
 module "lambda_role" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//iam/role?depth=1&ref=master"
 
-  role_name        = "my-lambda-execution-role"
+  name             = "my-lambda-execution-role"
   role_description = "Execution role for the data processing Lambda"
 
   principals = {

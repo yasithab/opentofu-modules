@@ -1,5 +1,7 @@
 locals {
   enabled = var.enabled
+  name    = var.name
+
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
   })
@@ -11,7 +13,7 @@ locals {
 
 # trivy:ignore:AVD-AWS-0006 - Encryption is caller-controlled via configuration.result_configuration.encryption_configuration
 resource "aws_athena_workgroup" "this" {
-  name          = var.name
+  name          = local.name
   description   = var.workgroup_description
   state         = var.workgroup_state
   force_destroy = var.force_destroy
@@ -55,7 +57,7 @@ resource "aws_athena_workgroup" "this" {
     }
   }
 
-  tags = merge(local.tags, { Name = var.name })
+  tags = merge(local.tags, { Name = local.name })
 
   lifecycle {
     enabled = local.enabled
@@ -122,4 +124,32 @@ resource "aws_athena_database" "this" {
   expected_bucket_owner = try(each.value.expected_bucket_owner, null)
   force_destroy         = try(each.value.force_destroy, false)
   properties            = try(each.value.properties, null)
+}
+
+################################################################################
+# Prepared Statements
+################################################################################
+
+resource "aws_athena_prepared_statement" "this" {
+  for_each = local.enabled ? var.prepared_statements : {}
+
+  name            = each.key
+  workgroup       = aws_athena_workgroup.this.name
+  query_statement = each.value.query_statement
+  description     = each.value.description
+}
+
+################################################################################
+# Capacity Reservation
+################################################################################
+
+resource "aws_athena_capacity_reservation" "this" {
+  name        = try(coalesce(var.capacity_reservation.name, local.name), local.name)
+  target_dpus = try(var.capacity_reservation.target_dpus, 24)
+
+  tags = merge(local.tags, { Name = try(coalesce(var.capacity_reservation.name, local.name), local.name) })
+
+  lifecycle {
+    enabled = local.enabled && var.capacity_reservation != null
+  }
 }

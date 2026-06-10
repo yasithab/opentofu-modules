@@ -2,6 +2,12 @@
 
 Feature-rich Amazon Kinesis Data Firehose module that provisions delivery streams with support for a wide range of sources, destinations, and data transformation options. Handles IAM role creation, CloudWatch logging, VPC networking, and security group management automatically.
 
+> **Note — encryption by default:** `enable_sse` defaults to `true`, so server-side encryption at rest (AWS-owned CMK by default) is enabled for delivery streams. SSE only applies to **Direct PUT** sources — it is ignored for Kinesis and MSK sources (Kinesis sources inherit the source stream's encryption). Set `enable_sse = false` to disable.
+
+> **Note — Sumo Logic endpoint URL contains the access key:** for `destination = "sumologic"`, the HTTP endpoint URL embeds `http_endpoint_access_key`. Although the variable is marked sensitive, the composed URL is stored in the OpenTofu state — protect state access accordingly and rotate the key if state is exposed.
+
+> **Note — Splunk/Redshift ingress on existing destination SGs:** `aws_vpc_security_group_ingress_rule.destination_existing_from_cidr` creates one rule per (security group, Firehose CIDR) pair for the region's published Firehose CIDRs; regions without a known Firehose CIDR fail with a precondition error.
+
 ## Features
 
 - **Multiple Sources** - Ingest data via Direct Put, Kinesis Data Streams, WAF logs, or Amazon MSK

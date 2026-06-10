@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls if MSK cluster and associated resources are created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -11,7 +11,7 @@ variable "name" {
 }
 
 variable "tags" {
-  description = "A map of tags to add to all resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -52,6 +52,11 @@ variable "broker_subnets" {
   description = "List of subnet IDs for the broker nodes. Must be in at least 2 AZs"
   type        = list(string)
   default     = []
+
+  validation {
+    condition     = !var.enabled || var.serverless_enabled || length(var.broker_subnets) >= 2
+    error_message = "broker_subnets must contain at least 2 subnet IDs (in different AZs) for a provisioned MSK cluster."
+  }
 }
 
 variable "broker_security_groups" {
@@ -202,15 +207,21 @@ variable "prometheus_node_exporter_enabled" {
 ################################################################################
 
 variable "logging_enabled" {
-  description = "Whether to enable broker log delivery configuration"
+  description = "Whether to enable broker log delivery configuration. When enabled and no `cloudwatch_log_group` is provided, the module creates a CloudWatch log group for broker logs."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "cloudwatch_log_group" {
-  description = "CloudWatch Log Group name for broker logs"
+  description = "Existing CloudWatch Log Group name for broker logs. When `null` (default) and logging is enabled, the module creates a log group named `/aws/msk/<name>`."
   type        = string
   default     = null
+}
+
+variable "cloudwatch_log_group_retention_in_days" {
+  description = "Retention in days for the module-created CloudWatch log group"
+  type        = number
+  default     = 90
 }
 
 variable "firehose_delivery_stream" {
@@ -252,4 +263,19 @@ variable "scram_secret_arns" {
   description = "List of Secrets Manager secret ARNs to associate with the MSK cluster for SASL/SCRAM authentication"
   type        = list(string)
   default     = []
+}
+
+################################################################################
+# Cluster Policy
+################################################################################
+
+variable "cluster_policy" {
+  description = "IAM resource policy (JSON) to attach to the MSK cluster, e.g. for cross-account access via multi-VPC private connectivity. Set to `null` (default) to skip creating a cluster policy"
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.cluster_policy == null || can(jsondecode(var.cluster_policy))
+    error_message = "cluster_policy must be a valid JSON policy document."
+  }
 }

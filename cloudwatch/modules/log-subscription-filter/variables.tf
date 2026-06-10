@@ -11,6 +11,11 @@ variable "enabled" {
 variable "name" {
   description = "The name of the CloudWatch Log Subscription Filter."
   type        = string
+
+  validation {
+    condition     = length(var.name) > 0
+    error_message = "name must not be empty."
+  }
 }
 
 variable "destination_arn" {
@@ -33,6 +38,11 @@ variable "role_arn" {
   description = "The ARN of an IAM role that grants CloudWatch Logs permissions to deliver ingested log events to the destination. Required for Kinesis stream/Firehose destinations."
   type        = string
   default     = null
+
+  validation {
+    condition     = !can(regex(":(kinesis|firehose):", var.destination_arn)) || var.role_arn != null
+    error_message = "role_arn is required when destination_arn is a Kinesis stream or Kinesis Data Firehose delivery stream."
+  }
 }
 
 variable "distribution" {

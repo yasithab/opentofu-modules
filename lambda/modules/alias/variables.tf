@@ -1,7 +1,13 @@
 variable "enabled" {
-  description = "Controls whether resources should be created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
+}
+
+variable "tags" {
+  description = "Map of tags to apply to all resources."
+  type        = map(string)
+  default     = {}
 }
 
 variable "use_existing_alias" {

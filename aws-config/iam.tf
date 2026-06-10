@@ -1,4 +1,8 @@
+data "aws_partition" "current" {}
+
 locals {
+  partition = data.aws_partition.current.partition
+
   create_iam_role = local.enabled && var.create_iam_role
   iam_role_name   = coalesce(var.iam_role_name, "${local.recorder_name}-config-role")
 
@@ -46,7 +50,7 @@ resource "aws_iam_role_policy_attachment" "config" {
   count = local.create_iam_role ? 1 : 0
 
   role       = aws_iam_role.config[0].name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWS_ConfigRole"
+  policy_arn = "arn:${local.partition}:iam::aws:policy/service-role/AWS_ConfigRole"
 }
 
 # Scoped S3 delivery policy - supplements AWSConfigRole with a least-privilege
@@ -59,7 +63,7 @@ data "aws_iam_policy_document" "config_s3" {
     effect  = "Allow"
     actions = ["s3:PutObject"]
     resources = [
-      "arn:aws:s3:::${var.delivery_channel_s3_bucket_name}/${local.s3_delivery_prefix}AWSLogs/*",
+      "arn:${local.partition}:s3:::${var.delivery_channel_s3_bucket_name}/${local.s3_delivery_prefix}AWSLogs/*",
     ]
 
     # StringLikeIfExists: passes whether or not the request carries the ACL header.
@@ -76,7 +80,7 @@ data "aws_iam_policy_document" "config_s3" {
     sid       = "ConfigS3GetBucketAcl"
     effect    = "Allow"
     actions   = ["s3:GetBucketAcl"]
-    resources = ["arn:aws:s3:::${var.delivery_channel_s3_bucket_name}"]
+    resources = ["arn:${local.partition}:s3:::${var.delivery_channel_s3_bucket_name}"]
   }
 
   dynamic "statement" {
@@ -126,5 +130,5 @@ resource "aws_iam_role_policy_attachment" "config_org_aggregator" {
   count = local.create_org_aggregator_role ? 1 : 0
 
   role       = aws_iam_role.config_org_aggregator[0].name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSConfigRoleForOrganizations"
+  policy_arn = "arn:${local.partition}:iam::aws:policy/service-role/AWSConfigRoleForOrganizations"
 }

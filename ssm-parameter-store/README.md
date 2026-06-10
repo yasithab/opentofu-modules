@@ -5,7 +5,7 @@ OpenTofu module to create a single AWS SSM Parameter Store parameter with automa
 ## Features
 
 - **Single Parameter Management** - Creates one SSM parameter with support for String, StringList, and SecureString types
-- **Automatic Type Detection** - Infers the parameter type from the input: uses SecureString when `secure_type` is true, StringList when `parameter_values` is provided, and String otherwise
+- **Automatic Type Detection** - Infers the parameter type from the input: StringList when `parameter_values` is provided, otherwise SecureString by default (`secure_type = true`); set `secure_type = false` (or `type = "String"`) for plain values
 - **Write-Only Values** - Supports `value_wo` and `value_wo_version` to store secrets that are never persisted to state, keeping sensitive data out of OpenTofu state files
 - **StringList Support** - Accepts a list of string values via `parameter_values`, which are automatically JSON-encoded for native SSM StringList storage
 - **KMS Encryption** - Optional KMS key for encrypting SecureString parameters
@@ -19,7 +19,7 @@ OpenTofu module to create a single AWS SSM Parameter Store parameter with automa
 module "ssm_parameter" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ssm-parameter-store?depth=1&ref=master"
 
-  parameter_name        = "/app/config/api-key"
+  name                  = "/app/config/api-key"
   parameter_value       = "my-secret-key"
   parameter_description = "API key for external service"
   secure_type           = true
@@ -31,6 +31,11 @@ module "ssm_parameter" {
 }
 ```
 
+
+> [!IMPORTANT]
+> **BREAKING:** `secure_type` now defaults to `true`, so parameters created without an explicit `type` are stored as **SecureString** by default. Callers relying on the old inferred `String` type must set `type = "String"` (or `secure_type = false`) to keep the previous behaviour — otherwise the parameter will be updated to SecureString.
+>
+> Parameter value outputs are sensitive (`value`, `raw_value`, `secure_value`). Only the `insecure_value` output is non-sensitive, and it is populated exclusively for `String` type parameters (null for SecureString and StringList). One of `parameter_value`, `parameter_values`, or `value_wo` must be provided when the module is enabled.
 
 ## Examples
 
@@ -44,7 +49,7 @@ module "ssm_param_region" {
 
   enabled = true
 
-  parameter_name        = "/production/myapp/aws_region"
+  name                  = "/production/myapp/aws_region"
   parameter_value       = "eu-west-1"
   parameter_description = "AWS region for MyApp"
   type                  = "String"
@@ -67,7 +72,7 @@ module "ssm_param_db_password" {
 
   enabled = true
 
-  parameter_name        = "/production/myapp/db_password"
+  name                  = "/production/myapp/db_password"
   parameter_description = "Database master password for MyApp"
   type                  = "SecureString"
   secure_type           = true
@@ -95,7 +100,7 @@ module "ssm_param_subnets" {
 
   enabled = true
 
-  parameter_name        = "/production/infra/private_subnet_ids"
+  name                  = "/production/infra/private_subnet_ids"
   parameter_description = "Private subnet IDs for production VPC"
   type                  = "StringList"
 
@@ -122,7 +127,7 @@ module "ssm_param_config_blob" {
 
   enabled = true
 
-  parameter_name        = "/production/myapp/service_config"
+  name                  = "/production/myapp/service_config"
   parameter_description = "Full service configuration blob managed by the application"
   type                  = "String"
   tier                  = "Advanced"

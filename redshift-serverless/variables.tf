@@ -18,20 +18,14 @@ variable "tags" {
 
 variable "create_random_password" {
   type        = bool
-  default     = true
-  description = "Determines whether to create random password for cluster `master_password`"
+  default     = false
+  description = "Determines whether to create a random password for the namespace admin user when `manage_admin_password` is false. Disabled by default - prefer `manage_admin_password` so no password is stored in OpenTofu state"
 }
 
 variable "random_password_length" {
   type        = number
   default     = 16
   description = "Length of random password to create. Defaults to `16`"
-}
-
-variable "engine_mode" {
-  type        = string
-  default     = "serverless"
-  description = "The RedShift cluster engine mode. Valid values: `serverless`"
 }
 
 variable "port" {
@@ -125,6 +119,23 @@ variable "kms_key_arn" {
   default     = null
 }
 
+variable "kms_deletion_window_in_days" {
+  description = "Duration in days after which the module-created KMS key is deleted after destruction of the resource. Must be between 7 and 30 days"
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.kms_deletion_window_in_days >= 7 && var.kms_deletion_window_in_days <= 30
+    error_message = "kms_deletion_window_in_days must be between 7 and 30."
+  }
+}
+
+variable "kms_key_policy" {
+  description = "A valid policy JSON document to attach to the module-created KMS key. Defaults to the AWS account default key policy"
+  type        = string
+  default     = null
+}
+
 variable "namespace_name" {
   type        = string
   default     = null
@@ -189,6 +200,12 @@ variable "subnet_ids" {
   type        = list(string)
   default     = null
   description = "An array of VPC subnet IDs to use in the subnet group"
+}
+
+variable "security_group_ids" {
+  description = "A list of existing security group IDs to associate with the workgroup, in addition to the module-created security group (if any)"
+  type        = list(string)
+  default     = []
 }
 
 variable "workgroup_config_parameter" {

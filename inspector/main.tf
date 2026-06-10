@@ -1,5 +1,6 @@
 locals {
   enabled = var.enabled
+  name    = var.name
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
   })
@@ -36,9 +37,10 @@ resource "aws_inspector2_delegated_admin_account" "this" {
 
 resource "aws_inspector2_organization_configuration" "this" {
   auto_enable {
-    ec2    = var.auto_enable_ec2
-    ecr    = var.auto_enable_ecr
-    lambda = var.auto_enable_lambda
+    ec2         = var.auto_enable_ec2
+    ecr         = var.auto_enable_ecr
+    lambda      = var.auto_enable_lambda
+    lambda_code = var.auto_enable_lambda_code
   }
 
   depends_on = [aws_inspector2_enabler.this]

@@ -57,3 +57,8 @@ output "serverless_cluster_arn" {
   description = "ARN of the MSK serverless cluster"
   value       = try(aws_msk_serverless_cluster.this.arn, "")
 }
+
+output "cluster_policy_current_version" {
+  description = "Current version of the MSK cluster policy"
+  value       = try(aws_msk_cluster_policy.this.current_version, "")
+}

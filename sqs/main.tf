@@ -43,7 +43,7 @@ resource "aws_sqs_queue" "default" {
 resource "aws_sqs_queue" "deadletter" {
   name                              = var.fifo_queue ? "${local.sqs_queue_name}-dlq.fifo" : "${local.sqs_queue_name}-dlq"
   visibility_timeout_seconds        = var.visibility_timeout_seconds
-  message_retention_seconds         = var.message_retention_seconds
+  message_retention_seconds         = var.deadletter_message_retention_seconds
   receive_wait_time_seconds         = var.receive_wait_time_seconds
   fifo_queue                        = var.fifo_queue
   content_based_deduplication       = var.content_based_deduplication
@@ -183,5 +183,19 @@ resource "aws_sqs_queue_redrive_allow_policy" "default" {
 
   lifecycle {
     enabled = local.enabled && var.create_redrive_allow_policy
+  }
+}
+
+# Optional redrive allow policy on the module-created DLQ, restricting redrive to the main queue
+resource "aws_sqs_queue_redrive_allow_policy" "deadletter" {
+  queue_url = aws_sqs_queue.deadletter.url
+
+  redrive_allow_policy = jsonencode({
+    redrivePermission = "byQueue"
+    sourceQueueArns   = [aws_sqs_queue.default.arn]
+  })
+
+  lifecycle {
+    enabled = local.enabled && var.deadletter_queue_enabled && var.deadletter_redrive_allow_policy_enabled
   }
 }

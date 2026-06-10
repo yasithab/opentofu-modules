@@ -30,12 +30,14 @@ variable "slack_channel_id" {
   description = "The ID of the Slack channel. Required when enabled = true."
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "slack_workspace_id" {
   description = "The ID of the Slack workspace (team) authorized with AWS Chatbot. Maps to the slack_team_id argument in the AWS provider (e.g., T07EA123LEP). Required when enabled = true."
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "chatbot_role_name" {
@@ -51,7 +53,7 @@ variable "sns_topic_arns" {
 }
 
 variable "guardrail_policies" {
-  description = "The list of IAM policy ARNs that are applied as channel guardrails. The AWS managed 'AdministratorAccess' policy is applied as a default if this is not set"
+  description = "The list of IAM policy ARNs that are applied as channel guardrails. Defaults to the partition-aware AWS managed 'ReadOnlyAccess' policy when not set (AWS Chatbot's own fallback is AdministratorAccess, which is too broad)"
   type        = list(string)
   default     = null
 }
@@ -65,7 +67,7 @@ variable "user_role_required" {
 variable "logging_level" {
   description = "Specifies the logging level for this configuration: ERROR, INFO or NONE. This property affects the log entries pushed to Amazon CloudWatch logs"
   type        = string
-  default     = "NONE"
+  default     = "ERROR"
 
   validation {
     condition     = contains(["ERROR", "INFO", "NONE"], var.logging_level)
@@ -87,6 +89,7 @@ variable "teams_channel_id" {
   description = "The ID of the Microsoft Teams channel"
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "teams_channel_name" {
@@ -105,6 +108,7 @@ variable "teams_team_id" {
   description = "The ID of the Microsoft Teams team"
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "teams_team_name" {
@@ -117,6 +121,7 @@ variable "teams_tenant_id" {
   description = "The ID of the Microsoft Teams tenant"
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "teams_sns_topic_arns" {
@@ -126,7 +131,7 @@ variable "teams_sns_topic_arns" {
 }
 
 variable "teams_guardrail_policies" {
-  description = "List of IAM policy ARNs applied as guardrails for the Teams channel"
+  description = "List of IAM policy ARNs applied as guardrails for the Teams channel. Defaults to the partition-aware AWS managed 'ReadOnlyAccess' policy when not set"
   type        = list(string)
   default     = null
 }
@@ -134,7 +139,7 @@ variable "teams_guardrail_policies" {
 variable "teams_logging_level" {
   description = "Logging level for the Teams channel configuration: ERROR, INFO or NONE"
   type        = string
-  default     = "NONE"
+  default     = "ERROR"
 
   validation {
     condition     = contains(["ERROR", "INFO", "NONE"], var.teams_logging_level)

@@ -22,8 +22,15 @@ variable "tags" {
 
 variable "auth" {
   description = "Configuration block(s) with authorization mechanisms to connect to the associated instances or clusters"
-  type        = any
-  default     = {}
+  type = list(object({
+    auth_scheme               = optional(string, "SECRETS")
+    client_password_auth_type = optional(string)
+    description               = optional(string)
+    iam_auth                  = optional(string)
+    secret_arn                = optional(string)
+    username                  = optional(string)
+  }))
+  default = []
 }
 
 variable "debug_logging" {

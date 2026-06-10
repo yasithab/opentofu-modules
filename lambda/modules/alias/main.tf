@@ -1,18 +1,24 @@
 locals {
+  enabled = var.enabled
+  name    = var.name
+  tags = merge(var.tags, {
+    ManagedBy = "opentofu"
+  })
+
   alias_arn  = try(data.aws_lambda_alias.existing[0].arn, aws_lambda_alias.no_refresh.arn, aws_lambda_alias.with_refresh.arn, "")
   version    = try(data.aws_lambda_alias.existing[0].function_version, aws_lambda_alias.with_refresh.function_version, aws_lambda_alias.no_refresh.function_version, "")
   qualifiers = zipmap(["version", "qualified_alias"], [var.create_version_async_event_config ? true : null, var.create_qualified_alias_async_event_config ? true : null])
 }
 
 data "aws_lambda_alias" "existing" {
-  count = var.enabled && var.use_existing_alias ? 1 : 0
+  count = local.enabled && var.use_existing_alias ? 1 : 0
 
   function_name = var.function_name
   name          = var.name
 }
 
 resource "aws_lambda_alias" "no_refresh" {
-  name        = var.name
+  name        = local.name
   description = var.description
 
   function_name    = var.function_name
@@ -27,13 +33,13 @@ resource "aws_lambda_alias" "no_refresh" {
   }
 
   lifecycle {
-    enabled        = var.enabled && !var.use_existing_alias && !var.refresh_alias
+    enabled        = local.enabled && !var.use_existing_alias && !var.refresh_alias
     ignore_changes = [function_version]
   }
 }
 
 resource "aws_lambda_alias" "with_refresh" {
-  name        = var.name
+  name        = local.name
   description = var.description
 
   function_name    = var.function_name
@@ -48,12 +54,12 @@ resource "aws_lambda_alias" "with_refresh" {
   }
 
   lifecycle {
-    enabled = var.enabled && !var.use_existing_alias && var.refresh_alias
+    enabled = local.enabled && !var.use_existing_alias && var.refresh_alias
   }
 }
 
 resource "aws_lambda_function_event_invoke_config" "this" {
-  for_each = { for k, v in local.qualifiers : k => v if var.enabled && var.create_async_event_config }
+  for_each = { for k, v in local.qualifiers : k => v if v != null && local.enabled && var.create_async_event_config }
 
   function_name = var.function_name
   qualifier     = each.key == "version" ? local.version : var.name
@@ -82,7 +88,7 @@ resource "aws_lambda_function_event_invoke_config" "this" {
 }
 
 resource "aws_lambda_permission" "version_triggers" {
-  for_each = var.enabled && var.create_version_allowed_triggers ? var.allowed_triggers : {}
+  for_each = { for k, v in var.allowed_triggers : k => v if local.enabled && var.create_version_allowed_triggers }
 
   function_name = var.function_name
 
@@ -101,7 +107,7 @@ resource "aws_lambda_permission" "version_triggers" {
 }
 
 resource "aws_lambda_permission" "qualified_alias_triggers" {
-  for_each = var.enabled && var.create_qualified_alias_allowed_triggers ? var.allowed_triggers : {}
+  for_each = { for k, v in var.allowed_triggers : k => v if local.enabled && var.create_qualified_alias_allowed_triggers }
 
   function_name = var.function_name
   qualifier     = var.name
@@ -118,7 +124,7 @@ resource "aws_lambda_permission" "qualified_alias_triggers" {
 }
 
 resource "aws_lambda_event_source_mapping" "this" {
-  for_each = { for k, v in var.event_source_mapping : k => v if var.enabled && try(v.enabled, true) }
+  for_each = { for k, v in var.event_source_mapping : k => v if local.enabled && try(v.enabled, true) }
 
   function_name = local.alias_arn
 
@@ -277,12 +283,5 @@ resource "aws_lambda_event_source_mapping" "this" {
     }
   }
 
-  dynamic "scaling_config" {
-    for_each = try([each.value.scaling_config], [])
-    content {
-      maximum_concurrency = try(scaling_config.value.maximum_concurrency, null)
-    }
-  }
-
-  tags = merge(try(each.value.tags, {}))
+  tags = merge(local.tags, try(each.value.tags, {}))
 }

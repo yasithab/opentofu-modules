@@ -51,6 +51,11 @@ resource "aws_cognito_user_pool" "this" {
     email_sending_account = "COGNITO_DEFAULT"
   }
 
+  # Advanced security (threat protection). AUDIT/ENFORCED incur additional cost per MAU.
+  user_pool_add_ons {
+    advanced_security_mode = var.advanced_security_mode
+  }
+
   # Schema - email is always required
   schema {
     attribute_data_type = "String"
@@ -99,7 +104,9 @@ resource "aws_cognito_user_pool_domain" "custom" {
 ################################################################################
 
 resource "aws_cognito_identity_provider" "this" {
-  for_each = { for k, v in var.identity_providers : k => v if local.enabled }
+  # var.identity_providers is sensitive; for_each cannot iterate sensitive values directly.
+  # The secret-bearing provider_details remain protected by the provider schema.
+  for_each = { for k, v in nonsensitive(var.identity_providers) : k => v if local.enabled }
 
   user_pool_id  = aws_cognito_user_pool.this.id
   provider_name = each.key
@@ -122,13 +129,14 @@ resource "aws_cognito_user_pool_client" "this" {
   generate_secret                      = each.value.generate_secret
   allowed_oauth_flows                  = each.value.allowed_oauth_flows
   allowed_oauth_scopes                 = each.value.allowed_oauth_scopes
-  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_flows_user_pool_client = each.value.allowed_oauth_flows_user_pool_client
   callback_urls                        = each.value.callback_urls
   logout_urls                          = each.value.logout_urls
 
-  supported_identity_providers = concat(
-    ["COGNITO"],
-    [for k, v in var.identity_providers : k]
+  # Defaults to COGNITO plus every configured identity provider when not set per client
+  supported_identity_providers = coalesce(
+    each.value.supported_identity_providers,
+    concat(["COGNITO"], keys(nonsensitive(var.identity_providers)))
   )
 
   token_validity_units {
@@ -141,10 +149,43 @@ resource "aws_cognito_user_pool_client" "this" {
   id_token_validity      = each.value.token_validity.id_token_hours
   refresh_token_validity = each.value.token_validity.refresh_token_days
 
-  explicit_auth_flows = [
-    "ALLOW_REFRESH_TOKEN_AUTH",
-    "ALLOW_USER_SRP_AUTH",
-  ]
+  explicit_auth_flows = each.value.explicit_auth_flows
 
-  depends_on = [aws_cognito_identity_provider.this]
+  # Resource servers must exist before clients can reference their custom scopes
+  depends_on = [aws_cognito_identity_provider.this, aws_cognito_resource_server.this]
+}
+
+################################################################################
+# Resource Servers (custom OAuth scopes)
+################################################################################
+
+resource "aws_cognito_resource_server" "this" {
+  for_each = { for k, v in var.resource_servers : k => v if local.enabled }
+
+  user_pool_id = aws_cognito_user_pool.this.id
+  identifier   = each.value.identifier
+  name         = coalesce(each.value.name, each.key)
+
+  dynamic "scope" {
+    for_each = each.value.scopes
+
+    content {
+      scope_name        = scope.value.scope_name
+      scope_description = scope.value.scope_description
+    }
+  }
+}
+
+################################################################################
+# User Groups
+################################################################################
+
+resource "aws_cognito_user_group" "this" {
+  for_each = { for k, v in var.user_groups : k => v if local.enabled }
+
+  name         = each.key
+  user_pool_id = aws_cognito_user_pool.this.id
+  description  = each.value.description
+  precedence   = each.value.precedence
+  role_arn     = each.value.role_arn
 }

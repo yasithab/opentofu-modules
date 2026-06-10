@@ -8,6 +8,8 @@ AWS Cognito User Pool module for OIDC/OAuth2 authentication. General-purpose - w
 - **Multiple OAuth/OIDC clients** - one pool can serve multiple applications
 - **External IdP federation** - optionally federate with Google, Okta, SAML, etc.
 - **Hosted UI domain** - prefix domain (free) or custom domain (ACM cert)
+- **Resource servers** - define custom OAuth scopes for machine-to-machine APIs
+- **User groups** - group users with precedence and optional IAM role mapping
 - **Deletion protection** enabled by default
 
 ## Usage
@@ -284,3 +286,128 @@ aws cognito-idp admin-delete-user \
   --user-pool-id <pool-id> \
   --username user@example.com
 ```
+
+## Resource server with machine-to-machine client
+
+Define custom OAuth scopes on a resource server and grant them to a client using the `client_credentials` flow - the standard machine-to-machine pattern.
+
+```hcl
+module "cognito" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//cognito?depth=1&ref=master"
+
+  name   = "platform-auth"
+  domain = "mycompany-auth"
+
+  resource_servers = {
+    orders-api = {
+      identifier = "https://orders.example.com"
+      scopes = [
+        {
+          scope_name        = "read"
+          scope_description = "Read access to the orders API"
+        },
+        {
+          scope_name        = "write"
+          scope_description = "Write access to the orders API"
+        },
+      ]
+    }
+  }
+
+  clients = {
+    orders-worker = {
+      callback_urls       = ["https://localhost"] # unused for client_credentials
+      allowed_oauth_flows = ["client_credentials"]
+      # Custom scopes are referenced as <identifier>/<scope_name>
+      allowed_oauth_scopes = [
+        "https://orders.example.com/read",
+        "https://orders.example.com/write",
+      ]
+      explicit_auth_flows = ["ALLOW_REFRESH_TOKEN_AUTH"]
+    }
+  }
+
+  tags = {
+    Environment = "production"
+  }
+}
+
+# Full scope identifiers, e.g. ["https://orders.example.com/read", ...]
+output "orders_scopes" {
+  value = module.cognito.resource_server_scope_identifiers["orders-api"]
+}
+```
+
+## User groups
+
+Group users for authorization decisions. Group membership is included in the `cognito:groups` token claim; when multiple groups set `role_arn`, the lowest `precedence` wins for the `cognito:preferred_role` claim.
+
+```hcl
+module "cognito" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//cognito?depth=1&ref=master"
+
+  name   = "platform-auth"
+  domain = "mycompany-auth"
+
+  clients = {
+    web-app = {
+      callback_urls = ["https://app.example.com/callback"]
+    }
+  }
+
+  user_groups = {
+    admins = {
+      description = "Administrators with full access"
+      precedence  = 1
+    }
+    operators = {
+      description = "Operations staff"
+      precedence  = 5
+    }
+    readers = {
+      description = "Read-only users"
+      precedence  = 10
+    }
+  }
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+```bash
+# Add a user to a group
+aws cognito-idp admin-add-user-to-group \
+  --user-pool-id <pool-id> \
+  --username alice@example.com \
+  --group-name admins
+```
+
+## Security Notes
+
+### Advanced security mode (cost)
+
+The User Pool is created with `advanced_security_mode = "AUDIT"` by default, which enables
+Cognito advanced security features (threat protection): risk event logging, compromised
+credentials detection data, and adaptive authentication telemetry. Set to `"ENFORCED"` to also
+block or challenge risky sign-ins, or `"OFF"` to disable.
+
+**Cost note:** AUDIT and ENFORCED enable the Cognito advanced security feature tier, which is
+billed per monthly active user *in addition* to standard Cognito pricing. Review
+[Amazon Cognito pricing](https://aws.amazon.com/cognito/pricing/) before enabling on pools with
+a large user base.
+
+### MFA
+
+`mfa_configuration` defaults to `"OPTIONAL"`: TOTP (authenticator app) MFA is available but
+users are not forced to enroll. For workloads handling sensitive data, set
+`mfa_configuration = "ON"` to require MFA for all users. Note that switching an existing pool
+from `OFF` is only possible to `OPTIONAL` first; users must enroll before you can move to `ON`.
+
+### Identity provider secrets
+
+`identity_providers` is marked `sensitive` because `provider_details` typically carries the
+external IdP's client secret. These values are stored in the OpenTofu state - protect state
+access accordingly. As a consequence of the sensitive marking, plan output for values derived
+from this variable is redacted.

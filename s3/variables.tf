@@ -6,7 +6,7 @@ variable "tags" {
 }
 
 variable "enabled" {
-  description = "Controls if S3 bucket should be created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -30,9 +30,9 @@ variable "attach_access_log_delivery_policy" {
 }
 
 variable "attach_deny_insecure_transport_policy" {
-  description = "Controls if S3 bucket should have deny non-SSL transport policy attached"
+  description = "Controls if S3 bucket should have deny non-SSL transport policy attached. Defaults to `true` (TLS-only bucket policy); set to `false` to opt out."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "attach_require_latest_tls_policy" {
@@ -75,6 +75,11 @@ variable "attach_deny_incorrect_kms_key_sse" {
   description = "Controls if S3 bucket policy should deny usage of incorrect KMS key SSE."
   type        = bool
   default     = false
+
+  validation {
+    condition     = !var.attach_deny_incorrect_kms_key_sse || var.allowed_kms_key_arn != null
+    error_message = "allowed_kms_key_arn must be set when attach_deny_incorrect_kms_key_sse is true."
+  }
 }
 
 variable "allowed_kms_key_arn" {
@@ -94,19 +99,19 @@ variable "attach_deny_unencrypted_object_uploads" {
   default     = false
 }
 
-variable "bucket" {
+variable "name" {
   description = "(Optional, Forces new resource) The name of the bucket. If omitted, Terraform will assign a random, unique name."
   type        = string
   default     = null
 
   validation {
-    condition     = var.bucket == null || can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.bucket))
-    error_message = "bucket must be 3-63 characters, lowercase letters, numbers, hyphens, and periods only. Must start and end with a letter or number."
+    condition     = var.name == null || can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.name))
+    error_message = "name must be 3-63 characters, lowercase letters, numbers, hyphens, and periods only. Must start and end with a letter or number."
   }
 }
 
-variable "bucket_prefix" {
-  description = "(Optional, Forces new resource) Creates a unique bucket name beginning with the specified prefix. Conflicts with bucket."
+variable "name_prefix" {
+  description = "(Optional, Forces new resource) Creates a unique bucket name beginning with the specified prefix. Conflicts with name."
   type        = string
   default     = null
 }
@@ -371,5 +376,5 @@ variable "notification_topics" {
 variable "abac_enabled" {
   description = "Whether to enable Attribute Based Access Control (ABAC) for the S3 bucket, allowing tag-based authorization in IAM policies."
   type        = bool
-  default     = true
+  default     = false
 }

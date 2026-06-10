@@ -9,9 +9,13 @@ OpenTofu module for creating and managing AWS AppConfig applications, environmen
 - **Configuration Profiles** - Freeform and Feature Flag configuration profile types with optional validators
 - **Hosted Configuration Versions** - Manage configuration content directly in AppConfig
 - **Deployment Strategies** - Custom deployment strategies with configurable duration, growth factor, and bake time
-- **Managed Deployments** - Trigger deployments linking environments, profiles, versions, and strategies
+- **Managed Deployments** - Trigger deployments linking environments, profiles, versions, and strategies, with optional KMS encryption at rest via `kms_key_identifier`
 - **Extensions** - Create custom extensions with action points and associate them with environments or profiles
-- **Security by Default** - Tagging enforced on all resources
+- **Typed Inputs** - All collection variables are fully typed objects with optional attributes, so misconfigurations fail at plan time instead of being silently swallowed
+- **Security by Default** - Tagging enforced on all resources; `hosted_configuration_versions` is marked sensitive
+
+> [!NOTE]
+> Do **not** put secrets in `hosted_configuration_versions[*].content` — the content is persisted in OpenTofu state and AppConfig. Store secrets in SSM SecureString or Secrets Manager and reference them from your configuration instead. The variable is marked `sensitive` as a defence-in-depth measure only.
 
 ## Usage
 

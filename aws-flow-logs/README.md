@@ -142,3 +142,8 @@ module "vpc_flow_logs_firehose" {
   }
 }
 ```
+
+## Notes
+
+- Exactly one attachment target (`vpc_id`, `eni_id`, `subnet_id`, `transit_gateway_id`, `transit_gateway_attachment_id`, or `regional_nat_gateway_id`) must be set when the module is enabled (validated at plan time).
+- The generated IAM policy is scoped to the flow log destination log group (no `logs:CreateLogGroup`, no `Resource: "*"`).

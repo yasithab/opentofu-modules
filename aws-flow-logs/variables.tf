@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Whether to enable VPC Flow Logs"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -15,6 +15,18 @@ variable "vpc_id" {
   description = "The ID of the VPC to attach to (mutually exclusive with other attachment options)"
   type        = string
   default     = null
+
+  validation {
+    condition = !var.enabled || length(compact([
+      var.vpc_id,
+      var.eni_id,
+      var.subnet_id,
+      var.transit_gateway_id,
+      var.transit_gateway_attachment_id,
+      var.regional_nat_gateway_id,
+    ])) == 1
+    error_message = "Exactly one of vpc_id, eni_id, subnet_id, transit_gateway_id, transit_gateway_attachment_id, or regional_nat_gateway_id must be set when enabled."
+  }
 }
 
 variable "eni_id" {
@@ -180,7 +192,7 @@ variable "iam_policy_name" {
 
 # General
 variable "tags" {
-  description = "Map of tags to apply to all resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }

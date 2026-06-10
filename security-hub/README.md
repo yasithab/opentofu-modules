@@ -1,6 +1,6 @@
 # AWS Security Hub
 
-OpenTofu module for provisioning and managing AWS Security Hub with standards subscriptions, multi-region aggregation, organization configuration, and custom action targets.
+OpenTofu module for provisioning and managing AWS Security Hub with standards subscriptions, multi-region aggregation, organization configuration, custom action targets, automation rules, and custom insights.
 
 ## Features
 
@@ -10,6 +10,18 @@ OpenTofu module for provisioning and managing AWS Security Hub with standards su
 - **Organization Configuration** - Automatically enable Security Hub and default standards for new member accounts across the organization
 - **Member Account Management** - Invite and manage member accounts for centralized security posture visibility
 - **Custom Action Targets** - Define custom actions for Security Hub findings to integrate with EventBridge rules and automated remediation workflows
+- **Automation Rules** - Automatically update or suppress findings that match criteria (e.g. suppress informational findings, escalate severity, set workflow status, attach notes)
+- **Custom Insights** - Saved, grouped views over findings (e.g. critical findings grouped by resource) for posture dashboards and triage
+
+## Notes
+
+- `name` is optional. When set, it is used as a prefix for custom action target display names (`<name>-<key>`).
+- Most Security Hub resources managed by this module (`aws_securityhub_account`,
+  `aws_securityhub_standards_subscription`, `aws_securityhub_member`, `aws_securityhub_finding_aggregator`,
+  `aws_securityhub_organization_configuration`, `aws_securityhub_action_target`, `aws_securityhub_insight`)
+  do not support tagging; `tags` is applied to the resources that do (automation rules).
+- Automation rules run in `rule_order` (lowest first). A rule with `is_terminal = true` stops further
+  rules from processing a matching finding.
 
 ## Usage
 
@@ -113,6 +125,83 @@ module "security_hub" {
     RemediateS3 = {
       identifier  = "RemediateS3"
       description = "Trigger automated S3 bucket remediation"
+    }
+  }
+
+  tags = {
+    Environment = "production"
+    Team        = "security"
+  }
+}
+```
+
+### Automation Rules and Custom Insights
+
+Suppress noisy findings automatically and create a saved insight grouping critical findings by resource.
+
+```hcl
+module "security_hub" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//security-hub?depth=1&ref=master"
+
+  standards_arns = [
+    "arn:aws:securityhub:eu-west-1::standards/aws-foundational-security-best-practices/v/1.0.0",
+  ]
+
+  automation_rules = {
+    suppress-sandbox-informational = {
+      rule_order  = 1
+      description = "Suppress informational findings from the sandbox account"
+
+      criteria = {
+        aws_account_id = [{ comparison = "EQUALS", value = "111111111111" }]
+        severity_label = [{ comparison = "EQUALS", value = "INFORMATIONAL" }]
+      }
+
+      actions = {
+        workflow_status = "SUPPRESSED"
+        note_text       = "Sandbox findings are auto-suppressed"
+      }
+    }
+
+    escalate-public-s3 = {
+      rule_order  = 2
+      description = "Escalate severity of public S3 bucket findings"
+      is_terminal = true
+
+      criteria = {
+        resource_type = [{ comparison = "EQUALS", value = "AwsS3Bucket" }]
+        title         = [{ comparison = "CONTAINS", value = "public" }]
+        record_state  = [{ comparison = "EQUALS", value = "ACTIVE" }]
+      }
+
+      actions = {
+        severity_label = "CRITICAL"
+        types          = ["Software and Configuration Checks/Industry and Regulatory Standards"]
+        user_defined_fields = {
+          escalated = "true"
+        }
+      }
+    }
+  }
+
+  insights = {
+    critical-findings-by-resource = {
+      group_by_attribute = "ResourceId"
+
+      filters = {
+        severity_label  = [{ comparison = "EQUALS", value = "CRITICAL" }]
+        workflow_status = [{ comparison = "EQUALS", value = "NEW" }]
+        record_state    = [{ comparison = "EQUALS", value = "ACTIVE" }]
+      }
+    }
+
+    failed-cis-controls-by-account = {
+      group_by_attribute = "AwsAccountId"
+
+      filters = {
+        generator_id      = [{ comparison = "PREFIX", value = "cis-aws-foundations-benchmark" }]
+        compliance_status = [{ comparison = "EQUALS", value = "FAILED" }]
+      }
     }
   }
 

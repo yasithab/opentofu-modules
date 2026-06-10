@@ -4,6 +4,7 @@ data "aws_caller_identity" "current" {}
 
 locals {
   enabled = var.enabled
+  name    = var.name
 
   archive_filename        = try(data.external.archive_prepare[0].result.filename, null)
   archive_filename_string = local.archive_filename != null ? local.archive_filename : ""
@@ -26,7 +27,7 @@ locals {
 }
 
 resource "aws_lambda_function" "this" {
-  function_name                      = var.function_name
+  function_name                      = local.name
   description                        = var.description
   role                               = var.create_role ? aws_iam_role.lambda.arn : var.lambda_role
   handler                            = var.package_type != "Zip" ? null : var.handler
@@ -72,7 +73,8 @@ resource "aws_lambda_function" "this" {
   }
 
   dynamic "environment" {
-    for_each = length(keys(var.environment_variables)) == 0 ? [] : [true]
+    # length of the map is not sensitive even though the values are
+    for_each = nonsensitive(length(keys(var.environment_variables))) == 0 ? [] : [true]
     content {
       variables = var.environment_variables
     }
@@ -211,7 +213,7 @@ resource "aws_lambda_layer_version" "this" {
   description  = var.description
   license_info = var.license_info
 
-  compatible_runtimes      = length(var.compatible_runtimes) > 0 ? var.compatible_runtimes : (var.runtime == "" ? null : [var.runtime])
+  compatible_runtimes      = length(var.compatible_runtimes) > 0 ? var.compatible_runtimes : (var.runtime == null || var.runtime == "" ? null : [var.runtime])
   compatible_architectures = var.compatible_architectures
   skip_destroy             = var.layer_skip_destroy
 
@@ -261,11 +263,11 @@ resource "aws_s3_object" "lambda_package" {
 data "aws_cloudwatch_log_group" "lambda" {
   count = local.enabled && var.create_function && !var.create_layer && var.use_existing_cloudwatch_log_group ? 1 : 0
 
-  name = coalesce(var.logging_log_group, "/aws/lambda/${var.lambda_at_edge ? "us-east-1." : ""}${var.function_name}")
+  name = coalesce(var.logging_log_group, "/aws/lambda/${var.lambda_at_edge ? "us-east-1." : ""}${var.name}")
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
-  name                        = coalesce(var.logging_log_group, "/aws/lambda/${var.lambda_at_edge ? "us-east-1." : ""}${var.function_name}")
+  name                        = coalesce(var.logging_log_group, "/aws/lambda/${var.lambda_at_edge ? "us-east-1." : ""}${var.name}")
   retention_in_days           = var.cloudwatch_logs_retention_in_days
   kms_key_id                  = var.cloudwatch_logs_kms_key_id
   skip_destroy                = var.cloudwatch_logs_skip_destroy
@@ -330,14 +332,14 @@ resource "aws_lambda_permission" "current_version_triggers" {
   function_name = aws_lambda_function.this.function_name
   qualifier     = aws_lambda_function.this.version
 
-  statement_id_prefix    = try(each.value.statement_id, each.key)
-  action                 = try(each.value.action, "lambda:InvokeFunction")
-  principal              = try(each.value.principal, format("%s.amazonaws.com", try(each.value.service, "")))
-  principal_org_id       = try(each.value.principal_org_id, null)
-  source_arn             = try(each.value.source_arn, null)
-  source_account         = try(each.value.source_account, null)
-  event_source_token     = try(each.value.event_source_token, null)
-  function_url_auth_type = try(each.value.function_url_auth_type, null)
+  statement_id_prefix    = coalesce(each.value.statement_id, each.key)
+  action                 = each.value.action
+  principal              = each.value.principal != null ? each.value.principal : format("%s.amazonaws.com", each.value.service != null ? each.value.service : "")
+  principal_org_id       = each.value.principal_org_id
+  source_arn             = each.value.source_arn
+  source_account         = each.value.source_account
+  event_source_token     = each.value.event_source_token
+  function_url_auth_type = each.value.function_url_auth_type
 
   lifecycle {
     create_before_destroy = true
@@ -350,14 +352,14 @@ resource "aws_lambda_permission" "unqualified_alias_triggers" {
 
   function_name = aws_lambda_function.this.function_name
 
-  statement_id_prefix    = try(each.value.statement_id, each.key)
-  action                 = try(each.value.action, "lambda:InvokeFunction")
-  principal              = try(each.value.principal, format("%s.amazonaws.com", try(each.value.service, "")))
-  principal_org_id       = try(each.value.principal_org_id, null)
-  source_arn             = try(each.value.source_arn, null)
-  source_account         = try(each.value.source_account, null)
-  event_source_token     = try(each.value.event_source_token, null)
-  function_url_auth_type = try(each.value.function_url_auth_type, null)
+  statement_id_prefix    = coalesce(each.value.statement_id, each.key)
+  action                 = each.value.action
+  principal              = each.value.principal != null ? each.value.principal : format("%s.amazonaws.com", each.value.service != null ? each.value.service : "")
+  principal_org_id       = each.value.principal_org_id
+  source_arn             = each.value.source_arn
+  source_account         = each.value.source_account
+  event_source_token     = each.value.event_source_token
+  function_url_auth_type = each.value.function_url_auth_type
 
   lifecycle {
     create_before_destroy = true
@@ -365,65 +367,64 @@ resource "aws_lambda_permission" "unqualified_alias_triggers" {
 }
 
 resource "aws_lambda_event_source_mapping" "this" {
-  for_each = { for k, v in var.event_source_mapping : k => v if local.enabled && var.create_function && !var.create_layer && try(v.enabled, true) }
+  for_each = { for k, v in var.event_source_mapping : k => v if local.enabled && var.create_function && !var.create_layer && v.enabled }
 
   function_name = aws_lambda_function.this.arn
 
-  event_source_arn = try(each.value.event_source_arn, null)
+  event_source_arn = each.value.event_source_arn
 
-  kms_key_arn = try(each.value.kms_key_arn, null)
+  kms_key_arn = each.value.kms_key_arn
 
-  batch_size                         = try(each.value.batch_size, null)
-  maximum_batching_window_in_seconds = try(each.value.maximum_batching_window_in_seconds, null)
-  starting_position                  = try(each.value.starting_position, null)
-  starting_position_timestamp        = try(each.value.starting_position_timestamp, null)
-  parallelization_factor             = try(each.value.parallelization_factor, null)
-  maximum_retry_attempts             = try(each.value.maximum_retry_attempts, null)
-  maximum_record_age_in_seconds      = try(each.value.maximum_record_age_in_seconds, null)
-  bisect_batch_on_function_error     = try(each.value.bisect_batch_on_function_error, null)
-  topics                             = try(each.value.topics, null)
-  queues                             = try(each.value.queues, null)
-  function_response_types            = try(each.value.function_response_types, null)
-  tumbling_window_in_seconds         = try(each.value.tumbling_window_in_seconds, null)
+  batch_size                         = each.value.batch_size
+  maximum_batching_window_in_seconds = each.value.maximum_batching_window_in_seconds
+  starting_position                  = each.value.starting_position
+  starting_position_timestamp        = each.value.starting_position_timestamp
+  parallelization_factor             = each.value.parallelization_factor
+  maximum_retry_attempts             = each.value.maximum_retry_attempts
+  maximum_record_age_in_seconds      = each.value.maximum_record_age_in_seconds
+  bisect_batch_on_function_error     = each.value.bisect_batch_on_function_error
+  topics                             = each.value.topics
+  queues                             = each.value.queues
+  function_response_types            = each.value.function_response_types
+  tumbling_window_in_seconds         = each.value.tumbling_window_in_seconds
 
   dynamic "destination_config" {
-    for_each = try(each.value.destination_arn_on_failure, null) != null ? [true] : []
+    for_each = each.value.destination_arn_on_failure != null ? [true] : []
     content {
       on_failure {
-        destination_arn = each.value["destination_arn_on_failure"]
+        destination_arn = each.value.destination_arn_on_failure
       }
     }
   }
 
   dynamic "scaling_config" {
-    for_each = try([each.value.scaling_config], [])
+    for_each = each.value.scaling_config != null ? [each.value.scaling_config] : []
     content {
-      maximum_concurrency = try(scaling_config.value.maximum_concurrency, null)
+      maximum_concurrency = scaling_config.value.maximum_concurrency
     }
   }
 
-
   dynamic "self_managed_event_source" {
-    for_each = try(each.value.self_managed_event_source, [])
+    for_each = each.value.self_managed_event_source
     content {
       endpoints = self_managed_event_source.value.endpoints
     }
   }
 
   dynamic "self_managed_kafka_event_source_config" {
-    for_each = try(each.value.self_managed_kafka_event_source_config, [])
+    for_each = each.value.self_managed_kafka_event_source_config
     content {
       consumer_group_id = self_managed_kafka_event_source_config.value.consumer_group_id
 
       dynamic "schema_registry_config" {
-        for_each = try([self_managed_kafka_event_source_config.value.schema_registry_config], [])
+        for_each = self_managed_kafka_event_source_config.value.schema_registry_config != null ? [self_managed_kafka_event_source_config.value.schema_registry_config] : []
 
         content {
-          event_record_format = try(schema_registry_config.value.event_record_format, null)
-          schema_registry_uri = try(schema_registry_config.value.schema_registry_uri, null)
+          event_record_format = schema_registry_config.value.event_record_format
+          schema_registry_uri = schema_registry_config.value.schema_registry_uri
 
           dynamic "access_config" {
-            for_each = try(schema_registry_config.value.access_config, [])
+            for_each = schema_registry_config.value.access_config
 
             content {
               type = access_config.value.type
@@ -432,7 +433,7 @@ resource "aws_lambda_event_source_mapping" "this" {
           }
 
           dynamic "schema_validation_config" {
-            for_each = try([schema_registry_config.value.schema_validation_config], [])
+            for_each = schema_registry_config.value.schema_validation_config != null ? [schema_registry_config.value.schema_validation_config] : []
 
             content {
               attribute = schema_validation_config.value.attribute
@@ -443,19 +444,19 @@ resource "aws_lambda_event_source_mapping" "this" {
     }
   }
   dynamic "amazon_managed_kafka_event_source_config" {
-    for_each = try(each.value.amazon_managed_kafka_event_source_config, [])
+    for_each = each.value.amazon_managed_kafka_event_source_config
     content {
       consumer_group_id = amazon_managed_kafka_event_source_config.value.consumer_group_id
 
       dynamic "schema_registry_config" {
-        for_each = try([amazon_managed_kafka_event_source_config.value.schema_registry_config], [])
+        for_each = amazon_managed_kafka_event_source_config.value.schema_registry_config != null ? [amazon_managed_kafka_event_source_config.value.schema_registry_config] : []
 
         content {
-          event_record_format = try(schema_registry_config.value.event_record_format, null)
-          schema_registry_uri = try(schema_registry_config.value.schema_registry_uri, null)
+          event_record_format = schema_registry_config.value.event_record_format
+          schema_registry_uri = schema_registry_config.value.schema_registry_uri
 
           dynamic "access_config" {
-            for_each = try(schema_registry_config.value.access_config, [])
+            for_each = schema_registry_config.value.access_config
 
             content {
               type = access_config.value.type
@@ -464,7 +465,7 @@ resource "aws_lambda_event_source_mapping" "this" {
           }
 
           dynamic "schema_validation_config" {
-            for_each = try([schema_registry_config.value.schema_validation_config], [])
+            for_each = schema_registry_config.value.schema_validation_config != null ? [schema_registry_config.value.schema_validation_config] : []
 
             content {
               attribute = schema_validation_config.value.attribute
@@ -476,39 +477,39 @@ resource "aws_lambda_event_source_mapping" "this" {
   }
 
   dynamic "source_access_configuration" {
-    for_each = try(each.value.source_access_configuration, [])
+    for_each = each.value.source_access_configuration
     content {
-      type = source_access_configuration.value["type"]
-      uri  = source_access_configuration.value["uri"]
+      type = source_access_configuration.value.type
+      uri  = source_access_configuration.value.uri
     }
   }
 
   dynamic "filter_criteria" {
-    for_each = try(each.value.filter_criteria, null) != null ? [true] : []
+    for_each = each.value.filter_criteria != null ? [true] : []
 
     content {
       dynamic "filter" {
-        for_each = try(flatten([each.value.filter_criteria]), [])
+        for_each = each.value.filter_criteria
 
         content {
-          pattern = try(filter.value.pattern, null)
+          pattern = filter.value.pattern
         }
       }
     }
   }
 
   dynamic "document_db_event_source_config" {
-    for_each = try(each.value.document_db_event_source_config, [])
+    for_each = each.value.document_db_event_source_config
 
     content {
       database_name   = document_db_event_source_config.value.database_name
-      collection_name = try(document_db_event_source_config.value.collection_name, null)
-      full_document   = try(document_db_event_source_config.value.full_document, null)
+      collection_name = document_db_event_source_config.value.collection_name
+      full_document   = document_db_event_source_config.value.full_document
     }
   }
 
   dynamic "metrics_config" {
-    for_each = try([each.value.metrics_config], [])
+    for_each = each.value.metrics_config != null ? [each.value.metrics_config] : []
 
     content {
       metrics = metrics_config.value.metrics
@@ -516,15 +517,15 @@ resource "aws_lambda_event_source_mapping" "this" {
   }
 
   dynamic "provisioned_poller_config" {
-    for_each = try([each.value.provisioned_poller_config], [])
+    for_each = each.value.provisioned_poller_config != null ? [each.value.provisioned_poller_config] : []
     content {
-      maximum_pollers   = try(provisioned_poller_config.value.maximum_pollers, null)
-      minimum_pollers   = try(provisioned_poller_config.value.minimum_pollers, null)
-      poller_group_name = try(provisioned_poller_config.value.poller_group_name, null)
+      maximum_pollers   = provisioned_poller_config.value.maximum_pollers
+      minimum_pollers   = provisioned_poller_config.value.minimum_pollers
+      poller_group_name = provisioned_poller_config.value.poller_group_name
     }
   }
 
-  tags = merge(local.tags, try(each.value.tags, {}))
+  tags = merge(local.tags, each.value.tags)
 }
 
 resource "aws_lambda_function_url" "this" {
@@ -536,15 +537,15 @@ resource "aws_lambda_function_url" "this" {
   invoke_mode        = var.invoke_mode
 
   dynamic "cors" {
-    for_each = length(keys(var.cors)) == 0 ? [] : [var.cors]
+    for_each = var.cors != null ? [var.cors] : []
 
     content {
-      allow_credentials = try(cors.value.allow_credentials, null)
-      allow_headers     = try(cors.value.allow_headers, null)
-      allow_methods     = try(cors.value.allow_methods, null)
-      allow_origins     = try(cors.value.allow_origins, null)
-      expose_headers    = try(cors.value.expose_headers, null)
-      max_age           = try(cors.value.max_age, null)
+      allow_credentials = cors.value.allow_credentials
+      allow_headers     = cors.value.allow_headers
+      allow_methods     = cors.value.allow_methods
+      allow_origins     = cors.value.allow_origins
+      expose_headers    = cors.value.expose_headers
+      max_age           = cors.value.max_age
     }
   }
 

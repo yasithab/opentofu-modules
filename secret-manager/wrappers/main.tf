@@ -1,7 +1,9 @@
 module "wrapper" {
   source = "../"
 
-  for_each = var.items
+  # var.items is sensitive; for_each cannot iterate sensitive values directly.
+  # Secret values remain protected by the root module's sensitive variable declarations.
+  for_each = nonsensitive(var.items)
 
   block_public_policy              = try(each.value.block_public_policy, var.defaults.block_public_policy, null)
   enabled                          = try(each.value.enabled, var.defaults.enabled, true)
@@ -28,5 +30,6 @@ module "wrapper" {
   source_policy_documents          = try(each.value.source_policy_documents, var.defaults.source_policy_documents, [])
   secret_string_wo                 = try(each.value.secret_string_wo, var.defaults.secret_string_wo, null)
   secret_string_wo_version         = try(each.value.secret_string_wo_version, var.defaults.secret_string_wo_version, null)
+  tags                             = try(each.value.tags, var.defaults.tags, {})
   version_stages                   = try(each.value.version_stages, var.defaults.version_stages, null)
 }

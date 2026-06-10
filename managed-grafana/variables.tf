@@ -4,12 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-variable "region" {
-  description = "Region where resources will be managed. Defaults to the Region set in the provider configuration."
-  type        = string
-  default     = null
-}
-
 variable "name" {
   description = "Name of the Amazon Managed Grafana workspace."
   type        = string
@@ -71,15 +65,25 @@ variable "grafana_version" {
 }
 
 variable "data_sources" {
-  description = "List of data sources for the workspace. Valid values include CLOUDWATCH, PROMETHEUS, XRAY, TIMESTREAM, SITEWISE, ATHENA, REDSHIFT."
+  description = "List of data sources for the workspace. Valid values include AMAZON_OPENSEARCH_SERVICE, ATHENA, CLOUDWATCH, PROMETHEUS, REDSHIFT, SITEWISE, TIMESTREAM, TWINMAKER, XRAY."
   type        = list(string)
   default     = ["CLOUDWATCH", "PROMETHEUS", "XRAY"]
+
+  validation {
+    condition     = alltrue([for s in var.data_sources : contains(["AMAZON_OPENSEARCH_SERVICE", "ATHENA", "CLOUDWATCH", "PROMETHEUS", "REDSHIFT", "SITEWISE", "TIMESTREAM", "TWINMAKER", "XRAY"], s)])
+    error_message = "data_sources may only contain: AMAZON_OPENSEARCH_SERVICE, ATHENA, CLOUDWATCH, PROMETHEUS, REDSHIFT, SITEWISE, TIMESTREAM, TWINMAKER, XRAY."
+  }
 }
 
 variable "notification_destinations" {
   description = "List of notification destinations. Valid values are SNS."
   type        = list(string)
   default     = ["SNS"]
+
+  validation {
+    condition     = alltrue([for d in var.notification_destinations : contains(["SNS"], d)])
+    error_message = "notification_destinations may only contain: SNS."
+  }
 }
 
 variable "organizational_units" {
@@ -132,13 +136,19 @@ variable "network_access_control" {
 # License
 ################################################################################
 
+variable "create_license_association" {
+  description = "Determines whether a license association is created for the workspace. Requires `license_type` to be set."
+  type        = bool
+  default     = false
+}
+
 variable "license_type" {
-  description = "License type for the workspace. Valid values are ENTERPRISE and ENTERPRISE_FREE_TRIAL."
+  description = "License type for the workspace. Valid values are ENTERPRISE and ENTERPRISE_FREE_TRIAL. Only used when `create_license_association` is `true`."
   type        = string
   default     = "ENTERPRISE_FREE_TRIAL"
 
   validation {
-    condition     = contains(["ENTERPRISE", "ENTERPRISE_FREE_TRIAL"], var.license_type)
+    condition     = var.license_type == null || contains(["ENTERPRISE", "ENTERPRISE_FREE_TRIAL"], var.license_type)
     error_message = "license_type must be ENTERPRISE or ENTERPRISE_FREE_TRIAL."
   }
 }
@@ -148,9 +158,19 @@ variable "license_type" {
 ################################################################################
 
 variable "enable_saml_configuration" {
-  description = "Determines whether SAML configuration is created for the workspace."
+  description = "Determines whether SAML configuration is created for the workspace. Requires SAML in `authentication_providers` and exactly one of `saml_idp_metadata_url` or `saml_idp_metadata_xml`."
   type        = bool
   default     = false
+
+  validation {
+    condition     = !var.enable_saml_configuration || contains(var.authentication_providers, "SAML")
+    error_message = "enable_saml_configuration requires SAML to be included in authentication_providers."
+  }
+
+  validation {
+    condition     = !var.enable_saml_configuration || ((var.saml_idp_metadata_url != null) != (var.saml_idp_metadata_xml != null))
+    error_message = "enable_saml_configuration requires exactly one of saml_idp_metadata_url or saml_idp_metadata_xml to be set."
+  }
 }
 
 variable "saml_editor_role_values" {
@@ -191,16 +211,23 @@ variable "saml_login_assertion" {
 }
 
 ################################################################################
-# API Keys
+# Service Accounts
 ################################################################################
 
-variable "api_keys" {
-  description = "Map of API key configurations. Each key name maps to a configuration with key_role and seconds_to_live."
+variable "service_accounts" {
+  description = "Map of Grafana workspace service account configurations. Each key is the service account name, with a grafana_role (ADMIN, EDITOR, or VIEWER) and an optional map of tokens (token name => { seconds_to_live })."
   type = map(object({
-    key_role        = string
-    seconds_to_live = number
+    grafana_role = string
+    tokens = optional(map(object({
+      seconds_to_live = number
+    })), {})
   }))
   default = {}
+
+  validation {
+    condition     = alltrue([for sa in values(var.service_accounts) : contains(["ADMIN", "EDITOR", "VIEWER"], sa.grafana_role)])
+    error_message = "Each service account grafana_role must be one of: ADMIN, EDITOR, VIEWER."
+  }
 }
 
 ################################################################################
@@ -217,6 +244,11 @@ variable "iam_role_arn" {
   description = "ARN of an existing IAM role to use when create_iam_role is false."
   type        = string
   default     = null
+
+  validation {
+    condition     = !var.enabled || var.create_iam_role || var.iam_role_arn != null
+    error_message = "iam_role_arn is required when enabled is true and create_iam_role is false."
+  }
 }
 
 variable "iam_role_name" {

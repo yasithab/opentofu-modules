@@ -4,27 +4,27 @@
 
 output "web_acl_id" {
   description = "The unique identifier of the Web ACL."
-  value       = try(aws_wafv2_web_acl.this.id, "")
+  value       = try(aws_wafv2_web_acl.this.id, aws_wafv2_web_acl.rule_group_associated.id, "")
 }
 
 output "web_acl_arn" {
   description = "The ARN of the Web ACL. Use this ARN to associate the Web ACL with a CloudFront distribution, ALB, or API Gateway stage."
-  value       = try(aws_wafv2_web_acl.this.arn, "")
+  value       = try(aws_wafv2_web_acl.this.arn, aws_wafv2_web_acl.rule_group_associated.arn, "")
 }
 
 output "web_acl_name" {
   description = "The name of the Web ACL."
-  value       = try(aws_wafv2_web_acl.this.name, "")
+  value       = try(aws_wafv2_web_acl.this.name, aws_wafv2_web_acl.rule_group_associated.name, "")
 }
 
 output "web_acl_capacity" {
   description = "The web ACL capacity units (WCUs) currently used by this web ACL."
-  value       = try(aws_wafv2_web_acl.this.capacity, null)
+  value       = try(aws_wafv2_web_acl.this.capacity, aws_wafv2_web_acl.rule_group_associated.capacity, null)
 }
 
 output "web_acl_application_integration_url" {
   description = "The URL to use in SDK integrations with managed rule groups (for CAPTCHA and challenge actions)."
-  value       = try(aws_wafv2_web_acl.this.application_integration_url, "")
+  value       = try(aws_wafv2_web_acl.this.application_integration_url, aws_wafv2_web_acl.rule_group_associated.application_integration_url, "")
 }
 
 ###################################################

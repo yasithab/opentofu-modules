@@ -164,3 +164,7 @@ module "hybrid_node_role" {
   }
 }
 ```
+
+## Notes
+
+- **`cluster_arns` wildcard default**: `cluster_arns` defaults to `["*"]`, which grants `eks:DescribeCluster` on every cluster in the account. This is convenient for getting started but should be scoped to specific cluster ARNs in production, as shown in the examples above.

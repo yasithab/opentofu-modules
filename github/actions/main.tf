@@ -4,6 +4,21 @@ locals {
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
   })
+
+  # Subject claim suffixes. Constrain via github_ref and/or github_environment;
+  # when neither is set, any ref/environment of the listed repositories may assume
+  # the role (the historical breadth of this module).
+  github_sub_suffixes = concat(
+    var.github_ref != null ? ["ref:${var.github_ref}"] : [],
+    var.github_environment != null ? ["environment:${var.github_environment}"] : [],
+  )
+
+  github_sub_values = flatten([
+    for repo in var.repo_names : [
+      for suffix in coalescelist(local.github_sub_suffixes, ["*"]) :
+      "repo:${var.github_organization_name}/${repo}:${suffix}"
+    ]
+  ])
 }
 
 #####################################################################################
@@ -11,7 +26,7 @@ locals {
 #####################################################################################
 
 data "aws_iam_openid_connect_provider" "github_oidc" {
-  count = var.github_oidc_arn != null ? 1 : 0
+  count = var.enabled ? 1 : 0
   arn   = var.github_oidc_arn
 }
 
@@ -30,10 +45,22 @@ data "aws_iam_policy_document" "github_actions_oid_assume_role_policy" {
       type        = "Federated"
       identifiers = [try(data.aws_iam_openid_connect_provider.github_oidc[0].arn, var.github_oidc_arn)]
     }
+
+    # Require tokens to be issued for STS - without this, any GitHub OIDC token
+    # (e.g. issued for a different audience) from a matching repo could assume the role
     condition {
-      test     = length(var.repo_names) == 1 ? "StringLike" : "ForAnyValue:StringLike"
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    # sub is a single-valued claim; plain StringLike is the correct operator
+    # (set operators like ForAnyValue:StringLike match differently and can be bypassed
+    # on absent claims with some operators)
+    condition {
+      test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [for item in var.repo_names : "repo:${var.github_organization_name}/${item}:*"]
+      values   = local.github_sub_values
     }
   }
 }
@@ -48,8 +75,7 @@ resource "aws_iam_role" "github_actions" {
   force_detach_policies = var.iam_role_force_detach_policies
 
   tags = merge(local.tags, {
-    Name        = var.iam_role_name
-    Environment = terraform.workspace
+    Name = var.iam_role_name
   })
 
   lifecycle {

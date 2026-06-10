@@ -18,6 +18,22 @@ Provisions AWS CodeBuild projects configured as GitHub Actions self-hosted runne
 
 ## Usage
 
+### Behaviour notes
+
+- The build and deployment runners are a single `for_each` resource pair
+  (`aws_codebuild_project.this` / `aws_codebuild_webhook.this`) iterating over an internal
+  `runners` map with keys `"build"` and `"deployment"`. Per-runner variables use the
+  `build_runner_*` / `deployment_runner_*` prefixes. The shared CloudWatch log group is a
+  single resource; each runner logs to its own stream prefix.
+- The `project_arns`, `project_names`, and `webhook_urls` outputs are maps keyed by runner
+  (e.g. `module.codebuild_runners.project_arns["deployment"]`).
+- When `create_security_group = false`, pass existing security groups explicitly via
+  `security_group_ids`. If it is empty, the module falls back to a lookup by the
+  `Name=codebuild-runners-<env_name>-security-group` tag and fails fast if no matching
+  group exists.
+- `privileged_mode` defaults to `true`; set it to `false` for runners that do not build
+  Docker images.
+
 ```hcl
 module "codebuild_runners" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//codebuild-runners?depth=1&ref=master"

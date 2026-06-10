@@ -11,22 +11,12 @@ locals {
   #   attempting to plan if the role_name and function_name are not set.  This is a workaround
   #   for #83 that will allow one to import resources without receiving an error from coalesce.
   # @see https://github.com/terraform-aws-modules/terraform-aws-lambda/issues/83
-  role_name   = local.create_role ? coalesce(var.role_name, var.function_name, "*") : null
+  role_name   = local.create_role ? coalesce(var.role_name, var.name, "*") : null
   policy_name = coalesce(var.policy_name, local.role_name, "*")
 
-  # IAM Role trusted entities is a list of any (allow strings (services) and maps (type+identifiers))
-  trusted_entities_services = distinct(compact(concat(
-    slice(["lambda.amazonaws.com", "edgelambda.amazonaws.com"], 0, var.lambda_at_edge ? 2 : 1),
-    [for service in var.trusted_entities : try(tostring(service), "")]
-  )))
-
-  trusted_entities_principals = [
-    for principal in var.trusted_entities : {
-      type        = principal.type
-      identifiers = tolist(principal.identifiers)
-    }
-    if !can(tostring(principal))
-  ]
+  # Default Lambda service principals (plus edgelambda for Lambda@Edge).
+  # Additional trusted entities come from var.trusted_entities (typed objects only).
+  trusted_entities_services = slice(["lambda.amazonaws.com", "edgelambda.amazonaws.com"], 0, var.lambda_at_edge ? 2 : 1)
 }
 
 ###########
@@ -46,7 +36,7 @@ data "aws_iam_policy_document" "assume_role" {
     }
 
     dynamic "principals" {
-      for_each = local.trusted_entities_principals
+      for_each = var.trusted_entities
       content {
         type        = principals.value.type
         identifiers = principals.value.identifiers
@@ -58,13 +48,13 @@ data "aws_iam_policy_document" "assume_role" {
     for_each = var.assume_role_policy_statements
 
     content {
-      sid         = try(statement.value.sid, replace(statement.key, "/[^0-9A-Za-z]*/", ""))
-      effect      = try(statement.value.effect, null)
-      actions     = try(statement.value.actions, null)
-      not_actions = try(statement.value.not_actions, null)
+      sid         = coalesce(statement.value.sid, replace(statement.key, "/[^0-9A-Za-z]*/", ""))
+      effect      = statement.value.effect
+      actions     = statement.value.actions
+      not_actions = statement.value.not_actions
 
       dynamic "principals" {
-        for_each = try(statement.value.principals, [])
+        for_each = statement.value.principals
         content {
           type        = principals.value.type
           identifiers = principals.value.identifiers
@@ -72,7 +62,7 @@ data "aws_iam_policy_document" "assume_role" {
       }
 
       dynamic "not_principals" {
-        for_each = try(statement.value.not_principals, [])
+        for_each = statement.value.not_principals
         content {
           type        = not_principals.value.type
           identifiers = not_principals.value.identifiers
@@ -80,7 +70,7 @@ data "aws_iam_policy_document" "assume_role" {
       }
 
       dynamic "condition" {
-        for_each = try(statement.value.condition, [])
+        for_each = statement.value.condition
         content {
           test     = condition.value.test
           variable = condition.value.variable
@@ -376,15 +366,15 @@ data "aws_iam_policy_document" "additional_inline" {
     for_each = var.policy_statements
 
     content {
-      sid           = try(statement.value.sid, replace(statement.key, "/[^0-9A-Za-z]*/", ""))
-      effect        = try(statement.value.effect, null)
-      actions       = try(statement.value.actions, null)
-      not_actions   = try(statement.value.not_actions, null)
-      resources     = try(statement.value.resources, null)
-      not_resources = try(statement.value.not_resources, null)
+      sid           = coalesce(statement.value.sid, replace(statement.key, "/[^0-9A-Za-z]*/", ""))
+      effect        = statement.value.effect
+      actions       = statement.value.actions
+      not_actions   = statement.value.not_actions
+      resources     = statement.value.resources
+      not_resources = statement.value.not_resources
 
       dynamic "principals" {
-        for_each = try(statement.value.principals, [])
+        for_each = statement.value.principals
         content {
           type        = principals.value.type
           identifiers = principals.value.identifiers
@@ -392,7 +382,7 @@ data "aws_iam_policy_document" "additional_inline" {
       }
 
       dynamic "not_principals" {
-        for_each = try(statement.value.not_principals, [])
+        for_each = statement.value.not_principals
         content {
           type        = not_principals.value.type
           identifiers = not_principals.value.identifiers
@@ -400,7 +390,7 @@ data "aws_iam_policy_document" "additional_inline" {
       }
 
       dynamic "condition" {
-        for_each = try(statement.value.condition, [])
+        for_each = statement.value.condition
         content {
           test     = condition.value.test
           variable = condition.value.variable

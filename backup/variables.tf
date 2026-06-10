@@ -341,6 +341,7 @@ variable "restore_testing_plan" {
   description = <<-EOT
     Restore testing plan configuration. When set, creates an aws_backup_restore_testing_plan.
     - name: Defaults to "<name>-restore-test".
+    - schedule_expression: Cron expression for when restore tests run. The module falls back to "cron(0 5 ? * * *)" (daily at 05:00 UTC) if unset.
     - algorithm: RANDOM_WITHIN_WINDOW or LATEST_WITHIN_WINDOW.
     - recovery_point_types: e.g. ["CONTINUOUS", "SNAPSHOT"].
   EOT

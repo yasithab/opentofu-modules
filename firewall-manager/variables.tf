@@ -40,7 +40,7 @@ variable "admin_account_id" {
 ################################################################################
 
 variable "firehose_arn" {
-  description = "ARN of the Kinesis Firehose delivery stream for WAF logging (used when firehose_enabled is false)."
+  description = "ARN of the Kinesis Firehose delivery stream used as the WAF logging destination. Required when logging_configuration_enabled is true."
   type        = string
   default     = null
 
@@ -50,22 +50,32 @@ variable "firehose_arn" {
   }
 }
 
-variable "firehose_kinesis_id" {
-  description = "Kinesis Firehose stream ID for WAF logging (used when firehose_enabled is true)."
-  type        = string
-  default     = null
-}
-
-variable "firehose_enabled" {
-  description = "Whether to use firehose_kinesis_id instead of firehose_arn for WAF logging configuration."
-  type        = bool
-  default     = false
-}
-
 variable "logging_configuration_enabled" {
   description = "Whether to enable WAF logging configuration in the managed_service_data."
   type        = bool
   default     = false
+
+  validation {
+    condition     = !var.logging_configuration_enabled || var.firehose_arn != null
+    error_message = "firehose_arn must be set when logging_configuration_enabled is true."
+  }
+}
+
+variable "redacted_fields" {
+  description = "List of fields to redact from WAF logs when the module-level logging configuration is used. Each entry supports redacted_field_type (e.g. SingleHeader, Method, UriPath, QueryString) and an optional redacted_field_value (e.g. the header name for SingleHeader)."
+  type = list(object({
+    redacted_field_type  = string
+    redacted_field_value = optional(string)
+  }))
+  default = [
+    {
+      redacted_field_type  = "SingleHeader"
+      redacted_field_value = "Cookies"
+    },
+    {
+      redacted_field_type = "Method"
+    },
+  ]
 }
 
 variable "waf_v2_policies" {
@@ -129,6 +139,41 @@ variable "waf_v2_policies" {
       optimize_unassociated_web_acl:
         Whether to optimize unassociated Web ACLs. Defaults to false.
   DOC
-  type        = list(any)
-  default     = []
+  type = list(object({
+    name                               = string
+    description                        = optional(string)
+    delete_all_policy_resources        = optional(bool, true)
+    delete_unused_fm_managed_resources = optional(bool, false)
+    exclude_resource_tags              = optional(bool, false)
+    remediation_enabled                = optional(bool, false)
+    resource_type_list                 = optional(list(string))
+    resource_type                      = optional(string)
+    resource_tags                      = optional(map(string))
+    include_account_ids                = optional(list(string), [])
+    include_orgunit_ids                = optional(list(string), [])
+    exclude_account_ids                = optional(list(string), [])
+    exclude_orgunit_ids                = optional(list(string), [])
+    tags                               = optional(map(string), {})
+    policy_data = object({
+      default_action                               = string
+      override_customer_web_acl_association        = optional(bool, false)
+      logging_configuration                        = optional(string)
+      pre_process_rule_groups                      = optional(any, [])
+      post_process_rule_groups                     = optional(any, [])
+      custom_request_handling                      = optional(any)
+      custom_response                              = optional(any)
+      sampled_requests_enabled_for_default_actions = optional(bool, false)
+      token_domains                                = optional(list(string), [])
+      web_acl_source                               = optional(string)
+      optimize_unassociated_web_acl                = optional(bool, false)
+    })
+  }))
+  default = []
+
+  validation {
+    condition = alltrue([
+      for p in var.waf_v2_policies : contains(["ALLOW", "BLOCK", "COUNT"], upper(p.policy_data.default_action))
+    ])
+    error_message = "Each waf_v2_policies entry policy_data.default_action must be ALLOW, BLOCK, or COUNT."
+  }
 }

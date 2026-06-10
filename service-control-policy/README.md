@@ -166,3 +166,30 @@ module "scp_deny_all" {
   }
 }
 ```
+
+## Notes
+
+### `require_s3_encryption` and the SSE header conditions
+
+The `require_s3_encryption` toggle adds two statements: `DenyUnEncryptedObjectUploads`
+(denies `s3:PutObject` when the `s3:x-amz-server-side-encryption` header is absent) and
+`DenyIncorrectEncryptionHeader` (denies the upload when the header is present but not
+`AES256` or `aws:kms`).
+
+Since January 2023, **Amazon S3 encrypts all new objects by default** (SSE-S3), even when no
+encryption header is sent. As a consequence:
+
+- Uploads without the header are already encrypted; denying them mainly *breaks* clients and
+  SDKs that (correctly) omit the header and rely on bucket/account default encryption.
+- If your intent is to require **SSE-KMS specifically**, prefer bucket policies or bucket
+  default-encryption configuration over this header-matching SCP.
+
+Keep this toggle only if you have a compliance requirement for the explicit header; otherwise
+rely on S3 default encryption.
+
+### Module behaviour
+
+- `enabled = false` skips creation of the policy and all attachments.
+- At least one statement toggle (or `deny_all = true`) is required - an SCP with an empty
+  statement list is rejected by AWS at apply time, so the module fails fast at plan instead.
+- `name` is required.

@@ -149,3 +149,8 @@ module "kms_keys_conditional" {
   }
 }
 ```
+
+## Notes
+
+- `tags` and `region` are passed through per item (`items.<key>.tags` / `items.<key>.region`), falling back to `defaults.tags` / `defaults.region`.
+- Wrapper modules are excluded from the Terratest suite, so this directory intentionally has no `test/test.tfvars` fixture. The root `kms` module fixture covers plan testing.

@@ -5,7 +5,8 @@ variable "defaults" {
 }
 
 variable "items" {
-  description = "Maps of items to create a wrapper from. Values are passed through to the module."
+  description = "Maps of items to create a wrapper from. Values are passed through to the module. Marked sensitive because items can carry `secret_string`/`secret_binary` values."
   type        = any
   default     = {}
+  sensitive   = true
 }

@@ -103,3 +103,28 @@ module "github_actions_bounded" {
   }
 }
 ```
+
+## Security Notes
+
+### Audience condition (SECURITY)
+
+The role trust policy requires `token.actions.githubusercontent.com:aud = "sts.amazonaws.com"`
+(`StringEquals`). Without this condition, a GitHub OIDC token minted for any audience by a
+matching repository could be exchanged for role credentials. Workflows using
+`aws-actions/configure-aws-credentials` request the `sts.amazonaws.com` audience by default.
+
+### Constrain the subject claim (recommended)
+
+By default any branch, tag, PR or environment of the listed repositories can assume the role
+(`repo:<org>/<repo>:*`). Tighten this with the optional variables:
+
+```hcl
+# Only the main branch
+github_ref = "refs/heads/main"
+
+# And/or only a specific GitHub Actions environment
+github_environment = "production"
+```
+
+When both are set, both subjects are allowed (ref-based OR environment-based). For roles with
+write access to infrastructure, constraining the subject is strongly recommended.

@@ -236,3 +236,7 @@ module "self_managed_ng_hpc" {
   }
 }
 ```
+
+## Notes
+
+- **AMI type default**: `ami_type` defaults to `AL2023_x86_64_STANDARD` (previously `AL2_x86_64`). Set `ami_type = "AL2_x86_64"` explicitly to keep existing AL2-based groups unchanged; changing AMI type replaces instances on the next instance refresh.

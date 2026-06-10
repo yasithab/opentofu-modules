@@ -6,23 +6,29 @@ data "aws_partition" "current" {}
 
 locals {
   enabled        = var.enabled
+  name           = var.name
   create_service = local.enabled && var.create_service
 
   # Ensure instance role created is attached even if no values are provided via `var.instance_configuration`
   instance_configuration = local.create_instance_iam_role ? merge(
-    var.instance_configuration,
+    var.instance_configuration != null ? var.instance_configuration : {},
     { instance_role_arn = aws_iam_role.instance.arn }
   ) : var.instance_configuration
 
   # Ensure access role created is attached even if no values are provided via `var.source_configuration`
   source_configuration = local.create_access_iam_role ? merge(
-    var.source_configuration,
-    { authentication_configuration = { access_role_arn = aws_iam_role.access.arn } }
+    var.source_configuration != null ? var.source_configuration : {},
+    {
+      authentication_configuration = {
+        access_role_arn = aws_iam_role.access.arn
+        connection_arn  = try(var.source_configuration.authentication_configuration.connection_arn, null)
+      }
+    }
   ) : var.source_configuration
 
   # Ensure VPC connector created is attached even if no values are provided via `var.network_configuration`
   network_configuration = local.create_vpc_connector ? merge(
-    var.network_configuration,
+    var.network_configuration != null ? var.network_configuration : {},
     {
       egress_configuration = {
         egress_type       = "VPC"
@@ -40,7 +46,7 @@ resource "aws_apprunner_service" "this" {
   auto_scaling_configuration_arn = var.auto_scaling_configuration_arn
 
   dynamic "encryption_configuration" {
-    for_each = length(var.encryption_configuration) > 0 ? [var.encryption_configuration] : []
+    for_each = var.encryption_configuration != null ? [var.encryption_configuration] : []
 
     content {
       kms_key = encryption_configuration.value.kms_key
@@ -48,7 +54,7 @@ resource "aws_apprunner_service" "this" {
   }
 
   dynamic "health_check_configuration" {
-    for_each = length(var.health_check_configuration) > 0 ? [var.health_check_configuration] : []
+    for_each = var.health_check_configuration != null ? [var.health_check_configuration] : []
 
     content {
       healthy_threshold   = try(health_check_configuration.value.healthy_threshold, null)
@@ -61,7 +67,7 @@ resource "aws_apprunner_service" "this" {
   }
 
   dynamic "instance_configuration" {
-    for_each = length(local.instance_configuration) > 0 ? [local.instance_configuration] : []
+    for_each = local.instance_configuration != null ? [local.instance_configuration] : []
 
     content {
       cpu               = try(instance_configuration.value.cpu, null)
@@ -71,11 +77,11 @@ resource "aws_apprunner_service" "this" {
   }
 
   dynamic "network_configuration" {
-    for_each = length(local.network_configuration) > 0 ? [local.network_configuration] : []
+    for_each = local.network_configuration != null ? [local.network_configuration] : []
 
     content {
       dynamic "ingress_configuration" {
-        for_each = try([network_configuration.value.ingress_configuration], [])
+        for_each = try(network_configuration.value.ingress_configuration != null ? [network_configuration.value.ingress_configuration] : [], [])
 
         content {
           is_publicly_accessible = try(ingress_configuration.value.is_publicly_accessible, null)
@@ -83,7 +89,7 @@ resource "aws_apprunner_service" "this" {
       }
 
       dynamic "egress_configuration" {
-        for_each = try([network_configuration.value.egress_configuration], [])
+        for_each = try(network_configuration.value.egress_configuration != null ? [network_configuration.value.egress_configuration] : [], [])
 
         content {
           egress_type       = try(egress_configuration.value.egress_type, "VPC")
@@ -104,14 +110,14 @@ resource "aws_apprunner_service" "this" {
     }
   }
 
-  service_name = var.service_name
+  service_name = local.name
 
   dynamic "source_configuration" {
-    for_each = [local.source_configuration]
+    for_each = local.source_configuration != null ? [local.source_configuration] : []
 
     content {
       dynamic "authentication_configuration" {
-        for_each = try([source_configuration.value.authentication_configuration], [])
+        for_each = try(source_configuration.value.authentication_configuration != null ? [source_configuration.value.authentication_configuration] : [], [])
 
         content {
           access_role_arn = lookup(authentication_configuration.value, "access_role_arn", null)
@@ -123,15 +129,15 @@ resource "aws_apprunner_service" "this" {
       auto_deployments_enabled = try(source_configuration.value.auto_deployments_enabled, false)
 
       dynamic "code_repository" {
-        for_each = try([source_configuration.value.code_repository], [])
+        for_each = try(source_configuration.value.code_repository != null ? [source_configuration.value.code_repository] : [], [])
 
         content {
           dynamic "code_configuration" {
-            for_each = try([code_repository.value.code_configuration], [])
+            for_each = try(code_repository.value.code_configuration != null ? [code_repository.value.code_configuration] : [], [])
 
             content {
               dynamic "code_configuration_values" {
-                for_each = try([code_configuration.value.code_configuration_values], [])
+                for_each = try(code_configuration.value.code_configuration_values != null ? [code_configuration.value.code_configuration_values] : [], [])
 
                 content {
                   build_command                 = try(code_configuration_values.value.build_command, null)
@@ -162,11 +168,11 @@ resource "aws_apprunner_service" "this" {
       }
 
       dynamic "image_repository" {
-        for_each = try([source_configuration.value.image_repository], [])
+        for_each = try(source_configuration.value.image_repository != null ? [source_configuration.value.image_repository] : [], [])
 
         content {
           dynamic "image_configuration" {
-            for_each = try([image_repository.value.image_configuration], [])
+            for_each = try(image_repository.value.image_configuration != null ? [image_repository.value.image_configuration] : [], [])
 
             content {
               port                          = try(image_configuration.value.port, null)
@@ -196,7 +202,7 @@ resource "aws_apprunner_service" "this" {
 
 locals {
   create_access_iam_role = local.create_service && var.create_access_iam_role
-  access_iam_role_name   = try(coalesce(var.access_iam_role_name, "${var.service_name}-access"), "")
+  access_iam_role_name   = local.create_access_iam_role ? coalesce(var.access_iam_role_name, "${local.name}-access") : ""
 }
 
 data "aws_iam_policy_document" "access_assume_role" {
@@ -313,7 +319,7 @@ resource "aws_iam_role_policy_attachment" "access_additional" {
 
 locals {
   create_instance_iam_role = local.create_service && var.create_instance_iam_role
-  instance_iam_role_name   = try(coalesce(var.instance_iam_role_name, "${var.service_name}-instance"), "")
+  instance_iam_role_name   = local.create_instance_iam_role ? coalesce(var.instance_iam_role_name, "${local.name}-instance") : ""
 }
 
 data "aws_iam_policy_document" "instance_assume_role" {
@@ -368,7 +374,7 @@ resource "aws_iam_role_policy_attachment" "instance_xray" {
   role       = aws_iam_role.instance.name
 
   lifecycle {
-    enabled = local.create_instance_iam_role && try(var.observability_configuration.observability_enabled, false)
+    enabled = local.create_instance_iam_role && var.enable_observability_configuration
   }
 }
 
@@ -394,15 +400,15 @@ data "aws_iam_policy_document" "instance" {
     for_each = var.instance_policy_statements
 
     content {
-      sid           = try(statement.value.sid, statement.key)
-      actions       = try(statement.value.actions, null)
-      not_actions   = try(statement.value.not_actions, null)
-      effect        = try(statement.value.effect, null)
-      resources     = try(statement.value.resources, null)
-      not_resources = try(statement.value.not_resources, null)
+      sid           = coalesce(statement.value.sid, statement.key)
+      actions       = statement.value.actions
+      not_actions   = statement.value.not_actions
+      effect        = statement.value.effect
+      resources     = statement.value.resources
+      not_resources = statement.value.not_resources
 
       dynamic "principals" {
-        for_each = try(statement.value.principals, [])
+        for_each = statement.value.principals
 
         content {
           type        = principals.value.type
@@ -411,7 +417,7 @@ data "aws_iam_policy_document" "instance" {
       }
 
       dynamic "not_principals" {
-        for_each = try(statement.value.not_principals, [])
+        for_each = statement.value.not_principals
 
         content {
           type        = not_principals.value.type
@@ -420,7 +426,7 @@ data "aws_iam_policy_document" "instance" {
       }
 
       dynamic "condition" {
-        for_each = try(statement.value.conditions, [])
+        for_each = statement.value.conditions
 
         content {
           test     = condition.value.test
@@ -462,7 +468,7 @@ resource "aws_iam_role_policy_attachment" "instance" {
 ################################################################################
 
 resource "aws_apprunner_vpc_ingress_connection" "this" {
-  name        = var.service_name
+  name        = local.name
   service_arn = aws_apprunner_service.this.arn
 
   ingress_vpc_configuration {
@@ -491,19 +497,22 @@ resource "aws_apprunner_custom_domain_association" "this" {
   service_arn          = aws_apprunner_service.this.arn
 
   lifecycle {
-    enabled = local.create_service && local.create_custom_domain_association
+    enabled = local.create_custom_domain_association
   }
 }
 
 locals {
-  validation_records = local.create_service && local.create_custom_domain_association ? tolist(aws_apprunner_custom_domain_association.this.certificate_validation_records) : []
+  validation_records = local.create_custom_domain_association ? {
+    for record in aws_apprunner_custom_domain_association.this.certificate_validation_records : record.name => record
+  } : {}
 }
 
 resource "aws_route53_record" "validation_records" {
-  count           = local.create_service && local.create_custom_domain_association ? length([var.domain_name]) + 1 : 0
-  name            = local.validation_records[count.index].name
-  type            = local.validation_records[count.index].type
-  records         = [local.validation_records[count.index].value]
+  for_each = local.validation_records
+
+  name            = each.value.name
+  type            = each.value.type
+  records         = [each.value.value]
   allow_overwrite = true
   ttl             = 300
   zone_id         = var.hosted_zone_id
@@ -517,7 +526,7 @@ resource "aws_route53_record" "custom_domain" {
   zone_id = var.hosted_zone_id
 
   lifecycle {
-    enabled = local.create_service && local.create_custom_domain_association
+    enabled = local.create_custom_domain_association
   }
 }
 
@@ -527,7 +536,7 @@ resource "aws_route53_record" "custom_domain" {
 
 locals {
   create_vpc_connector = local.create_service && var.create_vpc_connector
-  vpc_connector_name   = try(coalesce(var.vpc_connector_name, var.service_name), "")
+  vpc_connector_name   = local.create_vpc_connector ? coalesce(var.vpc_connector_name, local.name) : ""
 }
 
 resource "aws_apprunner_vpc_connector" "this" {
@@ -549,10 +558,10 @@ resource "aws_apprunner_vpc_connector" "this" {
 resource "aws_apprunner_connection" "this" {
   for_each = { for k, v in var.connections : k => v if local.enabled }
 
-  connection_name = try(each.value.name, each.key)
-  provider_type   = try(each.value.provider_type, "GITHUB")
+  connection_name = coalesce(each.value.name, each.key)
+  provider_type   = each.value.provider_type
 
-  tags = merge(local.tags, try(each.value.tags, {}))
+  tags = merge(local.tags, each.value.tags)
 }
 
 ################################################################################
@@ -562,12 +571,12 @@ resource "aws_apprunner_connection" "this" {
 resource "aws_apprunner_auto_scaling_configuration_version" "this" {
   for_each = { for k, v in var.auto_scaling_configurations : k => v if local.enabled }
 
-  auto_scaling_configuration_name = try(each.value.name, each.key)
-  max_concurrency                 = try(each.value.max_concurrency, null)
-  max_size                        = try(each.value.max_size, null)
-  min_size                        = try(each.value.min_size, null)
+  auto_scaling_configuration_name = coalesce(each.value.name, each.key)
+  max_concurrency                 = each.value.max_concurrency
+  max_size                        = each.value.max_size
+  min_size                        = each.value.min_size
 
-  tags = merge(local.tags, try(each.value.tags, {}))
+  tags = merge(local.tags, each.value.tags)
 }
 
 ################################################################################
@@ -579,7 +588,7 @@ locals {
 }
 
 resource "aws_apprunner_observability_configuration" "this" {
-  observability_configuration_name = var.service_name
+  observability_configuration_name = local.name
 
   dynamic "trace_configuration" {
     for_each = var.observability_trace_vendor != null ? [var.observability_trace_vendor] : []

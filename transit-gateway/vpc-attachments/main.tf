@@ -1,4 +1,7 @@
 locals {
+  enabled = var.enabled
+  name    = var.name
+
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
   })
@@ -9,9 +12,9 @@ locals {
 ################################################################################
 
 resource "aws_ec2_transit_gateway_vpc_attachment" "this" {
-  for_each = { for k, v in var.vpc_attachments : k => v if var.enabled }
+  for_each = { for k, v in var.vpc_attachments : k => v if local.enabled }
 
-  transit_gateway_id = each.value.tgw_id
+  transit_gateway_id = each.value.transit_gateway_id
   vpc_id             = each.value.vpc_id
   subnet_ids         = each.value.subnet_ids
 
@@ -22,7 +25,7 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "this" {
   transit_gateway_default_route_table_association = each.value.transit_gateway_default_route_table_association
   transit_gateway_default_route_table_propagation = each.value.transit_gateway_default_route_table_propagation
 
-  tags = merge(local.tags, { Name = "${coalesce(var.name, "tgw")}-${each.key}" }, each.value.tags)
+  tags = merge(local.tags, { Name = "${coalesce(local.name, "tgw")}-${each.key}" }, each.value.tags)
 }
 
 ################################################################################

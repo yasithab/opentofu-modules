@@ -54,6 +54,11 @@ variable "ip_addresses" {
     ipv6      = optional(string)
   }))
   default = []
+
+  validation {
+    condition     = !var.enabled || length(var.ip_addresses) >= 2
+    error_message = "Route53 resolver endpoints require at least two ip_addresses entries (in different availability zones)."
+  }
 }
 
 variable "security_group_ids" {
@@ -74,6 +79,11 @@ variable "vpc_id" {
   description = "The VPC ID for all the Route53 Resolver Endpoints"
   type        = string
   default     = null
+
+  validation {
+    condition     = !(var.enabled && var.create_security_group) || var.vpc_id != null
+    error_message = "vpc_id must be set when create_security_group is true."
+  }
 }
 
 variable "security_group_name" {

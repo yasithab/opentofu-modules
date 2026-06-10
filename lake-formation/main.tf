@@ -1,11 +1,16 @@
 locals {
   enabled = var.enabled
+
+  manage_data_lake_settings = local.enabled && var.manage_data_lake_settings
 }
 
 ################################################################################
 # Data Lake Settings
 ################################################################################
 
+# Account/catalog-wide settings: only managed when explicitly opted in via
+# manage_data_lake_settings, because this resource overwrites the entire
+# configuration (admins included) for the account/catalog.
 resource "aws_lakeformation_data_lake_settings" "this" {
   admins                                = var.admin_arns
   catalog_id                            = var.catalog_id
@@ -34,7 +39,7 @@ resource "aws_lakeformation_data_lake_settings" "this" {
   }
 
   lifecycle {
-    enabled = local.enabled
+    enabled = local.manage_data_lake_settings
   }
 }
 

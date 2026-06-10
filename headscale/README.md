@@ -171,6 +171,21 @@ Store the key in the Secrets Manager secret under the `headscale_auth_key` field
 
 ## Usage
 
+### Upgrade notes (BREAKING)
+
+- **`allowed_cidr_blocks` now defaults to `[]`** (was `["0.0.0.0/0"]`). You must explicitly
+  allow client networks to reach port 443; set `allowed_cidr_blocks = ["0.0.0.0/0"]` to keep
+  the previous public behaviour.
+- **HTTPS ingress rules are now keyed by CIDR value** instead of list index. Existing
+  `aws_vpc_security_group_ingress_rule.https` entries are re-created on the next apply, or
+  move them explicitly:
+
+  ```hcl
+  moved {
+    from = module.headscale.aws_vpc_security_group_ingress_rule.https["0"]
+    to   = module.headscale.aws_vpc_security_group_ingress_rule.https["203.0.113.0/24"]
+  }
+  ```
 
 ### Minimal (development)
 
@@ -288,6 +303,12 @@ module "headscale" {
 ```
 
 ## With OIDC (Google, Okta, etc.)
+
+> **WARNING:** an inline `oidc.client_secret` is rendered into the instance **user_data**
+> and stored in **OpenTofu state** (the variable is marked `sensitive`, which hides it from
+> CLI output but does not encrypt it). For production, omit `client_secret` and use
+> `secrets_manager_arn` + `secrets_manager_oidc_key` so the secret is fetched at boot and
+> never touches user_data or state.
 
 ```hcl
 module "headscale" {

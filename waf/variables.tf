@@ -14,7 +14,7 @@ variable "name" {
 }
 
 variable "tags" {
-  description = "A map of tags to assign to all resources."
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -72,8 +72,19 @@ variable "default_action_config" {
     For BLOCK with custom response:
       { block = { response_code = 403, custom_response_body_key = "restricted" } }
   EOT
-  type        = any
-  default     = null
+  type = object({
+    allow = optional(object({
+      insert_headers = optional(list(object({
+        name  = string
+        value = string
+      })), [])
+    }))
+    block = optional(object({
+      response_code            = optional(number)
+      custom_response_body_key = optional(string)
+    }))
+  })
+  default = null
 }
 
 ###################################################
@@ -105,29 +116,103 @@ variable "visibility_config" {
     Defaults: cloudwatch_metrics_enabled=true, metric_name=var.name, sampled_requests_enabled=true.
   EOT
   type = object({
-    cloudwatch_metrics_enabled = bool
-    metric_name                = string
-    sampled_requests_enabled   = bool
+    cloudwatch_metrics_enabled = optional(bool, true)
+    metric_name                = optional(string)
+    sampled_requests_enabled   = optional(bool, true)
   })
-  default = {
-    cloudwatch_metrics_enabled = true
-    metric_name                = null
-    sampled_requests_enabled   = true
-  }
+  default = {}
 }
 
 ###################################################
 # Rules
 ###################################################
 
+# NOTE on typing: this variable intentionally stays `type = any`. The obvious
+# stronger constraint - list(object({ ..., statement = any })) - does NOT work:
+# OpenTofu must unify all list elements to a single concrete type, and `any`
+# inside an element type is resolved by unifying every rule's `statement`
+# across the whole list. Heterogeneous statements (e.g. one
+# managed_rule_group_statement plus one byte_match_statement) then fail with
+# "cannot find a common base type for all elements" (and even when unification
+# succeeds it silently degrades object types to maps, converting numbers like
+# rate_based_statement.limit to strings). WAF statements are also recursive
+# (and/or/not nesting), which HCL object types cannot express. The top-level
+# rule schema is instead enforced by the validation blocks below, and the full
+# schema (including statements) is documented in the README's
+# "Rule Structure Reference".
 variable "rules" {
   description = <<-EOT
     List of WAFv2 rule objects. Only used when rule_json is null.
-    Each rule requires: name, priority, statement, and either action or override_action.
-    See README for full rule structure reference.
+    Each rule is an object with the following top-level fields:
+      name              = string            (required)
+      priority          = number            (required)
+      statement         = object            (required - see README "Rule Structure Reference")
+      action            = string or object  (one of action/override_action; "allow"|"block"|"count"|"captcha"|"challenge" or { allow|block|count|captcha|challenge = {...} })
+      override_action   = string            ("none" or "count"; for managed/rule-group rules)
+      rule_labels       = list(string)      (optional)
+      visibility_config = object            (optional; { cloudwatch_metrics_enabled, metric_name, sampled_requests_enabled }, falls back to var.visibility_config)
+      captcha_config    = object            (optional; { immunity_time = number })
+      challenge_config  = object            (optional; { immunity_time = number })
+    See README for the full rule structure reference including all statement types.
   EOT
   type        = any
   default     = []
+
+  validation {
+    condition = alltrue([
+      for r in var.rules : can(tostring(r.name)) && can(tonumber(r.priority)) && can(keys(r.statement))
+    ])
+    error_message = "Each rule must be an object with at least name (string), priority (number), and statement (object)."
+  }
+
+  validation {
+    condition = alltrue([
+      for r in var.rules : alltrue([
+        for k in try(keys(r), []) : contains(["name", "priority", "action", "override_action", "rule_labels", "visibility_config", "captcha_config", "challenge_config", "statement"], k)
+      ])
+    ])
+    error_message = "Unsupported rule attribute. Allowed: name, priority, action, override_action, rule_labels, visibility_config, captcha_config, challenge_config, statement."
+  }
+
+  validation {
+    condition = alltrue([
+      for r in var.rules : try(r.action, null) == null || try(r.override_action, null) == null
+    ])
+    error_message = "A rule may set either action or override_action, not both."
+  }
+
+  validation {
+    condition = alltrue([
+      for r in var.rules : contains(["none", "count"], try(r.override_action, "none"))
+    ])
+    error_message = "override_action must be \"none\" or \"count\"."
+  }
+
+  validation {
+    condition = alltrue([
+      for r in var.rules :
+      try(r.action, null) == null ||
+      try(contains(["allow", "block", "count", "captcha", "challenge"], r.action), false) ||
+      try(length(keys(r.action)) > 0 && alltrue([for k in keys(r.action) : contains(["allow", "block", "count", "captcha", "challenge"], k)]), false)
+    ])
+    error_message = "action must be one of the strings \"allow\", \"block\", \"count\", \"captcha\", \"challenge\", or an object whose keys are drawn from those names."
+  }
+
+  validation {
+    condition = alltrue([
+      for r in var.rules : can([for l in try(r.rule_labels, []) : tostring(l)])
+    ])
+    error_message = "rule_labels must be a list of strings."
+  }
+
+  validation {
+    condition = alltrue([
+      for r in var.rules :
+      (try(r.captcha_config, null) == null || can(tonumber(r.captcha_config.immunity_time))) &&
+      (try(r.challenge_config, null) == null || can(tonumber(r.challenge_config.immunity_time)))
+    ])
+    error_message = "captcha_config and challenge_config must be objects with a numeric immunity_time."
+  }
 }
 
 variable "rule_json" {
@@ -160,8 +245,16 @@ variable "association_config" {
       }
     Valid values for default_size_inspection_limit: KB_16, KB_32, KB_48, KB_64
   EOT
-  type        = any
-  default     = null
+  type = object({
+    request_body = optional(object({
+      api_gateway              = optional(object({ default_size_inspection_limit = string }))
+      app_runner_service       = optional(object({ default_size_inspection_limit = string }))
+      cloudfront               = optional(object({ default_size_inspection_limit = string }))
+      cognito_user_pool        = optional(object({ default_size_inspection_limit = string }))
+      verified_access_instance = optional(object({ default_size_inspection_limit = string }))
+    }))
+  })
+  default = null
 }
 
 variable "captcha_config" {
@@ -261,15 +354,15 @@ variable "rule_groups" {
     capacity                   = number
     description                = optional(string)
     rules_json                 = optional(string)
-    rules                      = optional(any)
-    cloudwatch_metrics_enabled = optional(bool)
+    rules                      = optional(any, [])
+    cloudwatch_metrics_enabled = optional(bool, true)
     metric_name                = optional(string)
-    sampled_requests_enabled   = optional(bool)
+    sampled_requests_enabled   = optional(bool, true)
     custom_response_bodies = optional(list(object({
       key          = string
       content      = string
       content_type = string
-    })))
+    })), [])
   }))
   default = {}
 }
@@ -366,8 +459,18 @@ variable "logging_filter" {
         ]
       }
   EOT
-  type        = any
-  default     = null
+  type = object({
+    default_behavior = string
+    filters = optional(list(object({
+      behavior    = string
+      requirement = optional(string, "MEETS_ANY")
+      conditions = optional(list(object({
+        action_condition     = optional(object({ action = string }))
+        label_name_condition = optional(object({ label_name = string }))
+      })), [])
+    })), [])
+  })
+  default = null
 }
 
 variable "logging_redacted_fields" {
@@ -378,6 +481,11 @@ variable "logging_redacted_fields" {
       { method = {} }
       { single_header = { name = "authorization" } }
   EOT
-  type        = any
-  default     = []
+  type = list(object({
+    uri_path      = optional(object({}))
+    query_string  = optional(object({}))
+    method        = optional(object({}))
+    single_header = optional(object({ name = string }))
+  }))
+  default = []
 }

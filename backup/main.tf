@@ -4,11 +4,12 @@
 
 locals {
   enabled      = var.enabled
+  name         = var.name
   plan_enabled = local.enabled && var.plan_enabled
-  vault_name   = coalesce(var.vault_name, var.name)
-  plan_name    = var.plan_name_suffix == null ? var.name : format("%s_%s", var.name, var.plan_name_suffix)
+  vault_name   = coalesce(var.vault_name, local.name)
+  plan_name    = var.plan_name_suffix == null ? local.name : format("%s_%s", local.name, var.plan_name_suffix)
 
-  iam_role_name = local.enabled ? coalesce(var.iam_role_name, "${var.name}-backup") : null
+  iam_role_name = local.enabled ? coalesce(var.iam_role_name, "${local.name}-backup") : null
   iam_role_arn  = var.iam_role_enabled ? try(aws_iam_role.this.arn, "") : try(data.aws_iam_role.existing[0].arn, "")
 
   vault_id  = var.vault_enabled ? try(aws_backup_vault.this.id, "") : try(data.aws_backup_vault.existing[0].id, "")

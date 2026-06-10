@@ -25,7 +25,7 @@ OpenTofu module for provisioning and managing Amazon Elastic Container Service (
 module "ecs_cluster" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ecs/cluster?depth=1&ref=master"
 
-  cluster_name = "my-cluster"
+  name         = "my-cluster"
 
   tags = {
     Environment = "production"

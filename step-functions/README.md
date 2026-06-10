@@ -9,9 +9,12 @@ OpenTofu module for creating and managing AWS Step Functions state machines with
 - **CloudWatch Logging** - Configurable log group with retention, KMS encryption, and execution data inclusion
 - **X-Ray Tracing** - Optional X-Ray tracing integration with automatic IAM permissions
 - **Version Publishing** - Support for publishing state machine versions
+- **Aliases** - Named aliases with weighted routing across published versions for gradual (canary) rollouts
 - **CloudWatch Alarms** - Pre-configured alarms for execution failures, throttling, and timeouts
-- **EventBridge Integration** - Create EventBridge rules to trigger state machine executions on schedule or event patterns
-- **Security by Default** - Logging enabled by default, least-privilege IAM policies
+- **EventBridge Integration** - Create EventBridge rules to trigger state machine executions on schedule or event patterns, with optional per-rule `dead_letter_arn` (SQS DLQ) and `retry_policy` (`maximum_event_age_in_seconds`, `maximum_retry_attempts`) on the targets
+- **Security by Default** - Logging enabled by default, least-privilege IAM policies (log writes are scoped to the state machine's log group)
+
+> **Note:** when `event_rules` is set, either `create_event_role = true` or `event_role_arn` must be provided so EventBridge can start executions.
 
 ## Usage
 
@@ -345,6 +348,76 @@ module "resilient_workflow" {
   tags = {
     Environment = "production"
     Service     = "processing"
+  }
+}
+```
+
+### Published Version with a Live Alias
+
+Publish a version on every definition change and point a stable `live` alias at it. Callers invoke the alias ARN so executions always use the routed version.
+
+```hcl
+module "step_function" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//step-functions?depth=1&ref=master"
+
+  name       = "order-processing"
+  definition = file("${path.module}/definitions/order-processing.json")
+
+  publish = true
+
+  aliases = {
+    live = {
+      description = "Production traffic alias"
+      routing_configuration = [
+        {
+          weight = 100 # version ARN defaults to the version published by this module
+        },
+      ]
+    }
+  }
+
+  tags = {
+    Environment = "production"
+  }
+}
+
+# Invoke via the alias ARN
+output "live_alias_arn" {
+  value = module.step_function.alias_arns["live"]
+}
+```
+
+### Canary Rollout Between Two Versions
+
+Split traffic between two explicitly pinned versions during a rollout.
+
+```hcl
+module "step_function" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//step-functions?depth=1&ref=master"
+
+  name       = "order-processing"
+  definition = file("${path.module}/definitions/order-processing.json")
+
+  publish = true
+
+  aliases = {
+    canary = {
+      description = "Gradual rollout of version 12"
+      routing_configuration = [
+        {
+          state_machine_version_arn = "arn:aws:states:eu-west-1:123456789012:stateMachine:order-processing:11"
+          weight                    = 90
+        },
+        {
+          state_machine_version_arn = "arn:aws:states:eu-west-1:123456789012:stateMachine:order-processing:12"
+          weight                    = 10
+        },
+      ]
+    }
+  }
+
+  tags = {
+    Environment = "production"
   }
 }
 ```

@@ -6,7 +6,7 @@ Cost-effective NAT instance module powered by the [fck-nat](https://fck-nat.dev/
 
 - **High Availability Mode** - Automatic instance recovery using an ASG (min/max 1) with health checks and configurable grace periods
 - **Static ENI** - Persistent network interface that survives instance replacements, keeping route table entries stable
-- **Automatic AMI Selection** - Resolves the latest fck-nat AL2023 AMI for both x86_64 and ARM64 (Graviton) architectures
+- **Automatic AMI Selection** - Resolves the latest fck-nat AL2023 AMI for both x86_64 and ARM64 (Graviton) architectures. The AMI owner account is configurable via `ami_owner` (defaults to the upstream fck-nat account)
 - **Spot Instance Support** - Optional spot instances for additional cost savings on top of the already low NAT instance pricing
 - **Elastic IP Association** - Attach an existing EIP for a static outbound IP address
 - **Route Table Management** - Optionally create 0.0.0.0/0 routes pointing to the NAT ENI in specified route tables

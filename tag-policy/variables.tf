@@ -1,9 +1,17 @@
-
+variable "enabled" {
+  description = "Set to false to prevent the module from creating any resources."
+  type        = bool
+  default     = true
+}
 
 variable "name" {
   description = "Name to use for resource naming and tagging."
   type        = string
-  default     = null
+
+  validation {
+    condition     = length(trimspace(var.name)) > 0
+    error_message = "name must be non-empty."
+  }
 }
 
 variable "tags" {
@@ -59,7 +67,6 @@ variable "tag_policy" {
     values_operator                                   = optional(string)
     values_operators_allowed_for_child_policies       = optional(list(string))
   }))
-  default = {}
 
   validation {
     condition     = length(var.tag_policy) > 0

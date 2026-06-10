@@ -1,4 +1,6 @@
+data "aws_partition" "current" {}
 data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
 
 locals {
   enabled = var.enabled
@@ -62,7 +64,7 @@ resource "aws_security_group" "this" {
 
 # HTTPS / gRPC (Tailscale clients connect here)
 resource "aws_vpc_security_group_ingress_rule" "https" {
-  for_each = { for idx, cidr in var.allowed_cidr_blocks : idx => cidr if local.enabled }
+  for_each = { for cidr in var.allowed_cidr_blocks : cidr => cidr if local.enabled }
 
   security_group_id = aws_security_group.this.id
   description       = "HTTPS and gRPC"
@@ -125,6 +127,8 @@ resource "aws_vpc_security_group_egress_rule" "all" {
 ################################################################################
 
 data "cloudinit_config" "this" {
+  count = local.enabled ? 1 : 0
+
   gzip          = true
   base64_encode = true
 
@@ -213,7 +217,7 @@ data "aws_iam_policy_document" "dlm_assume_role" {
 
     principals {
       type        = "Service"
-      identifiers = ["dlm.amazonaws.com"]
+      identifiers = ["dlm.${data.aws_partition.current.dns_suffix}"]
     }
   }
 }
@@ -231,7 +235,7 @@ resource "aws_iam_role" "dlm" {
 
 resource "aws_iam_role_policy_attachment" "dlm" {
   role       = aws_iam_role.dlm.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSDataLifecycleManagerServiceRole"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AWSDataLifecycleManagerServiceRole"
 
   lifecycle {
     enabled = local.enabled && local.use_data_volume && var.snapshot_enabled
@@ -288,7 +292,7 @@ resource "aws_launch_template" "this" {
   name_prefix   = "${var.name}-"
   image_id      = local.ami_id
   instance_type = var.instance_type
-  user_data     = data.cloudinit_config.this.rendered
+  user_data     = try(data.cloudinit_config.this[0].rendered, null)
 
   iam_instance_profile {
     name = aws_iam_instance_profile.this.name
@@ -391,6 +395,20 @@ resource "aws_autoscaling_group" "this" {
     "GroupTotalInstances",
   ]
 
+  # Roll instances automatically when the launch template changes; without this,
+  # `version = "$Latest"` only affects future replacements.
+  dynamic "instance_refresh" {
+    for_each = var.enable_instance_refresh ? [1] : []
+
+    content {
+      strategy = "Rolling"
+
+      preferences {
+        min_healthy_percentage = 90
+      }
+    }
+  }
+
   timeouts {
     delete = "15m"
   }
@@ -412,7 +430,7 @@ data "aws_iam_policy_document" "assume_role" {
 
     principals {
       type        = "Service"
-      identifiers = ["ec2.amazonaws.com"]
+      identifiers = ["ec2.${data.aws_partition.current.dns_suffix}"]
     }
   }
 }
@@ -476,15 +494,39 @@ data "aws_iam_policy_document" "this" {
     }
   }
 
-  # EIP self-association (instance associates its own EIP at boot)
+  # EIP self-association (instance associates its own EIP at boot),
+  # scoped to the specific allocation
   dynamic "statement" {
     for_each = local.has_eip ? [1] : []
 
     content {
-      sid       = "AssociateEIP"
-      effect    = "Allow"
-      actions   = ["ec2:AssociateAddress"]
-      resources = ["*"]
+      sid     = "AssociateEIPAllocation"
+      effect  = "Allow"
+      actions = ["ec2:AssociateAddress"]
+      resources = [
+        "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:elastic-ip/${local.eip_allocation_id}",
+      ]
+    }
+  }
+
+  # The instance and ENI side of the association, scoped by Name tag
+  dynamic "statement" {
+    for_each = local.has_eip ? [1] : []
+
+    content {
+      sid     = "AssociateEIPTargets"
+      effect  = "Allow"
+      actions = ["ec2:AssociateAddress"]
+      resources = [
+        "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*",
+        "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:network-interface/*",
+      ]
+
+      condition {
+        test     = "StringEquals"
+        variable = "ec2:ResourceTag/Name"
+        values   = [var.name]
+      }
     }
   }
 
@@ -613,6 +655,11 @@ resource "aws_route53_record" "this" {
 
   lifecycle {
     enabled = local.enabled && var.route53_zone_id != "" && local.has_eip
+
+    precondition {
+      condition     = local.dns_ip != null
+      error_message = "route53_private_zone = true cannot be combined with the managed DNS record: the ASG-based deployment has no stable private IP to publish. Use a public hosted zone with an EIP, or set route53_zone_id = \"\" and manage the record externally."
+    }
   }
 }
 
@@ -664,6 +711,7 @@ resource "aws_cloudwatch_metric_alarm" "asg_health" {
 resource "aws_cloudwatch_log_group" "this" {
   name              = "/headscale/${var.name}"
   retention_in_days = var.cloudwatch_logs_retention_days
+  kms_key_id        = var.cloudwatch_logs_kms_key_id
 
   tags = local.tags
 

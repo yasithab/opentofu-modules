@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls whether resources should be created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -138,10 +138,15 @@ variable "region" {
   default     = null
 }
 
-variable "bus_name" {
+variable "name" {
   description = "A unique name for your EventBridge Bus"
   type        = string
   default     = "default"
+
+  validation {
+    condition     = !var.create_bus || var.name != "default"
+    error_message = "name must not be \"default\" when create_bus is true - the default event bus already exists and cannot be created. Set create_bus = false to target the default bus."
+  }
 }
 
 variable "bus_description" {
@@ -209,9 +214,17 @@ variable "schemas_discoverer_description" {
 }
 
 variable "rules" {
-  description = "A map of objects with EventBridge Rule definitions."
+  description = "A map of objects with EventBridge Rule definitions. `role_arn` accepts only an IAM role ARN (string) or null; the previous boolean form (`role_arn = true`) is no longer supported."
   type        = map(any)
   default     = {}
+
+  validation {
+    condition = alltrue([
+      for rule in values(var.rules) :
+      try(rule.role_arn, null) == null || can(regex("^arn:", rule.role_arn))
+    ])
+    error_message = "Each rule role_arn must be an IAM role ARN string (arn:...) or null. The boolean form (role_arn = true) is no longer supported; pass the ARN of the role explicitly."
+  }
 }
 
 variable "targets" {
@@ -227,9 +240,14 @@ variable "archives" {
 }
 
 variable "permissions" {
-  description = "A map of objects with EventBridge Permission definitions."
+  description = "A map of objects with EventBridge Permission definitions. Map keys must be in the format \"<principal> <statement_id>\" (e.g. \"123456789012 AllowAccountX\")."
   type        = map(any)
   default     = {}
+
+  validation {
+    condition     = alltrue([for k in keys(var.permissions) : length(compact(split(" ", k))) == 2])
+    error_message = "Each permissions key must contain exactly two space-separated parts: \"<principal> <statement_id>\" (e.g. \"123456789012 AllowAccountX\")."
+  }
 }
 
 variable "connections" {
@@ -264,7 +282,7 @@ variable "pipes" {
 }
 
 variable "tags" {
-  description = "A map of tags to assign to resources."
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -327,9 +345,14 @@ variable "role_tags" {
 }
 
 variable "ecs_pass_role_resources" {
-  description = "List of approved roles to be passed"
+  description = "List of IAM role ARNs (task role / task execution role) that EventBridge is allowed to pass to ECS. Required when `attach_ecs_policy = true` - there is no wildcard fallback"
   type        = list(string)
   default     = []
+
+  validation {
+    condition     = !var.attach_ecs_policy || length(var.ecs_pass_role_resources) > 0
+    error_message = "ecs_pass_role_resources must be set when attach_ecs_policy is true. The iam:PassRole statement is scoped to these role ARNs and no longer falls back to \"*\"."
+  }
 }
 
 ###########

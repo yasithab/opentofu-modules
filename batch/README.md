@@ -8,7 +8,7 @@ OpenTofu module for provisioning AWS Batch compute environments, job queues, job
 - **Job Queues** - Multiple job queues with priority ordering, compute environment associations, and job state time limit actions
 - **Job Definitions** - Container, multinode, and ECS job definitions with retry strategies, timeouts, and platform capabilities
 - **Scheduling Policies** - Fair share scheduling with configurable compute reservation, share decay, and weighted share distribution
-- **IAM Roles** - Automatic creation of Batch service role, ECS task execution role, and job role with customizable policy attachments
+- **IAM Roles** - Automatic creation of Batch service role, ECS task execution role, and job role with customizable policy attachments. Existing roles can be passed instead via `service_role_arn`, `execution_role_arn`, and `job_role_arn` (set the matching `create_*_role = false`); a MANAGED compute environment requires either `create_service_role = true` or `service_role_arn`
 - **Security Groups** - Optional security group creation with configurable ingress and egress rules for compute environments
 - **EKS Integration** - Native support for running Batch jobs on Amazon EKS clusters
 

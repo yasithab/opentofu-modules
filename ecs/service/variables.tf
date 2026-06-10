@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Determines whether resources will be created (affects all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -11,7 +11,7 @@ variable "create_service" {
 }
 
 variable "tags" {
-  description = "A map of tags to add to all resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -71,9 +71,12 @@ variable "cluster_arn" {
 }
 
 variable "deployment_circuit_breaker" {
-  description = "Configuration block for deployment circuit breaker"
+  description = "Configuration block for deployment circuit breaker. Defaults to enabled with automatic rollback - set to `{ enable = false, rollback = false }` to opt out"
   type        = any
-  default     = {}
+  default = {
+    enable   = true
+    rollback = true
+  }
 }
 
 variable "deployment_controller" {

@@ -37,13 +37,15 @@ output "zone_id" {
 ################################################################################
 
 output "listeners" {
-  description = "Map of listeners created and their attributes"
+  description = "Map of listeners created and their attributes. Marked sensitive because listener default actions can contain OIDC client secrets"
   value       = aws_lb_listener.this
+  sensitive   = true
 }
 
 output "listener_rules" {
-  description = "Map of listeners rules created and their attributes"
+  description = "Map of listener rules created and their attributes. Marked sensitive because rule actions can contain OIDC client secrets"
   value       = aws_lb_listener_rule.this
+  sensitive   = true
 }
 
 ################################################################################

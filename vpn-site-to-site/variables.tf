@@ -1,13 +1,29 @@
+variable "name" {
+  description = "Name to use for resource naming and tagging."
+  type        = string
+  default     = null
+}
+
 variable "customer_gateway_bgp_asn" {
   description = "(Optional) The ASN of your customer gateway device. Valid values are in the range 1-2,147,483,647. Conflicts with bgp_asn_extended."
   type        = number
   default     = null
+
+  validation {
+    condition     = !var.enabled || var.customer_gateway_bgp_asn != null || var.customer_gateway_bgp_asn_extended != null
+    error_message = "One of customer_gateway_bgp_asn or customer_gateway_bgp_asn_extended must be set when the module is enabled."
+  }
 }
 
 variable "customer_gateway_ip_address" {
   description = "Specify the internet-routable IP address for your gateway's external interface; the address must be static and may be behind a device performing network address translation (NAT)."
   type        = string
   default     = null
+
+  validation {
+    condition     = !var.enabled || var.customer_gateway_ip_address != null
+    error_message = "customer_gateway_ip_address must be set when the module is enabled."
+  }
 }
 
 variable "customer_gateway_type" {
@@ -41,7 +57,7 @@ variable "tags" {
 }
 
 variable "enabled" {
-  description = "Controls if resources should be created."
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -119,13 +135,13 @@ variable "vpn_connection_cloudwatch_log_group_class" {
 variable "vpn_connection_cloudwatch_log_group_deletion_protection_enabled" {
   description = "(Optional) Whether to enable deletion protection for the CloudWatch log group."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "vpn_connection_preshared_key_storage" {
   description = "(Optional) Storage location for VPN tunnel pre-shared keys. Valid values are Standard or SecretsManager."
   type        = string
-  default     = null
+  default     = "SecretsManager"
   validation {
     condition     = var.vpn_connection_preshared_key_storage == null || contains(["Standard", "SecretsManager"], var.vpn_connection_preshared_key_storage)
     error_message = "preshared_key_storage must be Standard or SecretsManager."
@@ -277,7 +293,7 @@ variable "vpn_connection_tunnel2_dpd_timeout_seconds" {
 variable "vpn_connection_tunnel1_ike_versions" {
   description = "(Optional) The IKE versions that are permitted for the first VPN tunnel. Valid values are ikev1 | ikev2."
   type        = set(string)
-  default     = []
+  default     = ["ikev2"]
   validation {
     condition     = length(var.vpn_connection_tunnel1_ike_versions) == 0 || can([for i in var.vpn_connection_tunnel1_ike_versions : regex("^(ikev1|ikev2)$", i)])
     error_message = "Invalid input, options: \"ikev1\",\"ikev2\"."
@@ -287,7 +303,7 @@ variable "vpn_connection_tunnel1_ike_versions" {
 variable "vpn_connection_tunnel2_ike_versions" {
   description = "(Optional) The IKE versions that are permitted for the second VPN tunnel. Valid values are ikev1 | ikev2."
   type        = set(string)
-  default     = []
+  default     = ["ikev2"]
   validation {
     condition     = length(var.vpn_connection_tunnel2_ike_versions) == 0 || can([for i in var.vpn_connection_tunnel2_ike_versions : regex("^(ikev1|ikev2)$", i)])
     error_message = "Invalid input, options: \"ikev1\",\"ikev2\"."
@@ -329,7 +345,7 @@ variable "vpn_connection_tunnel2_log_output_format" {
 variable "vpn_connection_tunnel1_phase1_dh_group_numbers" {
   description = "(Optional) List of one or more Diffie-Hellman group numbers that are permitted for the first VPN tunnel for phase 1 IKE negotiations. Valid values are 2 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24."
   type        = set(number)
-  default     = [2, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+  default     = [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
   validation {
     condition     = can([for i in var.vpn_connection_tunnel1_phase1_dh_group_numbers : regex("^(2|14|15|16|17|18|19|20|21|22|23|24)$", i)])
     error_message = "Invalid input, options: \"2|14|15|16|17|18|19|20|21|22|23|24\"."
@@ -339,7 +355,7 @@ variable "vpn_connection_tunnel1_phase1_dh_group_numbers" {
 variable "vpn_connection_tunnel2_phase1_dh_group_numbers" {
   description = "(Optional) List of one or more Diffie-Hellman group numbers that are permitted for the second VPN tunnel for phase 1 IKE negotiations. Valid values are 2 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24."
   type        = set(number)
-  default     = [2, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+  default     = [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
   validation {
     condition     = can([for i in var.vpn_connection_tunnel2_phase1_dh_group_numbers : regex("^(2|14|15|16|17|18|19|20|21|22|23|24)$", i)])
     error_message = "Invalid input, options: \"2|14|15|16|17|18|19|20|21|22|23|24\"."
@@ -349,7 +365,7 @@ variable "vpn_connection_tunnel2_phase1_dh_group_numbers" {
 variable "vpn_connection_tunnel1_phase1_encryption_algorithms" {
   description = "(Optional) List of one or more encryption algorithms that are permitted for the first VPN tunnel for phase 1 IKE negotiations. Valid values are AES128 | AES256 | AES128-GCM-16 | AES256-GCM-16."
   type        = set(string)
-  default     = ["AES128", "AES256", "AES128-GCM-16", "AES256-GCM-16"]
+  default     = ["AES256", "AES256-GCM-16"]
   validation {
     condition     = can([for i in var.vpn_connection_tunnel1_phase1_encryption_algorithms : regex("^(AES128|AES256|AES128-GCM-16|AES256-GCM-16)$", i)])
     error_message = "Invalid input, options: \"AES128|AES256|AES128-GCM-16|AES256-GCM-16\"."
@@ -359,7 +375,7 @@ variable "vpn_connection_tunnel1_phase1_encryption_algorithms" {
 variable "vpn_connection_tunnel2_phase1_encryption_algorithms" {
   description = "(Optional) List of one or more encryption algorithms that are permitted for the second VPN tunnel for phase 1 IKE negotiations. Valid values are AES128 | AES256 | AES128-GCM-16 | AES256-GCM-16."
   type        = set(string)
-  default     = ["AES128", "AES256", "AES128-GCM-16", "AES256-GCM-16"]
+  default     = ["AES256", "AES256-GCM-16"]
   validation {
     condition     = can([for i in var.vpn_connection_tunnel2_phase1_encryption_algorithms : regex("^(AES128|AES256|AES128-GCM-16|AES256-GCM-16)$", i)])
     error_message = "Invalid input, options: \"AES128|AES256|AES128-GCM-16|AES256-GCM-16\"."
@@ -369,7 +385,7 @@ variable "vpn_connection_tunnel2_phase1_encryption_algorithms" {
 variable "vpn_connection_tunnel1_phase1_integrity_algorithms" {
   description = "(Optional) One or more integrity algorithms that are permitted for the first VPN tunnel for phase 1 IKE negotiations. Valid values are SHA1 | SHA2-256 | SHA2-384 | SHA2-512."
   type        = set(string)
-  default     = ["SHA1", "SHA2-256", "SHA2-384", "SHA2-512"]
+  default     = ["SHA2-256", "SHA2-384", "SHA2-512"]
   validation {
     condition     = can([for i in var.vpn_connection_tunnel1_phase1_integrity_algorithms : regex("^(SHA1|SHA2-256|SHA2-384|SHA2-512)$", i)])
     error_message = "Invalid input, options: \"SHA1|SHA2-256|SHA2-384|SHA2-512\"."
@@ -379,7 +395,7 @@ variable "vpn_connection_tunnel1_phase1_integrity_algorithms" {
 variable "vpn_connection_tunnel2_phase1_integrity_algorithms" {
   description = "(Optional) One or more integrity algorithms that are permitted for the second VPN tunnel for phase 1 IKE negotiations. Valid values are SHA1 | SHA2-256 | SHA2-384 | SHA2-512."
   type        = set(string)
-  default     = ["SHA1", "SHA2-256", "SHA2-384", "SHA2-512"]
+  default     = ["SHA2-256", "SHA2-384", "SHA2-512"]
   validation {
     condition     = can([for i in var.vpn_connection_tunnel2_phase1_integrity_algorithms : regex("^(SHA1|SHA2-256|SHA2-384|SHA2-512)$", i)])
     error_message = "Invalid input, options: \"SHA1|SHA2-256|SHA2-384|SHA2-512\"."
@@ -409,7 +425,7 @@ variable "vpn_connection_tunnel2_phase1_lifetime_seconds" {
 variable "vpn_connection_tunnel2_phase2_dh_group_numbers" {
   description = "(Optional) List of one or more Diffie-Hellman group numbers that are permitted for the second VPN tunnel for phase 2 IKE negotiations. Valid values are 2 | 5 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24."
   type        = set(number)
-  default     = [2, 5, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+  default     = [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
   validation {
     condition     = can([for i in var.vpn_connection_tunnel2_phase2_dh_group_numbers : regex("^(2|5|14|15|16|17|18|19|20|21|22|23|24)$", i)])
     error_message = "Invalid input, options: \"2|5|14|15|16|17|18|19|20|21|22|23|24\"."
@@ -419,7 +435,7 @@ variable "vpn_connection_tunnel2_phase2_dh_group_numbers" {
 variable "vpn_connection_tunnel1_phase2_dh_group_numbers" {
   description = "(Optional) List of one or more Diffie-Hellman group numbers that are permitted for the first VPN tunnel for phase 2 IKE negotiations. Valid values are 2 | 5 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24."
   type        = set(number)
-  default     = [2, 5, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+  default     = [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
   validation {
     condition     = can([for i in var.vpn_connection_tunnel1_phase2_dh_group_numbers : regex("^(2|5|14|15|16|17|18|19|20|21|22|23|24)$", i)])
     error_message = "Invalid input, options: \"2|5|14|15|16|17|18|19|20|21|22|23|24\"."
@@ -429,7 +445,7 @@ variable "vpn_connection_tunnel1_phase2_dh_group_numbers" {
 variable "vpn_connection_tunnel1_phase2_encryption_algorithms" {
   description = " (Optional) List of one or more encryption algorithms that are permitted for the first VPN tunnel for phase 2 IKE negotiations. Valid values are AES128 | AES256 | AES128-GCM-16 | AES256-GCM-16."
   type        = list(string)
-  default     = ["AES128", "AES256", "AES128-GCM-16", "AES256-GCM-16"]
+  default     = ["AES256", "AES256-GCM-16"]
   validation {
     condition     = can([for i in var.vpn_connection_tunnel1_phase2_encryption_algorithms : regex("^(AES128|AES256|AES128-GCM-16|AES256-GCM-16)$", i)])
     error_message = "Invalid input, options: \"AES128|AES256|AES128-GCM-16|AES256-GCM-16\"."
@@ -439,7 +455,7 @@ variable "vpn_connection_tunnel1_phase2_encryption_algorithms" {
 variable "vpn_connection_tunnel2_phase2_encryption_algorithms" {
   description = "(Optional) List of one or more encryption algorithms that are permitted for the second VPN tunnel for phase 2 IKE negotiations. Valid values are AES128 | AES256 | AES128-GCM-16 | AES256-GCM-16."
   type        = list(string)
-  default     = ["AES128", "AES256", "AES128-GCM-16", "AES256-GCM-16"]
+  default     = ["AES256", "AES256-GCM-16"]
   validation {
     condition     = can([for i in var.vpn_connection_tunnel2_phase2_encryption_algorithms : regex("^(AES128|AES256|AES128-GCM-16|AES256-GCM-16)$", i)])
     error_message = "Invalid input, options: \"AES128|AES256|AES128-GCM-16|AES256-GCM-16\"."
@@ -449,7 +465,7 @@ variable "vpn_connection_tunnel2_phase2_encryption_algorithms" {
 variable "vpn_connection_tunnel1_phase2_integrity_algorithms" {
   description = "(Optional) List of one or more integrity algorithms that are permitted for the first VPN tunnel for phase 2 IKE negotiations. Valid values are SHA1 | SHA2-256 | SHA2-384 | SHA2-512."
   type        = list(string)
-  default     = ["SHA1", "SHA2-256", "SHA2-384", "SHA2-512"]
+  default     = ["SHA2-256", "SHA2-384", "SHA2-512"]
   validation {
     condition     = can([for i in var.vpn_connection_tunnel1_phase2_integrity_algorithms : regex("^(SHA1|SHA2-256|SHA2-384|SHA2-512)$", i)])
     error_message = "Invalid input, options: \"SHA1|SHA2-256|SHA2-384|SHA2-512\"."
@@ -459,7 +475,7 @@ variable "vpn_connection_tunnel1_phase2_integrity_algorithms" {
 variable "vpn_connection_tunnel2_phase2_integrity_algorithms" {
   description = "(Optional) List of one or more integrity algorithms that are permitted for the second VPN tunnel for phase 2 IKE negotiations. Valid values are SHA1 | SHA2-256 | SHA2-384 | SHA2-512."
   type        = list(string)
-  default     = ["SHA1", "SHA2-256", "SHA2-384", "SHA2-512"]
+  default     = ["SHA2-256", "SHA2-384", "SHA2-512"]
   validation {
     condition     = can([for i in var.vpn_connection_tunnel2_phase2_integrity_algorithms : regex("^(SHA1|SHA2-256|SHA2-384|SHA2-512)$", i)])
     error_message = "Invalid input, options: \"SHA1|SHA2-256|SHA2-384|SHA2-512\"."

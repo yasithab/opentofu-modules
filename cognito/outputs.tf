@@ -78,3 +78,31 @@ output "oidc_config_with_secret" {
   } : null
   sensitive = true
 }
+
+################################################################################
+# Resource Servers
+################################################################################
+
+output "resource_server_identifiers" {
+  description = "Map of resource server keys to their identifiers"
+  value       = { for k, v in aws_cognito_resource_server.this : k => v.identifier }
+}
+
+output "resource_server_scope_identifiers" {
+  description = "Map of resource server keys to the list of full scope identifiers (<identifier>/<scope_name>) for use in client allowed_oauth_scopes"
+  value       = { for k, v in aws_cognito_resource_server.this : k => v.scope_identifiers }
+}
+
+################################################################################
+# User Groups
+################################################################################
+
+output "user_group_names" {
+  description = "Map of user group keys to their names"
+  value       = { for k, v in aws_cognito_user_group.this : k => v.name }
+}
+
+output "user_group_precedences" {
+  description = "Map of user group keys to their precedence values"
+  value       = { for k, v in aws_cognito_user_group.this : k => v.precedence }
+}

@@ -3,6 +3,8 @@ data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 
 locals {
+  name = var.name
+
   eventbridge_rules = flatten([
     for index, rule in var.rules :
     merge(rule, {
@@ -12,20 +14,41 @@ locals {
   ])
   eventbridge_targets = flatten([
     for index, rule in var.rules : [
-      for target in var.targets[index] :
+      for target in lookup(var.targets, index, []) :
       merge(target, {
         "rule" = index
         "Name" = var.append_rule_postfix ? "${replace(index, "_", "-")}-rule" : index
       })
     ] if length(var.targets) != 0
   ])
-  eventbridge_connections = flatten([
-    for index, conn in var.connections :
-    merge(conn, {
-      "name" = index
-      "Name" = var.append_connection_postfix ? "${replace(index, "_", "-")}-connection" : index
-    })
-  ])
+  # Only the connection keys are unwrapped with nonsensitive() so they can be
+  # used in for_each - the connection values (auth parameters) stay sensitive.
+  eventbridge_connection_keys = nonsensitive(keys(var.connections))
+
+  # Structural metadata about each connection (which auth blocks are present and
+  # how many HTTP parameters they carry). Only the *shape* is unwrapped with
+  # nonsensitive() so it can drive for_each/dynamic blocks - the actual values
+  # (keys, passwords, client secrets) are read from var.connections inside the
+  # resource and stay sensitive.
+  eventbridge_connection_shapes = {
+    for k in local.eventbridge_connection_keys : k => {
+      Name = var.append_connection_postfix ? "${replace(k, "_", "-")}-connection" : k
+
+      has_api_key                            = nonsensitive(try(var.connections[k].auth_parameters.api_key, null) != null)
+      has_basic                              = nonsensitive(try(var.connections[k].auth_parameters.basic, null) != null)
+      has_oauth                              = nonsensitive(try(var.connections[k].auth_parameters.oauth, null) != null)
+      has_oauth_http_parameters              = nonsensitive(try(var.connections[k].auth_parameters.oauth.oauth_http_parameters, null) != null)
+      oauth_body_count                       = nonsensitive(try(length(var.connections[k].auth_parameters.oauth.oauth_http_parameters.body), 0))
+      oauth_header_count                     = nonsensitive(try(length(var.connections[k].auth_parameters.oauth.oauth_http_parameters.header), 0))
+      oauth_query_string_count               = nonsensitive(try(length(var.connections[k].auth_parameters.oauth.oauth_http_parameters.query_string), 0))
+      has_invocation_http_parameters         = nonsensitive(try(var.connections[k].auth_parameters.invocation_http_parameters, null) != null)
+      invocation_body_count                  = nonsensitive(try(length(var.connections[k].auth_parameters.invocation_http_parameters.body), 0))
+      invocation_header_count                = nonsensitive(try(length(var.connections[k].auth_parameters.invocation_http_parameters.header), 0))
+      invocation_query_string_count          = nonsensitive(try(length(var.connections[k].auth_parameters.invocation_http_parameters.query_string), 0))
+      has_connectivity_parameters            = nonsensitive(try(var.connections[k].auth_parameters.connectivity_parameters, null) != null)
+      has_invocation_connectivity_parameters = nonsensitive(try(var.connections[k].invocation_connectivity_parameters, null) != null)
+    }
+  }
   eventbridge_api_destinations = flatten([
     for index, dest in var.api_destinations :
     merge(dest, {
@@ -62,15 +85,15 @@ locals {
 }
 
 data "aws_cloudwatch_event_bus" "this" {
-  count = var.enabled && var.create_bus ? 0 : 1
+  count = var.enabled && !var.create_bus ? 1 : 0
 
-  name = var.bus_name
+  name = local.name
 }
 
 resource "aws_cloudwatch_event_bus" "this" {
   region = var.region
 
-  name               = var.bus_name
+  name               = local.name
   description        = var.bus_description
   event_source_name  = var.event_source_name
   kms_key_identifier = var.kms_key_identifier
@@ -102,14 +125,14 @@ resource "aws_cloudwatch_event_bus" "this" {
 resource "aws_cloudwatch_log_delivery_source" "this" {
   region = var.region
 
-  name         = coalesce(var.log_delivery_source_name, var.bus_name)
+  name         = coalesce(var.log_delivery_source_name, local.name)
   log_type     = try(format("%s_LOGS", contains(["INFO", "ERROR", "TRACE"], upper(var.log_config.level)) ? upper(var.log_config.level) : "ERROR"), "ERROR_LOGS")
   resource_arn = var.create_bus ? aws_cloudwatch_event_bus.this.arn : data.aws_cloudwatch_event_bus.this[0].arn
 
   tags = local.tags
 
   lifecycle {
-    enabled = local.create_log_delivery && var.create_log_delivery_source
+    enabled = local.create_log_delivery && var.create_log_delivery_source && length(var.log_delivery) > 0
   }
 }
 
@@ -118,7 +141,7 @@ resource "aws_cloudwatch_log_delivery_destination" "this" {
 
   region = var.region
 
-  name                      = coalesce(each.value.name, "${var.bus_name}-${each.key}")
+  name                      = coalesce(each.value.name, "${local.name}-${each.key}")
   output_format             = each.value.output_format
   delivery_destination_type = try(each.value.delivery_destination_type, null)
 
@@ -173,14 +196,15 @@ resource "aws_cloudwatch_event_rule" "this" {
   name        = each.value.Name
   name_prefix = lookup(each.value, "name_prefix", null)
 
-  event_bus_name = var.create_bus ? aws_cloudwatch_event_bus.this.name : var.bus_name
+  event_bus_name = var.create_bus ? aws_cloudwatch_event_bus.this.name : local.name
 
   description         = lookup(each.value, "description", null)
   event_pattern       = lookup(each.value, "event_pattern", null)
   schedule_expression = lookup(each.value, "schedule_expression", null)
-  role_arn            = lookup(each.value, "role_arn", false) ? aws_iam_role.eventbridge.arn : null
-  state               = try(each.value.enabled ? "ENABLED" : "DISABLED", tobool(each.value.state) ? "ENABLED" : "DISABLED", upper(each.value.state), null)
-  force_destroy       = try(each.value.force_destroy, null)
+  # role_arn accepts only an IAM role ARN (string) or null
+  role_arn      = lookup(each.value, "role_arn", null)
+  state         = try(each.value.enabled ? "ENABLED" : "DISABLED", tobool(each.value.state) ? "ENABLED" : "DISABLED", upper(each.value.state), null)
+  force_destroy = try(each.value.force_destroy, null)
 
   tags = merge(local.tags, { Name = each.value.Name })
 }
@@ -190,7 +214,7 @@ resource "aws_cloudwatch_event_target" "this" {
 
   region = var.region
 
-  event_bus_name = var.create_bus ? aws_cloudwatch_event_bus.this.name : var.bus_name
+  event_bus_name = var.create_bus ? aws_cloudwatch_event_bus.this.name : local.name
 
   rule = each.value.Name
   arn  = lookup(each.value, "destination", null) != null ? aws_cloudwatch_event_api_destination.this[each.value.destination].arn : each.value.arn
@@ -405,7 +429,7 @@ resource "aws_cloudwatch_event_permission" "this" {
   statement_id = compact(split(" ", each.key))[1]
 
   action         = lookup(each.value, "action", null)
-  event_bus_name = try(each.value["event_bus_name"], aws_cloudwatch_event_bus.this.name, var.bus_name, null)
+  event_bus_name = try(each.value["event_bus_name"], aws_cloudwatch_event_bus.this.name, local.name, null)
 
   dynamic "condition" {
     for_each = try([each.value.condition_org], [])
@@ -419,155 +443,139 @@ resource "aws_cloudwatch_event_permission" "this" {
 }
 
 resource "aws_cloudwatch_event_connection" "this" {
-  for_each = { for k, v in nonsensitive(local.eventbridge_connections) : v.name => v if var.enabled && var.create_connections }
+  # Iterate over the nonsensitive connection keys/shapes only - the sensitive
+  # values are referenced via var.connections[each.key] inside the resource.
+  for_each = { for k, v in local.eventbridge_connection_shapes : k => v if var.enabled && var.create_connections }
 
   region = var.region
 
   name               = each.value.Name
-  description        = lookup(each.value, "description", null)
-  authorization_type = each.value.authorization_type
-  kms_key_identifier = try(each.value.kms_key_identifier, null)
+  description        = try(var.connections[each.key].description, null)
+  authorization_type = var.connections[each.key].authorization_type
+  kms_key_identifier = try(var.connections[each.key].kms_key_identifier, null)
 
-  dynamic "auth_parameters" {
-    for_each = [each.value.auth_parameters]
+  auth_parameters {
+    dynamic "api_key" {
+      for_each = each.value.has_api_key ? [true] : []
 
-    content {
-      dynamic "api_key" {
-        for_each = lookup(each.value.auth_parameters, "api_key", null) != null ? [
-          each.value.auth_parameters.api_key
-        ] : []
-
-        content {
-          key   = api_key.value.key
-          value = api_key.value.value
-        }
+      content {
+        key   = var.connections[each.key].auth_parameters.api_key.key
+        value = var.connections[each.key].auth_parameters.api_key.value
       }
+    }
 
-      dynamic "basic" {
-        for_each = lookup(each.value.auth_parameters, "basic", null) != null ? [
-          each.value.auth_parameters.basic
-        ] : []
+    dynamic "basic" {
+      for_each = each.value.has_basic ? [true] : []
 
-        content {
-          username = basic.value.username
-          password = basic.value.password
-        }
+      content {
+        username = var.connections[each.key].auth_parameters.basic.username
+        password = var.connections[each.key].auth_parameters.basic.password
       }
+    }
 
-      dynamic "oauth" {
-        for_each = lookup(each.value.auth_parameters, "oauth", null) != null ? [
-          each.value.auth_parameters.oauth
-        ] : []
+    dynamic "oauth" {
+      for_each = each.value.has_oauth ? [true] : []
 
-        content {
-          authorization_endpoint = oauth.value.authorization_endpoint
-          http_method            = oauth.value.http_method
+      content {
+        authorization_endpoint = var.connections[each.key].auth_parameters.oauth.authorization_endpoint
+        http_method            = var.connections[each.key].auth_parameters.oauth.http_method
 
-          dynamic "client_parameters" {
-            for_each = [each.value.auth_parameters.oauth.client_parameters]
+        client_parameters {
+          client_id     = var.connections[each.key].auth_parameters.oauth.client_parameters.client_id
+          client_secret = var.connections[each.key].auth_parameters.oauth.client_parameters.client_secret
+        }
 
-            content {
-              client_id     = client_parameters.value.client_id
-              client_secret = client_parameters.value.client_secret
+        dynamic "oauth_http_parameters" {
+          for_each = each.value.has_oauth_http_parameters ? [true] : []
+
+          content {
+            dynamic "body" {
+              for_each = range(each.value.oauth_body_count)
+
+              content {
+                key             = var.connections[each.key].auth_parameters.oauth.oauth_http_parameters.body[body.value].key
+                value           = var.connections[each.key].auth_parameters.oauth.oauth_http_parameters.body[body.value].value
+                is_value_secret = try(var.connections[each.key].auth_parameters.oauth.oauth_http_parameters.body[body.value].is_value_secret, null)
+              }
             }
-          }
 
-          dynamic "oauth_http_parameters" {
-            for_each = lookup(each.value.auth_parameters.oauth, "oauth_http_parameters", null) != null ? [
-              each.value.auth_parameters.oauth.oauth_http_parameters
-            ] : []
+            dynamic "header" {
+              for_each = range(each.value.oauth_header_count)
 
-            content {
-              dynamic "body" {
-                for_each = lookup(each.value.auth_parameters.oauth.oauth_http_parameters, "body", [])
-
-                content {
-                  key             = body.value.key
-                  value           = body.value.value
-                  is_value_secret = lookup(body.value, "is_value_secret", null)
-                }
+              content {
+                key             = var.connections[each.key].auth_parameters.oauth.oauth_http_parameters.header[header.value].key
+                value           = var.connections[each.key].auth_parameters.oauth.oauth_http_parameters.header[header.value].value
+                is_value_secret = try(var.connections[each.key].auth_parameters.oauth.oauth_http_parameters.header[header.value].is_value_secret, null)
               }
+            }
 
-              dynamic "header" {
-                for_each = lookup(each.value.auth_parameters.oauth.oauth_http_parameters, "header", [])
+            dynamic "query_string" {
+              for_each = range(each.value.oauth_query_string_count)
 
-                content {
-                  key             = header.value.key
-                  value           = header.value.value
-                  is_value_secret = lookup(header.value, "is_value_secret", null)
-                }
-              }
-
-              dynamic "query_string" {
-                for_each = lookup(each.value.auth_parameters.oauth.oauth_http_parameters, "query_string", [])
-
-                content {
-                  key             = query_string.value.key
-                  value           = query_string.value.value
-                  is_value_secret = lookup(query_string.value, "is_value_secret", null)
-                }
+              content {
+                key             = var.connections[each.key].auth_parameters.oauth.oauth_http_parameters.query_string[query_string.value].key
+                value           = var.connections[each.key].auth_parameters.oauth.oauth_http_parameters.query_string[query_string.value].value
+                is_value_secret = try(var.connections[each.key].auth_parameters.oauth.oauth_http_parameters.query_string[query_string.value].is_value_secret, null)
               }
             }
           }
         }
       }
+    }
 
-      dynamic "invocation_http_parameters" {
-        for_each = lookup(each.value.auth_parameters, "invocation_http_parameters", null) != null ? [
-          each.value.auth_parameters.invocation_http_parameters
-        ] : []
+    dynamic "invocation_http_parameters" {
+      for_each = each.value.has_invocation_http_parameters ? [true] : []
 
-        content {
-          dynamic "body" {
-            for_each = lookup(each.value.auth_parameters.invocation_http_parameters, "body", [])
+      content {
+        dynamic "body" {
+          for_each = range(each.value.invocation_body_count)
 
-            content {
-              key             = body.value.key
-              value           = body.value.value
-              is_value_secret = lookup(body.value, "is_value_secret", null)
-            }
+          content {
+            key             = var.connections[each.key].auth_parameters.invocation_http_parameters.body[body.value].key
+            value           = var.connections[each.key].auth_parameters.invocation_http_parameters.body[body.value].value
+            is_value_secret = try(var.connections[each.key].auth_parameters.invocation_http_parameters.body[body.value].is_value_secret, null)
           }
+        }
 
-          dynamic "header" {
-            for_each = lookup(each.value.auth_parameters.invocation_http_parameters, "header", [])
+        dynamic "header" {
+          for_each = range(each.value.invocation_header_count)
 
-            content {
-              key             = header.value.key
-              value           = header.value.value
-              is_value_secret = lookup(header.value, "is_value_secret", null)
-            }
+          content {
+            key             = var.connections[each.key].auth_parameters.invocation_http_parameters.header[header.value].key
+            value           = var.connections[each.key].auth_parameters.invocation_http_parameters.header[header.value].value
+            is_value_secret = try(var.connections[each.key].auth_parameters.invocation_http_parameters.header[header.value].is_value_secret, null)
           }
+        }
 
-          dynamic "query_string" {
-            for_each = lookup(each.value.auth_parameters.invocation_http_parameters, "query_string", [])
+        dynamic "query_string" {
+          for_each = range(each.value.invocation_query_string_count)
 
-            content {
-              key             = query_string.value.key
-              value           = query_string.value.value
-              is_value_secret = lookup(query_string.value, "is_value_secret", null)
-            }
+          content {
+            key             = var.connections[each.key].auth_parameters.invocation_http_parameters.query_string[query_string.value].key
+            value           = var.connections[each.key].auth_parameters.invocation_http_parameters.query_string[query_string.value].value
+            is_value_secret = try(var.connections[each.key].auth_parameters.invocation_http_parameters.query_string[query_string.value].is_value_secret, null)
           }
         }
       }
+    }
 
-      dynamic "connectivity_parameters" {
-        for_each = try([auth_parameters.value.connectivity_parameters], [])
+    dynamic "connectivity_parameters" {
+      for_each = each.value.has_connectivity_parameters ? [true] : []
 
-        content {
-          resource_parameters {
-            resource_configuration_arn = connectivity_parameters.value.resource_parameters.resource_configuration_arn
-          }
+      content {
+        resource_parameters {
+          resource_configuration_arn = var.connections[each.key].auth_parameters.connectivity_parameters.resource_parameters.resource_configuration_arn
         }
       }
     }
   }
 
   dynamic "invocation_connectivity_parameters" {
-    for_each = try([each.value.invocation_connectivity_parameters], [])
+    for_each = each.value.has_invocation_connectivity_parameters ? [true] : []
 
     content {
       resource_parameters {
-        resource_configuration_arn = invocation_connectivity_parameters.value.resource_configuration_arn
+        resource_configuration_arn = var.connections[each.key].invocation_connectivity_parameters.resource_configuration_arn
       }
     }
   }

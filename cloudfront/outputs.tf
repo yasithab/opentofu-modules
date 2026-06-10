@@ -1,51 +1,51 @@
 output "cloudfront_distribution_id" {
   description = "The identifier for the distribution."
-  value       = try(one(aws_cloudfront_distribution.this).id, "")
+  value       = try(aws_cloudfront_distribution.this.id, null)
 }
 
 output "cloudfront_distribution_arn" {
   description = "The ARN (Amazon Resource Name) for the distribution."
-  value       = try(one(aws_cloudfront_distribution.this).arn, "")
+  value       = try(aws_cloudfront_distribution.this.arn, null)
 }
 
 output "cloudfront_distribution_caller_reference" {
   description = "Internal value used by CloudFront to allow future updates to the distribution configuration."
-  value       = try(one(aws_cloudfront_distribution.this).caller_reference, "")
+  value       = try(aws_cloudfront_distribution.this.caller_reference, null)
 }
 
 output "cloudfront_distribution_status" {
   description = "The current status of the distribution. Deployed if the distribution's information is fully propagated throughout the Amazon CloudFront system."
-  value       = try(one(aws_cloudfront_distribution.this).status, "")
+  value       = try(aws_cloudfront_distribution.this.status, null)
 }
 
 output "cloudfront_distribution_trusted_signers" {
   description = "List of nested attributes for active trusted signers, if the distribution is set up to serve private content with signed URLs"
-  value       = try(one(aws_cloudfront_distribution.this).trusted_signers, "")
+  value       = try(aws_cloudfront_distribution.this.trusted_signers, null)
 }
 
 output "cloudfront_distribution_domain_name" {
   description = "The domain name corresponding to the distribution."
-  value       = try(one(aws_cloudfront_distribution.this).domain_name, "")
+  value       = try(aws_cloudfront_distribution.this.domain_name, null)
 }
 
 output "cloudfront_distribution_last_modified_time" {
   description = "The date and time the distribution was last modified."
-  value       = try(one(aws_cloudfront_distribution.this).last_modified_time, "")
+  value       = try(aws_cloudfront_distribution.this.last_modified_time, null)
 }
 
 output "cloudfront_distribution_in_progress_validation_batches" {
   description = "The number of invalidation batches currently in progress."
-  value       = try(one(aws_cloudfront_distribution.this).in_progress_validation_batches, "")
+  value       = try(aws_cloudfront_distribution.this.in_progress_validation_batches, null)
 }
 
 output "cloudfront_distribution_etag" {
   description = "The current version of the distribution's information."
-  value       = try(one(aws_cloudfront_distribution.this).etag, "")
+  value       = try(aws_cloudfront_distribution.this.etag, null)
 }
 
 output "cloudfront_distribution_hosted_zone_id" {
   description = "The CloudFront Route 53 zone ID that can be used to route an Alias Resource Record Set to."
-  value       = try(one(aws_cloudfront_distribution.this).hosted_zone_id, "")
+  value       = try(aws_cloudfront_distribution.this.hosted_zone_id, null)
 }
 
 output "cloudfront_origin_access_identities" {
@@ -70,7 +70,7 @@ output "cloudfront_monitoring_subscription_id" {
 
 output "cloudfront_distribution_tags" {
   description = "Tags of the distribution's"
-  value       = try(one(aws_cloudfront_distribution.this).tags_all, "")
+  value       = try(aws_cloudfront_distribution.this.tags_all, null)
 }
 
 output "cloudfront_origin_access_controls" {

@@ -34,6 +34,27 @@ provider. Use this for rules that require more than 1 level of AND/OR/NOT nestin
 which cannot be expressed in the structured schema. When `rule_json` is set, `var.rules`
 is ignored entirely.
 
+### Why `rules` is `type = any`
+
+`var.rules` is intentionally **not** declared as `list(object({...}))`. HCL/OpenTofu
+requires every element of a typed list to convert to one concrete type; an `any`
+attribute inside the element type (e.g. `statement = any`) is resolved by *unifying*
+the statement values of **all** rules in the list. Real-world rule lists mix statement
+shapes (a `managed_rule_group_statement` next to a `byte_match_statement` next to a
+`rate_based_statement`), and unification then fails with
+`cannot find a common base type for all elements` - or, when it happens to succeed,
+silently degrades object types to maps and converts numbers (such as
+`rate_based_statement.limit`) to strings. WAF statements are also recursive
+(`and`/`or`/`not` nesting), which HCL object types cannot express at all.
+
+Instead, the top-level rule schema (`name`, `priority`, `action`/`override_action`,
+`rule_labels`, `visibility_config`, `captcha_config`, `challenge_config`, `statement`)
+is enforced by `validation` blocks on the variable - unknown attributes, missing
+required fields, invalid `action`/`override_action` values, and malformed
+`rule_labels`/`captcha_config`/`challenge_config` are all rejected at plan time. The
+full schema, including every supported statement type, is documented in the
+[Rule Structure Reference](#rule-structure-reference) below.
+
 ### Inline Name Resolution
 
 IP sets, regex pattern sets, and rule groups created by this module can be referenced
@@ -56,10 +77,16 @@ You may provide either `name` (for inline resources) or `arn` (for external reso
 
 ### Rule Group Associations and lifecycle ignore_changes
 
-When `var.rule_group_associations` is non-empty, the Web ACL's `rule` attribute is
-automatically placed in `lifecycle { ignore_changes = [rule] }`. This prevents
-Terraform from overwriting rules that were added by `aws_wafv2_web_acl_rule_group_association`
-out-of-band from the Web ACL's inline `rule` blocks.
+OpenTofu cannot make `ignore_changes` conditional, so the module maintains two
+otherwise-identical Web ACL resources (same pattern as the `dynamodb` module) and
+enables exactly one of them:
+
+- `aws_wafv2_web_acl.this` - used when `rule_group_associations` is empty. Inline
+  `rule` blocks are fully managed; out-of-band rule drift is corrected on apply.
+- `aws_wafv2_web_acl.rule_group_associated` - used when `rule_group_associations`
+  is non-empty. The `rule` attribute is in `lifecycle { ignore_changes = [rule] }`
+  so rules attached via `aws_wafv2_web_acl_rule_group_association` are not
+  overwritten by the Web ACL's inline `rule` blocks.
 
 ### Action String vs. Structured Object
 
@@ -132,7 +159,12 @@ module "waf" {
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | `default_action` | `string` | `"ALLOW"` | `ALLOW` or `BLOCK`. Action for requests that match no rules. |
-| `default_action_config` | `any` | `null` | Custom headers for ALLOW or custom response for BLOCK. |
+| `default_action_config` | `object` | `null` | Custom headers for ALLOW (`allow.insert_headers`) or custom response for BLOCK (`block.response_code`, `block.custom_response_body_key`). |
+
+> **Note**: the default action is `ALLOW` - requests that match no rule are let
+> through. This suits a blocklist-style Web ACL (managed rule groups plus targeted
+> block rules). For an allowlist posture, set `default_action = "BLOCK"` and add
+> explicit allow rules.
 
 ### Custom Response Bodies
 
@@ -150,14 +182,14 @@ module "waf" {
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `rules` | `any` | `[]` | List of structured rule objects. Used when `rule_json` is null. |
+| `rules` | `any` | `[]` | List of structured rule objects. Used when `rule_json` is null. Top-level schema is enforced by `validation` blocks (see [Why `rules` is `type = any`](#why-rules-is-type--any)); full structure in [Rule Structure Reference](#rule-structure-reference). |
 | `rule_json` | `string` | `null` | Raw JSON rules string. Takes precedence over `rules` when set. |
 
 ### Advanced Web ACL Settings
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `association_config` | `any` | `null` | Request body inspection size limits per resource type (api_gateway, cloudfront, etc.). |
+| `association_config` | `object` | `null` | Request body inspection size limits per resource type (`request_body.api_gateway`, `request_body.cloudfront`, etc., each `{ default_size_inspection_limit = "KB_16" | "KB_32" | "KB_48" | "KB_64" }`). |
 | `captcha_config` | `object({immunity_time=number})` | `null` | Web ACL-level CAPTCHA immunity time in seconds. |
 | `challenge_config` | `object({immunity_time=number})` | `null` | Web ACL-level challenge immunity time in seconds. |
 | `data_protection_config` | `any` | `null` | Field-level data protection (hashing/substitution) before logging. |
@@ -183,8 +215,8 @@ module "waf" {
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | `logging_destination_arns` | `list(string)` | `[]` | ARNs of CloudWatch log groups, Firehose streams, or S3 buckets. Names must start with `aws-waf-logs-`. |
-| `logging_filter` | `any` | `null` | Selective logging filter. `null` = log all requests. |
-| `logging_redacted_fields` | `any` | `[]` | Fields to redact from logs (e.g., `authorization` header). |
+| `logging_filter` | `object` | `null` | Selective logging filter (`default_behavior` plus `filters` list). `null` = log all requests. |
+| `logging_redacted_fields` | `list(object)` | `[]` | Fields to redact from logs. Each entry sets exactly one of `uri_path`, `query_string`, `method`, or `single_header = { name = "..." }`. |
 
 ## Rule Structure Reference
 

@@ -4,6 +4,7 @@
 
 locals {
   enabled = var.enabled
+  name    = var.name
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -11,7 +12,7 @@ locals {
 }
 
 resource "aws_cloudwatch_composite_alarm" "this" {
-  alarm_name        = var.alarm_name
+  alarm_name        = local.name
   alarm_description = var.alarm_description
   alarm_rule        = var.alarm_rule
 

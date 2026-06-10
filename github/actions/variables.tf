@@ -12,26 +12,50 @@ variable "tags" {
 }
 
 variable "repo_names" {
-  description = "List of GitHub repository names"
+  description = "List of GitHub repository names allowed to assume the role"
   type        = list(string)
-  default     = null
+
+  validation {
+    condition     = length(var.repo_names) > 0
+    error_message = "repo_names must contain at least one repository name."
+  }
+
+  validation {
+    condition     = alltrue([for repo in var.repo_names : length(trimspace(repo)) > 0])
+    error_message = "repo_names entries must be non-empty."
+  }
 }
 
 variable "github_organization_name" {
   description = "The GitHub organization name"
   type        = string
-  default     = null
+
+  validation {
+    condition     = length(trimspace(var.github_organization_name)) > 0
+    error_message = "github_organization_name must be non-empty."
+  }
 }
 
 variable "github_oidc_arn" {
   description = "The GitHub openid connect provider arn"
   type        = string
-  default     = null
 
   validation {
-    condition     = var.github_oidc_arn == null || can(regex("^arn:", var.github_oidc_arn))
-    error_message = "The github_oidc_arn must be null or a valid ARN starting with 'arn:'."
+    condition     = can(regex("^arn:", var.github_oidc_arn))
+    error_message = "The github_oidc_arn must be a valid ARN starting with 'arn:'."
   }
+}
+
+variable "github_ref" {
+  description = "Optional git ref to constrain the OIDC subject claim to (e.g. 'refs/heads/main' or 'refs/tags/v*'). When set, only workflows running on this ref can assume the role. Strongly recommended for roles with write access."
+  type        = string
+  default     = null
+}
+
+variable "github_environment" {
+  description = "Optional GitHub Actions environment name to constrain the OIDC subject claim to (e.g. 'production'). When set, only workflows targeting this environment can assume the role. Strongly recommended for roles with write access."
+  type        = string
+  default     = null
 }
 
 variable "iam_policy_name" {
@@ -49,7 +73,11 @@ variable "iam_policy_description" {
 variable "iam_role_name" {
   description = "The name of the GitHub actions IAM role"
   type        = string
-  default     = null
+
+  validation {
+    condition     = length(trimspace(var.iam_role_name)) > 0
+    error_message = "iam_role_name must be non-empty."
+  }
 }
 
 variable "iam_role_description" {
@@ -60,7 +88,7 @@ variable "iam_role_description" {
 
 variable "iam_policy_document" {
   description = "The JSON formatted policy document"
-  type        = any
+  type        = string
   default     = null
 }
 

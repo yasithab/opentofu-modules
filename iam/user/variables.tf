@@ -55,6 +55,11 @@ variable "create_login_profile" {
   description = "Whether to create an IAM user login profile (console access)."
   type        = bool
   default     = false
+
+  validation {
+    condition     = !var.create_login_profile || var.pgp_key != null || var.allow_plaintext_credentials_in_state
+    error_message = "Creating a login profile without `pgp_key` stores the generated password in plaintext in the OpenTofu state. Provide `pgp_key`, or set `allow_plaintext_credentials_in_state = true` to explicitly accept the risk."
+  }
 }
 
 variable "password_length" {
@@ -84,6 +89,17 @@ variable "pgp_key" {
 
 variable "create_access_key" {
   description = "Whether to create an IAM access key for the user."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.create_access_key || var.pgp_key != null || var.allow_plaintext_credentials_in_state
+    error_message = "Creating an access key without `pgp_key` stores the secret access key in plaintext in the OpenTofu state. Provide `pgp_key`, or set `allow_plaintext_credentials_in_state = true` to explicitly accept the risk."
+  }
+}
+
+variable "allow_plaintext_credentials_in_state" {
+  description = "Explicit opt-out: allow creating login profiles/access keys without `pgp_key`, storing the generated credentials in plaintext in the OpenTofu state. Default false."
   type        = bool
   default     = false
 }

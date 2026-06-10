@@ -9,6 +9,7 @@ Establishes an AWS VPC peering connection between a requestor and acceptor VPC, 
 - **Automatic Route Creation** - Automatically creates routes in the requestor VPC route tables for all specified acceptor CIDR blocks
 - **DNS Resolution** - Configures DNS resolution options for both requestor and acceptor sides of the peering connection
 - **Route Table Filtering** - Filter which requestor route tables receive peering routes using tag-based selection
+- **Connection Acceptance** - Optionally auto-accept same-account/same-region peering (`auto_accept = true`) or create an `aws_vpc_peering_connection_accepter` (`create_accepter = true`); DNS resolution options are only managed once the connection can be accepted
 
 ## Usage
 

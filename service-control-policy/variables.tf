@@ -1,7 +1,17 @@
+variable "enabled" {
+  description = "Set to false to prevent the module from creating any resources."
+  type        = bool
+  default     = true
+}
+
 variable "name" {
   description = "Name to use for resource naming and tagging."
   type        = string
-  default     = null
+
+  validation {
+    condition     = length(trimspace(var.name)) > 0
+    error_message = "name must be non-empty."
+  }
 }
 
 variable "tags" {
@@ -12,7 +22,7 @@ variable "tags" {
 
 variable "description" {
   default     = null
-  description = "Description of the tag policy"
+  description = "Description of the service control policy"
   type        = string
 }
 
@@ -42,6 +52,29 @@ variable "deny_all" {
   description = "If false, create a combined policy. If true, deny all access"
   default     = false
   type        = bool
+
+  validation {
+    condition = var.deny_all || anytrue([
+      var.deny_leaving_orgs,
+      var.deny_creating_iam_users,
+      var.deny_deleting_kms_keys,
+      var.deny_deleting_route53_zones,
+      var.deny_deleting_cloudwatch_logs,
+      var.deny_root_account,
+      var.protect_s3_buckets,
+      var.deny_s3_buckets_public_access,
+      var.protect_iam_roles,
+      var.limit_ec2_instance_types,
+      var.limit_regions,
+      var.require_s3_encryption,
+      var.deny_network_modifications,
+      var.deny_vpc_modifications,
+      var.require_mfa,
+      var.enforce_cloudtrail_logging,
+      var.enforce_resource_tagging,
+    ])
+    error_message = "Enable at least one policy statement toggle, or set deny_all = true. An SCP with no statements is invalid and fails at apply time."
+  }
 }
 
 variable "skip_destroy" {
@@ -159,7 +192,7 @@ variable "required_tag_keys" {
   default     = []
 
   validation {
-    condition     = length(var.required_tag_keys) > 0 == var.enforce_resource_tagging
+    condition     = !var.enforce_resource_tagging || length(var.required_tag_keys) > 0
     error_message = "When enforce_resource_tagging is true, required_tag_keys must not be empty."
   }
 }
@@ -170,8 +203,8 @@ variable "tag_enforcement_actions" {
   default     = []
 
   validation {
-    condition     = length(var.tag_enforcement_actions) > 0 == var.enforce_resource_tagging
-    error_message = "When enforce_tag_resource_tagging is true, tag_enforcement_actions must not be empty."
+    condition     = !var.enforce_resource_tagging || length(var.tag_enforcement_actions) > 0
+    error_message = "When enforce_resource_tagging is true, tag_enforcement_actions must not be empty."
   }
 }
 
@@ -199,7 +232,7 @@ variable "allowed_regions" {
   type        = list(string)
   default     = []
   validation {
-    condition     = length(var.allowed_regions) > 0 == var.limit_regions
+    condition     = !var.limit_regions || length(var.allowed_regions) > 0
     error_message = "When limit_regions is true, at least one region must be specified."
   }
 }
@@ -209,7 +242,7 @@ variable "allowed_ec2_instance_types" {
   type        = list(string)
   default     = []
   validation {
-    condition     = length(var.allowed_ec2_instance_types) > 0 == var.limit_ec2_instance_types
+    condition     = !var.limit_ec2_instance_types || length(var.allowed_ec2_instance_types) > 0
     error_message = "When limit_ec2_instance_types is true, at least one EC2 instance type must be specified."
   }
 }

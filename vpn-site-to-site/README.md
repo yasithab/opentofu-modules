@@ -205,3 +205,12 @@ module "vpn_accelerated" {
   }
 }
 ```
+
+## Notes
+
+- `name` is optional; when set it is merged into all resource tags as `Name`.
+- `customer_gateway_ip_address` and one of `customer_gateway_bgp_asn` / `customer_gateway_bgp_asn_extended` are required when the module is enabled (validated at plan time).
+- **Breaking (security hardening):** tunnel phase 1/2 defaults now allow only DH groups >= 14, SHA-2 integrity algorithms, and AES256 / AES256-GCM-16 encryption; `ike_versions` defaults to `["ikev2"]`. Set the corresponding variables explicitly if your device needs legacy parameters.
+- **Breaking:** `vpn_connection_preshared_key_storage` now defaults to `"SecretsManager"`.
+- The CloudWatch log group is only created when tunnel logging is enabled, and its deletion protection defaults to `true`.
+- A virtual private gateway is only created when `vpn_connection_transit_gateway_id` is not set (TGW mode skips it).

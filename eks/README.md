@@ -26,7 +26,7 @@ OpenTofu module for provisioning and managing Amazon Elastic Kubernetes Service 
 module "eks" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//eks?depth=1&ref=master"
 
-  cluster_name    = "my-cluster"
+  name            = "my-cluster"
   cluster_version = "1.31"
 
   vpc_id     = "vpc-0123456789abcdef0"
@@ -59,7 +59,7 @@ module "eks" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//eks?depth=1&ref=master"
 
   enabled         = true
-  cluster_name    = "my-cluster"
+  name            = "my-cluster"
   cluster_version = "1.32"
 
   vpc_id     = "vpc-0abc123def456789"
@@ -81,7 +81,7 @@ module "eks" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//eks?depth=1&ref=master"
 
   enabled         = true
-  cluster_name    = "app-cluster"
+  name            = "app-cluster"
   cluster_version = "1.32"
 
   vpc_id                        = "vpc-0abc123def456789"
@@ -123,7 +123,7 @@ module "eks" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//eks?depth=1&ref=master"
 
   enabled         = true
-  cluster_name    = "serverless-cluster"
+  name            = "serverless-cluster"
   cluster_version = "1.32"
 
   vpc_id     = "vpc-0abc123def456789"
@@ -174,7 +174,7 @@ module "eks" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//eks?depth=1&ref=master"
 
   enabled         = true
-  cluster_name    = "prod-cluster"
+  name            = "prod-cluster"
   cluster_version = "1.32"
 
   vpc_id                        = "vpc-0abc123def456789"
@@ -248,3 +248,13 @@ module "eks" {
   }
 }
 ```
+
+## Notes
+
+- **Typed inputs**: all configuration inputs use typed `object()`/`map(object())` schemas with `optional()` attributes — unknown keys are rejected at plan time. Single-block configurations (`cluster_compute_config`, `cluster_upgrade_policy`, `cluster_remote_network_config`, `cluster_zonal_shift_config`, `outpost_config`, `cluster_encryption_config`) are disabled by setting them to `null` (not `{}`).
+- **Secret encryption**: `cluster_encryption_config` defaults to encrypting `secrets` with a module-managed KMS key. To disable envelope encryption, set `cluster_encryption_config = null`.
+- **Deletion protection**: `cluster_deletion_protection` defaults to `true`. Set it to `false` explicitly before destroying a cluster.
+- **Control plane logging**: `cluster_enabled_log_types` defaults to all five log types (`api`, `audit`, `authenticator`, `controllerManager`, `scheduler`). Override the list to reduce CloudWatch costs if needed.
+- **Self-managed node group AMI**: the default `ami_type` for self-managed node groups is `AL2023_x86_64_STANDARD` (AL2 reached end of standard support). Set `ami_type` explicitly to keep existing AL2 groups unchanged.
+- **Addon version drift**: cluster addons default to `most_recent = true`, which resolves the addon version at plan time. As AWS publishes new addon versions, subsequent plans will show version updates (drift). Pin `addon_version` (or set `most_recent = false`) per addon for fully reproducible plans.
+- **IPv6 CNI policy name**: when `create_cni_ipv6_iam_policy = true`, the policy is named `AmazonEKS_CNI_IPv6_Policy` by default. Use `cni_ipv6_iam_policy_name` to avoid name conflicts when multiple clusters in one account create this policy.

@@ -124,3 +124,14 @@ module "app_secrets" {
   }
 }
 ```
+
+## Notes
+
+- `tags` are passed through per item (`items.<key>.tags`), falling back to `defaults.tags`.
+- The `items` variable is marked `sensitive = true` because items can carry `secret_string`/
+  `secret_binary` values. As a consequence, plan output for values derived from `items` is
+  hidden/redacted. If this hampers reviewing plans, pass secrets via `secret_string_wo` instead.
+- **Write-only limitation through the wrapper**: `items`/`defaults` are regular (non-ephemeral)
+  variables, so a `secret_string_wo` value passed through the wrapper is *not* write-only at this
+  boundary — it can appear in plan/apply input handling. For true write-only semantics, call the
+  root `secret-manager` module directly with an ephemeral value.

@@ -1,3 +1,7 @@
+data "aws_partition" "current" {}
+
+data "aws_region" "current" {}
+
 locals {
   enabled = var.enabled
 
@@ -6,6 +10,22 @@ locals {
   })
 
   s3_bucket_name = var.create_s3_bucket ? aws_s3_bucket.this.id : var.s3_bucket_name
+
+  # Defaults to the previous single hardcoded rule (Glacier transition + expiration)
+  s3_lifecycle_rules = var.s3_lifecycle_rules != null ? var.s3_lifecycle_rules : [
+    {
+      id     = "cur-lifecycle"
+      status = "Enabled"
+      prefix = null
+      transitions = [
+        {
+          days          = var.s3_lifecycle_glacier_transition_days
+          storage_class = "GLACIER"
+        }
+      ]
+      expiration_days = var.s3_lifecycle_expiration_days
+    }
+  ]
 }
 
 ################################################################################
@@ -67,17 +87,37 @@ resource "aws_s3_bucket_public_access_block" "this" {
 resource "aws_s3_bucket_lifecycle_configuration" "this" {
   bucket = aws_s3_bucket.this.id
 
-  rule {
-    id     = "cur-lifecycle"
-    status = "Enabled"
+  dynamic "rule" {
+    for_each = local.s3_lifecycle_rules
 
-    transition {
-      days          = var.s3_lifecycle_glacier_transition_days
-      storage_class = "GLACIER"
-    }
+    content {
+      id     = rule.value.id
+      status = rule.value.status
 
-    expiration {
-      days = var.s3_lifecycle_expiration_days
+      dynamic "filter" {
+        for_each = rule.value.prefix != null ? [rule.value.prefix] : []
+
+        content {
+          prefix = filter.value
+        }
+      }
+
+      dynamic "transition" {
+        for_each = rule.value.transitions
+
+        content {
+          days          = transition.value.days
+          storage_class = transition.value.storage_class
+        }
+      }
+
+      dynamic "expiration" {
+        for_each = rule.value.expiration_days != null ? [rule.value.expiration_days] : []
+
+        content {
+          days = expiration.value
+        }
+      }
     }
   }
 
@@ -103,12 +143,12 @@ data "aws_iam_policy_document" "cur_s3" {
     }
 
     actions   = ["s3:GetBucketAcl", "s3:GetBucketPolicy"]
-    resources = ["arn:aws:s3:::${local.s3_bucket_name}"]
+    resources = ["arn:${data.aws_partition.current.partition}:s3:::${local.s3_bucket_name}"]
 
     condition {
       test     = "StringEquals"
       variable = "aws:SourceArn"
-      values   = ["arn:aws:cur:us-east-1:${data.aws_caller_identity.current.account_id}:definition/*"]
+      values   = ["arn:${data.aws_partition.current.partition}:cur:us-east-1:${data.aws_caller_identity.current.account_id}:definition/*"]
     }
 
     condition {
@@ -128,12 +168,12 @@ data "aws_iam_policy_document" "cur_s3" {
     }
 
     actions   = ["s3:PutObject"]
-    resources = ["arn:aws:s3:::${local.s3_bucket_name}/*"]
+    resources = ["arn:${data.aws_partition.current.partition}:s3:::${local.s3_bucket_name}/*"]
 
     condition {
       test     = "StringEquals"
       variable = "aws:SourceArn"
-      values   = ["arn:aws:cur:us-east-1:${data.aws_caller_identity.current.account_id}:definition/*"]
+      values   = ["arn:${data.aws_partition.current.partition}:cur:us-east-1:${data.aws_caller_identity.current.account_id}:definition/*"]
     }
 
     condition {
@@ -176,6 +216,11 @@ resource "aws_cur_report_definition" "this" {
 
   lifecycle {
     enabled = local.enabled
+
+    precondition {
+      condition     = data.aws_region.current.region == "us-east-1"
+      error_message = "aws_cur_report_definition is only supported in us-east-1; configure the AWS provider for this module to use the us-east-1 region. Current region: ${data.aws_region.current.region}."
+    }
   }
 
   depends_on = [aws_s3_bucket_policy.this]

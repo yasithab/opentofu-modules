@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls whether resources should be created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -56,7 +56,7 @@ variable "lambda_at_edge_logs_all_regions" {
   default     = true
 }
 
-variable "function_name" {
+variable "name" {
   description = "A unique name for your Lambda Function"
   type        = string
   default     = null
@@ -71,10 +71,10 @@ variable "handler" {
 variable "runtime" {
   description = "Lambda Function runtime"
   type        = string
-  default     = ""
+  default     = null
 
   validation {
-    condition     = var.runtime == null || can(regex("^(nodejs|python|java|dotnet|ruby|go|provided)", var.runtime))
+    condition     = var.runtime == null || var.runtime == "" || can(regex("^(nodejs|python|java|dotnet|ruby|go|provided)", coalesce(var.runtime, " ")))
     error_message = "runtime must be a valid AWS Lambda runtime (e.g., nodejs20.x, python3.12, java21, dotnet8, ruby3.3, provided.al2023)."
   }
 }
@@ -167,9 +167,10 @@ variable "dead_letter_target_arn" {
 }
 
 variable "environment_variables" {
-  description = "A map that defines environment variables for the Lambda Function."
+  description = "A map that defines environment variables for the Lambda Function. Marked sensitive, so plans will hide environment variable diffs."
   type        = map(string)
   default     = {}
+  sensitive   = true
 }
 
 variable "tracing_mode" {
@@ -197,7 +198,7 @@ variable "ipv6_allowed_for_dual_stack" {
 }
 
 variable "tags" {
-  description = "A map of tags to assign to resources."
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -293,13 +294,20 @@ variable "create_unqualified_alias_lambda_function_url" {
 variable "authorization_type" {
   description = "The type of authentication that the Lambda Function URL uses. Set to 'AWS_IAM' to restrict access to authenticated IAM users only. Set to 'NONE' to bypass IAM authentication and create a public endpoint."
   type        = string
-  default     = "NONE"
+  default     = "AWS_IAM"
 }
 
 variable "cors" {
   description = "CORS settings to be used by the Lambda Function URL"
-  type        = any
-  default     = {}
+  type = object({
+    allow_credentials = optional(bool)
+    allow_headers     = optional(list(string))
+    allow_methods     = optional(list(string))
+    allow_origins     = optional(list(string))
+    expose_headers    = optional(list(string))
+    max_age           = optional(number)
+  })
+  default = null
 }
 
 variable "invoke_mode" {
@@ -428,8 +436,18 @@ variable "create_unqualified_alias_allowed_triggers" {
 
 variable "allowed_triggers" {
   description = "Map of allowed triggers to create Lambda permissions"
-  type        = map(any)
-  default     = {}
+  type = map(object({
+    statement_id           = optional(string)
+    action                 = optional(string, "lambda:InvokeFunction")
+    principal              = optional(string)
+    service                = optional(string)
+    principal_org_id       = optional(string)
+    source_arn             = optional(string)
+    source_account         = optional(string)
+    event_source_token     = optional(string)
+    function_url_auth_type = optional(string)
+  }))
+  default = {}
 }
 
 ############################################
@@ -437,9 +455,81 @@ variable "allowed_triggers" {
 ############################################
 
 variable "event_source_mapping" {
-  description = "Map of event source mapping"
-  type        = any
-  default     = {}
+  description = "Map of event source mapping configurations. Set `enabled = false` on an entry to skip creating it."
+  type = map(object({
+    enabled                            = optional(bool, true)
+    event_source_arn                   = optional(string)
+    kms_key_arn                        = optional(string)
+    batch_size                         = optional(number)
+    maximum_batching_window_in_seconds = optional(number)
+    starting_position                  = optional(string)
+    starting_position_timestamp        = optional(string)
+    parallelization_factor             = optional(number)
+    maximum_retry_attempts             = optional(number)
+    maximum_record_age_in_seconds      = optional(number)
+    bisect_batch_on_function_error     = optional(bool)
+    topics                             = optional(list(string))
+    queues                             = optional(list(string))
+    function_response_types            = optional(list(string))
+    tumbling_window_in_seconds         = optional(number)
+    destination_arn_on_failure         = optional(string)
+    scaling_config = optional(object({
+      maximum_concurrency = optional(number)
+    }))
+    self_managed_event_source = optional(list(object({
+      endpoints = map(string)
+    })), [])
+    self_managed_kafka_event_source_config = optional(list(object({
+      consumer_group_id = optional(string)
+      schema_registry_config = optional(object({
+        event_record_format = optional(string)
+        schema_registry_uri = optional(string)
+        access_config = optional(list(object({
+          type = string
+          uri  = string
+        })), [])
+        schema_validation_config = optional(object({
+          attribute = string
+        }))
+      }))
+    })), [])
+    amazon_managed_kafka_event_source_config = optional(list(object({
+      consumer_group_id = optional(string)
+      schema_registry_config = optional(object({
+        event_record_format = optional(string)
+        schema_registry_uri = optional(string)
+        access_config = optional(list(object({
+          type = string
+          uri  = string
+        })), [])
+        schema_validation_config = optional(object({
+          attribute = string
+        }))
+      }))
+    })), [])
+    source_access_configuration = optional(list(object({
+      type = string
+      uri  = string
+    })), [])
+    filter_criteria = optional(list(object({
+      pattern = optional(string)
+    })))
+    document_db_event_source_config = optional(list(object({
+      database_name   = string
+      collection_name = optional(string)
+      full_document   = optional(string)
+    })), [])
+    metrics_config = optional(object({
+      metrics = list(string)
+    }))
+    provisioned_poller_config = optional(object({
+      maximum_pollers   = optional(number)
+      minimum_pollers   = optional(number)
+      poller_group_name = optional(string)
+    }))
+    tags = optional(map(string), {})
+  }))
+  default = {}
 }
 
 #################
@@ -629,15 +719,36 @@ variable "attach_policy_statements" {
 }
 
 variable "trusted_entities" {
-  description = "List of additional trusted entities for assuming Lambda Function role (trust relationship)"
-  type        = any
-  default     = []
+  description = "List of additional trusted entities for assuming Lambda Function role (trust relationship). Each entry is an object with `type` (e.g. `Service`, `AWS`) and `identifiers`. Plain service-name strings are no longer accepted; express them as `{ type = \"Service\", identifiers = [...] }`."
+  type = list(object({
+    type        = string
+    identifiers = list(string)
+  }))
+  default = []
 }
 
 variable "assume_role_policy_statements" {
   description = "Map of dynamic policy statements for assuming Lambda Function role (trust relationship)"
-  type        = any
-  default     = {}
+  type = map(object({
+    sid         = optional(string)
+    effect      = optional(string)
+    actions     = optional(list(string))
+    not_actions = optional(list(string))
+    principals = optional(list(object({
+      type        = string
+      identifiers = list(string)
+    })), [])
+    not_principals = optional(list(object({
+      type        = string
+      identifiers = list(string)
+    })), [])
+    condition = optional(list(object({
+      test     = string
+      variable = string
+      values   = list(string)
+    })), [])
+  }))
+  default = {}
 }
 
 variable "policy_json" {
@@ -666,8 +777,28 @@ variable "policies" {
 
 variable "policy_statements" {
   description = "Map of dynamic policy statements to attach to Lambda Function role"
-  type        = any
-  default     = {}
+  type = map(object({
+    sid           = optional(string)
+    effect        = optional(string)
+    actions       = optional(list(string))
+    not_actions   = optional(list(string))
+    resources     = optional(list(string))
+    not_resources = optional(list(string))
+    principals = optional(list(object({
+      type        = string
+      identifiers = list(string)
+    })), [])
+    not_principals = optional(list(object({
+      type        = string
+      identifiers = list(string)
+    })), [])
+    condition = optional(list(object({
+      test     = string
+      variable = string
+      values   = list(string)
+    })), [])
+  }))
+  default = {}
 }
 
 variable "file_system_arn" {
@@ -743,7 +874,7 @@ variable "s3_acl" {
 variable "s3_server_side_encryption" {
   description = "Specifies server-side encryption of the object in S3. Valid values are \"AES256\" and \"aws:kms\"."
   type        = string
-  default     = null
+  default     = "AES256"
 }
 
 variable "s3_kms_key_id" {

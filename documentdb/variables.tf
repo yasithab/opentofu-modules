@@ -33,10 +33,22 @@ variable "master_username" {
 }
 
 variable "master_password_wo" {
-  description = "Write-only master password for the DocumentDB cluster. Never stored in state."
+  description = "Write-only master password for the DocumentDB cluster. Never stored in state. Conflicts with manage_master_user_password."
   type        = string
   default     = null
+  sensitive   = true
   ephemeral   = true
+}
+
+variable "manage_master_user_password" {
+  description = "Set to true to allow AWS to manage the master user password in Secrets Manager. Conflicts with master_password_wo."
+  type        = bool
+  default     = null
+
+  validation {
+    condition     = !(var.manage_master_user_password == true && var.master_password_wo != null)
+    error_message = "manage_master_user_password cannot be true when master_password_wo is provided."
+  }
 }
 
 variable "master_password_wo_version" {
@@ -243,6 +255,12 @@ variable "cluster_parameters" {
 
 variable "create_security_group" {
   description = "Whether to create a security group for the DocumentDB cluster."
+  type        = bool
+  default     = true
+}
+
+variable "security_group_use_name_prefix" {
+  description = "Whether the security group name (`<name>-docdb`) is used as a name prefix. Enabled by default so create_before_destroy replacements do not collide on the fixed name."
   type        = bool
   default     = true
 }

@@ -1,11 +1,13 @@
 data "aws_partition" "current" {
-  count = try(1, 0)
+  count = var.enabled ? 1 : 0
 }
 data "aws_caller_identity" "current" {
-  count = try(1, 0)
+  count = var.enabled ? 1 : 0
 }
 
 locals {
+  enabled = var.enabled
+
   account_id = try(data.aws_caller_identity.current[0].account_id, "")
   partition  = try(data.aws_partition.current[0].partition, "")
   dns_suffix = try(data.aws_partition.current[0].dns_suffix, "")
@@ -13,6 +15,14 @@ locals {
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
   })
+
+  # Exactly one key type is created based on the create_* toggles
+  create_standard         = local.enabled && !var.create_external && !var.create_replica && !var.create_replica_external
+  create_external         = local.enabled && var.create_external && !var.create_replica && !var.create_replica_external
+  create_replica          = local.enabled && var.create_replica && !var.create_external && !var.create_replica_external
+  create_replica_external = local.enabled && var.create_replica_external && !var.create_external && !var.create_replica
+
+  key_policy = coalesce(var.policy, try(data.aws_iam_policy_document.this[0].json, "{}"))
 }
 
 ################################################################################
@@ -31,14 +41,14 @@ resource "aws_kms_key" "this" {
   is_enabled                         = var.is_enabled
   key_usage                          = var.key_usage
   multi_region                       = var.multi_region
-  policy                             = coalesce(var.policy, data.aws_iam_policy_document.this[0].json)
+  policy                             = local.key_policy
   rotation_period_in_days            = var.rotation_period_in_days
   xks_key_id                         = var.xks_key_id
 
   tags = local.tags
 
   lifecycle {
-    enabled = var.enabled && !var.create_external && !var.create_replica && !var.create_replica_external
+    enabled = local.create_standard
   }
 }
 
@@ -47,7 +57,7 @@ resource "aws_kms_key" "this" {
 ################################################################################
 
 resource "aws_kms_external_key" "this" {
-  count = var.enabled && var.create_external && !var.create_replica && !var.create_replica_external ? 1 : 0
+  count = local.create_external ? 1 : 0
 
   region = var.region
 
@@ -59,7 +69,7 @@ resource "aws_kms_external_key" "this" {
   key_spec                           = var.customer_master_key_spec
   key_usage                          = var.key_usage
   multi_region                       = var.multi_region
-  policy                             = coalesce(var.policy, data.aws_iam_policy_document.this[0].json)
+  policy                             = local.key_policy
   valid_to                           = var.valid_to
 
   tags = local.tags
@@ -70,7 +80,7 @@ resource "aws_kms_external_key" "this" {
 ################################################################################
 
 resource "aws_kms_replica_key" "this" {
-  count = var.enabled && var.create_replica && !var.create_external && !var.create_replica_external ? 1 : 0
+  count = local.create_replica ? 1 : 0
 
   region = var.region
 
@@ -79,7 +89,7 @@ resource "aws_kms_replica_key" "this" {
   description                        = var.description
   primary_key_arn                    = var.primary_key_arn
   enabled                            = var.is_enabled
-  policy                             = coalesce(var.policy, data.aws_iam_policy_document.this[0].json)
+  policy                             = local.key_policy
 
   tags = local.tags
 }
@@ -89,7 +99,7 @@ resource "aws_kms_replica_key" "this" {
 ################################################################################
 
 resource "aws_kms_replica_external_key" "this" {
-  count = var.enabled && !var.create_replica && !var.create_external && var.create_replica_external ? 1 : 0
+  count = local.create_replica_external ? 1 : 0
 
   region = var.region
 
@@ -98,7 +108,7 @@ resource "aws_kms_replica_external_key" "this" {
   description                        = var.description
   enabled                            = var.is_enabled
   key_material_base64                = var.key_material_base64
-  policy                             = coalesce(var.policy, data.aws_iam_policy_document.this[0].json)
+  policy                             = local.key_policy
   primary_key_arn                    = var.primary_external_key_arn
   valid_to                           = var.valid_to
 
@@ -110,7 +120,7 @@ resource "aws_kms_replica_external_key" "this" {
 ################################################################################
 
 data "aws_iam_policy_document" "this" {
-  count = try(1, 0)
+  count = var.enabled ? 1 : 0
 
   source_policy_documents   = var.source_policy_documents
   override_policy_documents = var.override_policy_documents
@@ -421,15 +431,15 @@ data "aws_iam_policy_document" "this" {
     for_each = var.key_statements
 
     content {
-      sid           = try(statement.value.sid, null)
-      actions       = try(statement.value.actions, null)
-      not_actions   = try(statement.value.not_actions, null)
-      effect        = try(statement.value.effect, null)
-      resources     = try(statement.value.resources, null)
-      not_resources = try(statement.value.not_resources, null)
+      sid           = statement.value.sid
+      actions       = statement.value.actions
+      not_actions   = statement.value.not_actions
+      effect        = statement.value.effect
+      resources     = statement.value.resources
+      not_resources = statement.value.not_resources
 
       dynamic "principals" {
-        for_each = try(statement.value.principals, [])
+        for_each = statement.value.principals
 
         content {
           type        = principals.value.type
@@ -438,7 +448,7 @@ data "aws_iam_policy_document" "this" {
       }
 
       dynamic "not_principals" {
-        for_each = try(statement.value.not_principals, [])
+        for_each = statement.value.not_principals
 
         content {
           type        = not_principals.value.type
@@ -447,7 +457,7 @@ data "aws_iam_policy_document" "this" {
       }
 
       dynamic "condition" {
-        for_each = try(statement.value.conditions, [])
+        for_each = statement.value.conditions
 
         content {
           test     = condition.value.test
@@ -468,7 +478,7 @@ locals {
 }
 
 resource "aws_kms_alias" "this" {
-  for_each = { for k, v in merge(local.aliases, var.computed_aliases) : k => v if var.enabled }
+  for_each = { for k, v in merge(local.aliases, var.computed_aliases) : k => v if local.enabled }
 
   region        = var.region
   name          = var.aliases_use_name_prefix ? null : "alias/${each.value.name}"
@@ -481,24 +491,24 @@ resource "aws_kms_alias" "this" {
 ################################################################################
 
 resource "aws_kms_grant" "this" {
-  for_each = { for k, v in var.grants : k => v if var.enabled }
+  for_each = { for k, v in var.grants : k => v if local.enabled }
 
   region            = var.region
-  name              = try(each.value.name, each.key)
+  name              = coalesce(each.value.name, each.key)
   key_id            = try(aws_kms_key.this.key_id, aws_kms_external_key.this[0].id, aws_kms_replica_key.this[0].key_id, aws_kms_replica_external_key.this[0].key_id)
   grantee_principal = each.value.grantee_principal
   operations        = each.value.operations
 
   dynamic "constraints" {
-    for_each = length(lookup(each.value, "constraints", {})) == 0 ? [] : [each.value.constraints]
+    for_each = each.value.constraints != null ? [each.value.constraints] : []
 
     content {
-      encryption_context_equals = try(constraints.value.encryption_context_equals, null)
-      encryption_context_subset = try(constraints.value.encryption_context_subset, null)
+      encryption_context_equals = constraints.value.encryption_context_equals
+      encryption_context_subset = constraints.value.encryption_context_subset
     }
   }
 
-  retiring_principal    = try(each.value.retiring_principal, null)
-  grant_creation_tokens = try(each.value.grant_creation_tokens, null)
-  retire_on_delete      = try(each.value.retire_on_delete, null)
+  retiring_principal    = each.value.retiring_principal
+  grant_creation_tokens = each.value.grant_creation_tokens
+  retire_on_delete      = each.value.retire_on_delete
 }

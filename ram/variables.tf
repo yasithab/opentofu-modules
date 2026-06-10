@@ -11,14 +11,14 @@ variable "tags" {
   default     = {}
 }
 
-variable "ram_resource_share_name" {
+variable "name" {
   type        = string
   description = "(Required) The name of the resource share"
   nullable    = false
 
   validation {
-    condition     = length(var.ram_resource_share_name) > 0
-    error_message = "The ram_resource_share_name must not be empty."
+    condition     = length(var.name) > 0
+    error_message = "The name must not be empty."
   }
 }
 

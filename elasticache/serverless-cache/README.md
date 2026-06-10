@@ -19,7 +19,7 @@ OpenTofu module to create an Amazon ElastiCache Serverless cache. Provides a ful
 module "serverless_cache" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//elasticache/serverless-cache?depth=1&ref=master"
 
-  cache_name           = "my-cache"
+  name                 = "my-cache"
   engine               = "redis"
   major_engine_version = "7"
 
@@ -51,7 +51,7 @@ module "serverless_cache" {
 module "memcached_cache" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//elasticache/serverless-cache?depth=1&ref=master"
 
-  cache_name           = "my-memcached"
+  name                 = "my-memcached"
   engine               = "memcached"
   major_engine_version = "1.6"
 
@@ -71,7 +71,7 @@ module "memcached_cache" {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|----------|
-| `cache_name` | Unique identifier for the serverless cache | `string` | `null` | no |
+| `name` | Unique identifier for the serverless cache | `string` | `null` | no |
 | `engine` | Cache engine (`redis` or `memcached`) | `string` | `"redis"` | no |
 | `major_engine_version` | The version of the cache engine | `string` | `null` | no |
 | `description` | User-created description for the serverless cache | `string` | `null` | no |
@@ -112,7 +112,7 @@ module "elasticache_serverless" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//elasticache/serverless-cache?depth=1&ref=master"
 
   enabled     = true
-  cache_name  = "my-serverless-redis"
+  name        = "my-serverless-redis"
   engine      = "redis"
   description = "Serverless Redis cache for the application tier"
 
@@ -135,7 +135,7 @@ module "elasticache_serverless" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//elasticache/serverless-cache?depth=1&ref=master"
 
   enabled              = true
-  cache_name           = "app-serverless-redis"
+  name                 = "app-serverless-redis"
   engine               = "redis"
   major_engine_version = "7"
   description          = "Serverless Redis cache with limits for the app layer"
@@ -174,10 +174,10 @@ Serverless cache associated with a user group for fine-grained RBAC.
 module "elasticache_serverless" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//elasticache/serverless-cache?depth=1&ref=master"
 
-  enabled      = true
-  cache_name   = "secure-serverless-redis"
-  engine       = "redis"
-  description  = "Serverless Redis with user group access control"
+  enabled     = true
+  name        = "secure-serverless-redis"
+  engine      = "redis"
+  description = "Serverless Redis with user group access control"
 
   user_group_id = "app-user-group"
 

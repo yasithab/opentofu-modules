@@ -15,6 +15,11 @@ OpenTofu module for deploying and managing Amazon OpenSearch Service domains wit
 - **AI/ML options** - natural language query generation, S3 vectors engine, and serverless vector acceleration
 - **VPC endpoints and packages** - associate custom packages and create VPC endpoints for the domain
 
+## Notes
+
+- **`master_user_password` is stored in OpenTofu state.** The AWS provider does not support a write-only attribute for the fine-grained access control master user password, so any password set via `advanced_security_options.master_user_options.master_user_password` ends up in the state file (the variable is marked `sensitive`, which only hides it from CLI output). Prefer IAM-based access via `master_user_arn` - by default, when neither a master user ARN nor an internal user name is provided, the module falls back to the current caller's IAM identity (`issuer_arn`) so fine-grained access control works out of the box without any credential in state.
+- **TLS policy defaults to `Policy-Min-TLS-1-2-PFS-2023-10`.** Set `domain_endpoint_options.tls_security_policy` explicitly to use a different policy.
+
 ## Usage
 
 ```hcl

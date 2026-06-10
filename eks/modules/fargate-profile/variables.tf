@@ -1,11 +1,11 @@
 variable "enabled" {
-  description = "Determines whether to create Fargate profile or not"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
 
 variable "tags" {
-  description = "A map of tags to add to all resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -107,8 +107,28 @@ variable "create_iam_role_policy" {
 
 variable "iam_role_policy_statements" {
   description = "A list of IAM policy [statements](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document#statement) - used for adding specific IAM permissions as needed"
-  type        = any
-  default     = []
+  type = list(object({
+    sid           = optional(string)
+    actions       = optional(list(string))
+    not_actions   = optional(list(string))
+    effect        = optional(string)
+    resources     = optional(list(string))
+    not_resources = optional(list(string))
+    principals = optional(list(object({
+      type        = string
+      identifiers = list(string)
+    })), [])
+    not_principals = optional(list(object({
+      type        = string
+      identifiers = list(string)
+    })), [])
+    conditions = optional(list(object({
+      test     = string
+      values   = list(string)
+      variable = string
+    })), [])
+  }))
+  default = []
 }
 
 ################################################################################
@@ -135,8 +155,11 @@ variable "subnet_ids" {
 
 variable "selectors" {
   description = "Configuration block(s) for selecting Kubernetes Pods to execute with this Fargate Profile"
-  type        = any
-  default     = []
+  type = list(object({
+    namespace = string
+    labels    = optional(map(string), {})
+  }))
+  default = []
 }
 
 variable "timeouts" {

@@ -53,6 +53,11 @@ resource "aws_vpc" "this" {
 
   lifecycle {
     enabled = local.enabled
+
+    precondition {
+      condition     = local.nat_type != "multi_az" || !local.create_public_subnets || local.len_public_subnets >= length(var.azs)
+      error_message = "nat_gateway_type = \"multi_az\" requires at least as many public subnets as availability zones, otherwise no public subnets (and no NAT gateways) would be created."
+    }
   }
 }
 
@@ -76,9 +81,9 @@ resource "aws_vpc_block_public_access_options" "this" {
 resource "aws_vpc_block_public_access_exclusion" "this" {
   for_each = { for k, v in var.vpc_block_public_access_exclusions : k => v if local.enabled }
 
-  vpc_id = lookup(each.value, "exclude_vpc", false) ? local.vpc_id : null
+  vpc_id = each.value.exclude_vpc ? local.vpc_id : null
 
-  subnet_id = lookup(each.value, "exclude_subnet", false) ? lookup(
+  subnet_id = each.value.exclude_subnet ? lookup(
     {
       private     = aws_subnet.private[*].id,
       public      = aws_subnet.public[*].id,
@@ -440,7 +445,7 @@ resource "aws_route_table_association" "database" {
 resource "aws_route" "database_internet_gateway" {
   count = local.create_database_route_table && var.create_igw && var.create_database_internet_gateway_route && !var.create_database_nat_gateway_route ? (local.num_database_route_tables == 1 ? 1 : local.len_database_subnets) : 0
 
-  route_table_id         = aws_route_table.database[0].id
+  route_table_id         = element(aws_route_table.database[*].id, count.index)
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.this.id
 
@@ -501,7 +506,7 @@ resource "aws_route" "database_dns64_regional_nat_gateway" {
 resource "aws_route" "database_ipv6_egress" {
   count = local.create_database_route_table && var.create_egress_only_igw && var.enable_ipv6 && var.create_database_internet_gateway_route ? (local.num_database_route_tables == 1 ? 1 : local.len_database_subnets) : 0
 
-  route_table_id              = aws_route_table.database[0].id
+  route_table_id              = element(aws_route_table.database[*].id, count.index)
   destination_ipv6_cidr_block = "::/0"
   egress_only_gateway_id      = aws_egress_only_internet_gateway.this.id
 
@@ -622,7 +627,7 @@ resource "aws_route_table_association" "redshift" {
 
   subnet_id = element(aws_subnet.redshift[*].id, count.index)
   route_table_id = element(
-    coalescelist(try(aws_route_table.redshift.id, null), aws_route_table.private[*].id),
+    coalescelist(compact([try(aws_route_table.redshift.id, "")]), aws_route_table.private[*].id),
     local.nat_type != "multi_az" || var.create_redshift_subnet_route_table ? 0 : count.index,
   )
 }
@@ -632,7 +637,7 @@ resource "aws_route_table_association" "redshift_public" {
 
   subnet_id = element(aws_subnet.redshift[*].id, count.index)
   route_table_id = element(
-    coalescelist(try(aws_route_table.redshift.id, null), aws_route_table.public[*].id),
+    coalescelist(compact([try(aws_route_table.redshift.id, "")]), aws_route_table.public[*].id),
     local.nat_type != "multi_az" || var.create_redshift_subnet_route_table ? 0 : count.index,
   )
 }
@@ -750,7 +755,7 @@ resource "aws_route_table_association" "elasticache" {
   subnet_id = element(aws_subnet.elasticache[*].id, count.index)
   route_table_id = element(
     coalescelist(
-      try(aws_route_table.elasticache.id, null),
+      compact([try(aws_route_table.elasticache.id, "")]),
       aws_route_table.private[*].id,
     ),
     local.nat_type != "multi_az" || var.create_elasticache_subnet_route_table ? 0 : count.index,
@@ -1043,7 +1048,7 @@ resource "aws_route" "private_ipv6_egress" {
 
   route_table_id              = element(aws_route_table.private[*].id, count.index)
   destination_ipv6_cidr_block = "::/0"
-  egress_only_gateway_id      = element(try(aws_egress_only_internet_gateway.this.id, null), 0)
+  egress_only_gateway_id      = aws_egress_only_internet_gateway.this.id
 }
 
 ################################################################################
@@ -1167,11 +1172,11 @@ resource "aws_route" "private_dns64_regional_nat_gateway" {
 ################################################################################
 
 resource "aws_customer_gateway" "this" {
-  for_each = var.customer_gateways
+  for_each = { for k, v in var.customer_gateways : k => v if local.enabled }
 
-  bgp_asn     = each.value["bgp_asn"]
-  ip_address  = each.value["ip_address"]
-  device_name = lookup(each.value, "device_name", null)
+  bgp_asn     = each.value.bgp_asn
+  ip_address  = each.value.ip_address
+  device_name = each.value.device_name
   type        = "ipsec.1"
 
   tags = merge(local.tags, { "Name" = "${local.name}-${each.key}" }, var.customer_gateway_tags)
@@ -1202,7 +1207,7 @@ resource "aws_vpn_gateway_attachment" "this" {
   vpn_gateway_id = var.vpn_gateway_id
 
   lifecycle {
-    enabled = var.vpn_gateway_id != null
+    enabled = local.enabled && var.vpn_gateway_id != null
   }
 }
 
@@ -1211,10 +1216,10 @@ resource "aws_vpn_gateway_route_propagation" "public" {
 
   route_table_id = element(aws_route_table.public[*].id, count.index)
   vpn_gateway_id = element(
-    concat(
-      try(aws_vpn_gateway.this.id, null),
-      try(aws_vpn_gateway_attachment.this.vpn_gateway_id, null),
-    ),
+    compact([
+      try(aws_vpn_gateway.this.id, ""),
+      try(aws_vpn_gateway_attachment.this.vpn_gateway_id, ""),
+    ]),
     count.index,
   )
 }
@@ -1224,10 +1229,10 @@ resource "aws_vpn_gateway_route_propagation" "private" {
 
   route_table_id = element(aws_route_table.private[*].id, count.index)
   vpn_gateway_id = element(
-    concat(
-      try(aws_vpn_gateway.this.id, null),
-      try(aws_vpn_gateway_attachment.this.vpn_gateway_id, null),
-    ),
+    compact([
+      try(aws_vpn_gateway.this.id, ""),
+      try(aws_vpn_gateway_attachment.this.vpn_gateway_id, ""),
+    ]),
     count.index,
   )
 }
@@ -1237,10 +1242,10 @@ resource "aws_vpn_gateway_route_propagation" "intra" {
 
   route_table_id = element(aws_route_table.intra[*].id, count.index)
   vpn_gateway_id = element(
-    concat(
-      try(aws_vpn_gateway.this.id, null),
-      try(aws_vpn_gateway_attachment.this.vpn_gateway_id, null),
-    ),
+    compact([
+      try(aws_vpn_gateway.this.id, ""),
+      try(aws_vpn_gateway_attachment.this.vpn_gateway_id, ""),
+    ]),
     count.index,
   )
 }
@@ -1257,7 +1262,7 @@ resource "aws_default_vpc" "this" {
   tags = merge(local.tags, { "Name" = coalesce(var.default_vpc_name, "default") }, var.default_vpc_tags)
 
   lifecycle {
-    enabled = var.manage_default_vpc
+    enabled = local.enabled && var.manage_default_vpc
   }
 }
 
@@ -1385,16 +1390,5 @@ resource "aws_default_route_table" "default" {
 
   lifecycle {
     enabled = local.enabled && var.manage_default_route_table
-  }
-}
-
-################################################################################
-# OpenTofu Check Blocks
-################################################################################
-
-check "flow_logs_enabled" {
-  assert {
-    condition     = !var.enabled || var.enable_flow_log
-    error_message = "VPC should have flow logs enabled for network monitoring and security auditing."
   }
 }

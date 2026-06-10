@@ -8,6 +8,8 @@ Provisions Amazon CloudWatch log groups and log streams, with support for encryp
 - **KMS Encryption** - Encrypts log data at rest using a customer-managed KMS key
 - **Storage Classes** - Supports STANDARD and INFREQUENT_ACCESS log group classes for cost optimization
 - **Log Streams** - Optionally creates named log streams within the log group
+- **Data Protection Policy** - Optionally attaches a data protection policy to audit and mask sensitive data (PII) in log events
+- **Log Anomaly Detector** - Optionally creates a log anomaly detector that scans the log group for unusual patterns
 - **Metric Alarms** - Submodule for creating metric alarms with support for standard metrics and metric math expressions (`cloudwatch/modules/metric-alarm`)
 - **Composite Alarms** - Submodule for combining multiple alarms with boolean logic into a single composite alarm (`cloudwatch/modules/composite-alarm`)
 - **Log Metric Filters** - Submodule for extracting metric data from log events using filter patterns (`cloudwatch/modules/log-metric-filter`)
@@ -21,7 +23,7 @@ Provisions Amazon CloudWatch log groups and log streams, with support for encryp
 module "cloudwatch" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch?depth=1&ref=master"
 
-  log_group_name    = "/app/my-service"
+  name              = "/app/my-service"
   retention_in_days = 90
 
   tags = {
@@ -43,7 +45,7 @@ module "cloudwatch_log_group" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch?depth=1&ref=master"
 
   enabled        = true
-  log_group_name = "/app/my-service"
+  name           = "/app/my-service"
 
   tags = {
     Environment = "production"
@@ -61,7 +63,7 @@ module "cloudwatch_encrypted" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch?depth=1&ref=master"
 
   enabled           = true
-  log_group_name    = "/app/payment-service"
+  name              = "/app/payment-service"
   retention_in_days = 365
   kms_key_id        = "arn:aws:kms:eu-west-1:123456789012:key/mrk-00000000000000000000000000000000"
 
@@ -89,7 +91,7 @@ module "cloudwatch_infrequent" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch?depth=1&ref=master"
 
   enabled           = true
-  log_group_name    = "/app/batch-jobs"
+  name              = "/app/batch-jobs"
   retention_in_days = 30
   log_group_class   = "INFREQUENT_ACCESS"
 
@@ -327,5 +329,74 @@ module "error_query" {
     | sort errorCount desc
     | limit 20
   EOQ
+}
+```
+
+## Log Group with Data Protection Policy
+
+Audit and mask email addresses in log events. Masked data is shown as `*****` to users without the `logs:Unmask` permission.
+
+```hcl
+module "cloudwatch" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch?depth=1&ref=master"
+
+  name              = "/app/payments"
+  retention_in_days = 365
+
+  data_protection_policy_document = jsonencode({
+    Name    = "payments-data-protection"
+    Version = "2021-06-01"
+    Statement = [
+      {
+        Sid            = "Audit"
+        DataIdentifier = ["arn:aws:dataprotection::aws:data-identifier/EmailAddress"]
+        Operation = {
+          Audit = {
+            FindingsDestination = {
+              CloudWatchLogs = {
+                LogGroup = "/aws/data-protection/audit-findings"
+              }
+            }
+          }
+        }
+      },
+      {
+        Sid            = "Redact"
+        DataIdentifier = ["arn:aws:dataprotection::aws:data-identifier/EmailAddress"]
+        Operation = {
+          Deidentify = {
+            MaskConfig = {}
+          }
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+## Log Group with Anomaly Detection
+
+Scan the log group for unusual patterns every five minutes. An empty object enables the detector with sensible defaults.
+
+```hcl
+module "cloudwatch" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch?depth=1&ref=master"
+
+  name              = "/app/my-service"
+  retention_in_days = 90
+
+  anomaly_detector = {
+    evaluation_frequency    = "FIVE_MIN"
+    filter_pattern          = "-DEBUG"  # exclude debug noise from analysis
+    anomaly_visibility_time = 14        # days anomalies remain visible
+  }
+
+  tags = {
+    Environment = "production"
+  }
 }
 ```

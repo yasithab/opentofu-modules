@@ -1,6 +1,9 @@
-data "aws_organizations_organization" "org" {}
+data "aws_organizations_organization" "org" {
+  count = var.enabled && var.attach_to_org ? 1 : 0
+}
 
 locals {
+  enabled                                    = var.enabled
   name                                       = var.name
   tags                                       = merge(var.tags, { ManagedBy = "opentofu" })
   deny_leaving_orgs_statement                = var.deny_leaving_orgs ? [""] : []
@@ -405,10 +408,14 @@ resource "aws_organizations_policy" "this" {
   skip_destroy = var.skip_destroy
 
   tags = local.tags
+
+  lifecycle {
+    enabled = local.enabled
+  }
 }
 
 resource "aws_organizations_policy_attachment" "attach_ous" {
-  for_each = toset(var.attach_ous)
+  for_each = toset(local.enabled ? var.attach_ous : [])
 
   policy_id = aws_organizations_policy.this.id
   target_id = each.value
@@ -416,9 +423,9 @@ resource "aws_organizations_policy_attachment" "attach_ous" {
 
 resource "aws_organizations_policy_attachment" "attach_org" {
   policy_id = aws_organizations_policy.this.id
-  target_id = data.aws_organizations_organization.org.roots[0].id
+  target_id = try(data.aws_organizations_organization.org[0].roots[0].id, "")
 
   lifecycle {
-    enabled = var.attach_to_org
+    enabled = local.enabled && var.attach_to_org
   }
 }

@@ -30,9 +30,14 @@ variable "workspace_id" {
   description = "The ID of an existing workspace to use when `create_workspace` is `false`"
   type        = string
   default     = null
+
+  validation {
+    condition     = !var.enabled || var.create_workspace || var.workspace_id != null
+    error_message = "workspace_id is required when enabled is true and create_workspace is false."
+  }
 }
 
-variable "workspace_alias" {
+variable "name" {
   description = "The alias of the prometheus workspace. See more in the [AWS Docs](https://docs.aws.amazon.com/prometheus/latest/userguide/AMP-onboard-create-workspace.html)"
   type        = string
   default     = null
@@ -53,16 +58,21 @@ variable "kms_key_arn" {
 # Alert Manager Definition
 ################################################################################
 
+variable "create_alert_manager_definition" {
+  description = "Determines whether an alert manager definition is created. Requires `alert_manager_definition` to be set."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.create_alert_manager_definition || var.alert_manager_definition != null
+    error_message = "alert_manager_definition must be set when create_alert_manager_definition is true."
+  }
+}
+
 variable "alert_manager_definition" {
-  description = "The alert manager definition that you want to be applied. See more in the [AWS Docs](https://docs.aws.amazon.com/prometheus/latest/userguide/AMP-alert-manager.html)"
+  description = "The alert manager definition that you want to be applied. Required when `create_alert_manager_definition` is `true`. See more in the [AWS Docs](https://docs.aws.amazon.com/prometheus/latest/userguide/AMP-alert-manager.html)"
   type        = string
-  default     = <<-EOT
-    alertmanager_config: |
-      route:
-        receiver: 'default'
-      receivers:
-        - name: 'default'
-  EOT
+  default     = null
 }
 
 ################################################################################
@@ -71,8 +81,11 @@ variable "alert_manager_definition" {
 
 variable "rule_group_namespaces" {
   description = "A map of one or more rule group namespace definitions"
-  type        = map(any)
-  default     = {}
+  type = map(object({
+    name = string
+    data = string
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -95,6 +108,17 @@ variable "cloudwatch_log_group_name" {
   description = "Custom name of CloudWatch log group"
   type        = string
   default     = null
+}
+
+variable "cloudwatch_log_group_arn" {
+  description = "ARN of an existing CloudWatch log group to use for workspace logging when `create_cloudwatch_log_group` is `false`. Provide the plain log group ARN (without a trailing `:*`)."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.cloudwatch_log_group_arn == null || can(regex("^arn:aws[a-z-]*:logs:", var.cloudwatch_log_group_arn))
+    error_message = "cloudwatch_log_group_arn must be a valid CloudWatch Logs log group ARN or null."
+  }
 }
 
 variable "cloudwatch_log_group_use_name_prefix" {

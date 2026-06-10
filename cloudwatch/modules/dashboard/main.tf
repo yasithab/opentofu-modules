@@ -1,5 +1,6 @@
 locals {
   enabled = var.enabled
+  name    = var.name
 }
 
 ################################################################################
@@ -7,7 +8,7 @@ locals {
 ################################################################################
 
 resource "aws_cloudwatch_dashboard" "this" {
-  dashboard_name = var.dashboard_name
+  dashboard_name = local.name
   dashboard_body = var.dashboard_body
 
   lifecycle {

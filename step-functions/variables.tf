@@ -1,6 +1,6 @@
 
 variable "enabled" {
-  description = "Determines whether resources will be created (affects all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -262,9 +262,14 @@ variable "alarm_execution_timed_out_threshold" {
 ################################################################################
 
 variable "event_rules" {
-  description = "Map of EventBridge rules to create for triggering the state machine. Each entry supports `description`, `schedule_expression`, `event_pattern`, and `is_enabled`."
+  description = "Map of EventBridge rules to create for triggering the state machine. Each entry supports `description`, `schedule_expression`, `event_pattern`, `is_enabled`, `input`, `dead_letter_arn`, and `retry_policy` (with `maximum_event_age_in_seconds` and `maximum_retry_attempts`)."
   type        = any
   default     = {}
+
+  validation {
+    condition     = length(var.event_rules) == 0 || var.create_event_role || var.event_role_arn != null
+    error_message = "When event_rules is set, either create_event_role must be true or event_role_arn must be provided so EventBridge can start the state machine."
+  }
 }
 
 variable "event_role_arn" {
@@ -282,4 +287,45 @@ variable "create_event_role" {
   description = "Whether to create an IAM role for EventBridge triggers"
   type        = bool
   default     = false
+}
+
+################################################################################
+# Aliases
+################################################################################
+
+variable "aliases" {
+  description = <<-EOT
+    Map of Step Functions aliases to create. Each key is the alias name. Each routing
+    configuration entry routes `weight` percent of traffic to a state machine version;
+    when `state_machine_version_arn` is omitted it defaults to the version published by
+    this module (requires `publish = true`). Weights across entries must sum to 100.
+    Use two entries with explicit version ARNs for gradual (canary) rollouts.
+  EOT
+  type = map(object({
+    description = optional(string)
+    routing_configuration = list(object({
+      state_machine_version_arn = optional(string)
+      weight                    = number
+    }))
+  }))
+  default = {}
+
+  validation {
+    condition     = alltrue([for v in values(var.aliases) : length(v.routing_configuration) >= 1 && length(v.routing_configuration) <= 2])
+    error_message = "Each alias must have one or two routing_configuration entries."
+  }
+
+  validation {
+    condition     = alltrue([for v in values(var.aliases) : sum([for r in v.routing_configuration : r.weight]) == 100])
+    error_message = "The routing_configuration weights for each alias must sum to 100."
+  }
+
+  validation {
+    condition = var.publish || alltrue([
+      for v in values(var.aliases) : alltrue([
+        for r in v.routing_configuration : r.state_machine_version_arn != null
+      ])
+    ])
+    error_message = "Aliases require publish = true unless every routing_configuration entry sets an explicit state_machine_version_arn."
+  }
 }

@@ -32,3 +32,13 @@ output "action_target_arns" {
   description = "Map of action target names to their ARNs"
   value       = { for k, v in aws_securityhub_action_target.this : k => v.arn }
 }
+
+output "automation_rule_arns" {
+  description = "Map of automation rule keys to their ARNs"
+  value       = { for k, v in aws_securityhub_automation_rule.this : k => v.arn }
+}
+
+output "insight_arns" {
+  description = "Map of insight keys to their ARNs"
+  value       = { for k, v in aws_securityhub_insight.this : k => v.arn }
+}

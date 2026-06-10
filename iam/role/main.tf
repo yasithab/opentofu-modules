@@ -1,28 +1,41 @@
 locals {
   enabled                      = var.enabled
-  role_name                    = var.role_name != null ? substr(var.role_name, 0, 64) : null
-  role_name_prefix             = var.role_name_prefix != null ? "${coalesce(var.role_name_prefix, "")}-" : null
+  name                         = var.name != null ? substr(var.name, 0, 64) : null
+  name_prefix                  = var.name_prefix != null ? "${var.name_prefix}-" : null
   policy_name                  = var.policy_name != null ? substr(var.policy_name, 0, 64) : null
-  policy_name_prefix           = var.policy_name_prefix != null ? "${coalesce(var.policy_name_prefix, "")}-" : null
+  policy_name_prefix           = var.policy_name_prefix != null ? "${var.policy_name_prefix}-" : null
   instance_profile_name        = var.instance_profile_name != null ? substr(var.instance_profile_name, 0, 64) : null
-  instance_profile_name_prefix = var.instance_profile_name_prefix != null ? "${coalesce(var.instance_profile_name_prefix, "")}-" : null
+  instance_profile_name_prefix = var.instance_profile_name_prefix != null ? "${var.instance_profile_name_prefix}-" : null
   tags                         = merge(var.tags, { ManagedBy = "opentofu" })
+
+  create_policy = local.enabled && length(var.policy_documents) > 0
+
+  # Normalize principals: each entry may be either a plain list of identifiers
+  # (legacy shape) or an object with `identifiers` and optional per-principal `conditions`
+  principals = {
+    for type, principal in var.principals : type => {
+      identifiers = try(tolist(principal.identifiers), tolist(principal))
+      conditions  = try(tolist(principal.conditions), [])
+    }
+  }
 }
 
 data "aws_iam_policy_document" "assume_role" {
-  count = local.enabled ? length(keys(var.principals)) : 0
+  for_each = { for type, principal in local.principals : type => principal if local.enabled }
 
   statement {
     effect  = "Allow"
     actions = var.assume_role_actions
 
     principals {
-      type        = element(keys(var.principals), count.index)
-      identifiers = var.principals[element(keys(var.principals), count.index)]
+      type        = each.key
+      identifiers = each.value.identifiers
     }
 
+    # Global conditions apply to every principal statement; per-principal
+    # conditions apply only to this principal's statement
     dynamic "condition" {
-      for_each = var.assume_role_conditions
+      for_each = concat(var.assume_role_conditions, each.value.conditions)
       content {
         test     = condition.value.test
         variable = condition.value.variable
@@ -34,12 +47,12 @@ data "aws_iam_policy_document" "assume_role" {
 
 data "aws_iam_policy_document" "assume_role_aggregated" {
   count                     = local.enabled ? 1 : 0
-  override_policy_documents = data.aws_iam_policy_document.assume_role[*].json
+  override_policy_documents = [for doc in data.aws_iam_policy_document.assume_role : doc.json]
 }
 
 resource "aws_iam_role" "default" {
-  name                  = local.role_name
-  name_prefix           = local.role_name_prefix
+  name                  = local.name
+  name_prefix           = local.name_prefix
   assume_role_policy    = join("", data.aws_iam_policy_document.assume_role_aggregated[*].json)
   description           = var.role_description
   force_detach_policies = var.force_detach_policies
@@ -54,13 +67,13 @@ resource "aws_iam_role" "default" {
 }
 
 data "aws_iam_policy_document" "default" {
-  count                     = local.enabled && var.policy_document_count > 0 ? 1 : 0
+  count                     = local.create_policy ? 1 : 0
   override_policy_documents = var.policy_documents
 }
 
 resource "aws_iam_policy" "default" {
-  name                              = local.policy_name != null ? local.policy_name : local.role_name
-  name_prefix                       = local.policy_name_prefix != null ? local.policy_name_prefix : local.role_name_prefix
+  name                              = local.policy_name != null ? local.policy_name : local.name
+  name_prefix                       = local.policy_name_prefix != null ? local.policy_name_prefix : local.name_prefix
   description                       = var.policy_description
   policy                            = join("", data.aws_iam_policy_document.default[*].json)
   path                              = var.path
@@ -68,7 +81,7 @@ resource "aws_iam_policy" "default" {
   tags                              = var.tags_enabled ? local.tags : null
 
   lifecycle {
-    enabled = local.enabled && var.policy_document_count > 0
+    enabled = local.create_policy
   }
 }
 
@@ -77,7 +90,7 @@ resource "aws_iam_role_policy_attachment" "default" {
   policy_arn = try(aws_iam_policy.default.arn, "")
 
   lifecycle {
-    enabled = local.enabled && var.policy_document_count > 0
+    enabled = local.create_policy
   }
 }
 
@@ -88,8 +101,8 @@ resource "aws_iam_role_policy_attachment" "managed" {
 }
 
 resource "aws_iam_instance_profile" "default" {
-  name        = local.instance_profile_name != null ? local.instance_profile_name : local.role_name
-  name_prefix = local.instance_profile_name_prefix != null ? local.instance_profile_name_prefix : local.role_name_prefix
+  name        = local.instance_profile_name != null ? local.instance_profile_name : local.name
+  name_prefix = local.instance_profile_name_prefix != null ? local.instance_profile_name_prefix : local.name_prefix
   role        = try(aws_iam_role.default.name, "")
 
   lifecycle {

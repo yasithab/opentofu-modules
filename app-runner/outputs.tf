@@ -119,6 +119,7 @@ output "vpc_connector_revision" {
 output "connections" {
   description = "Map of attribute maps for all connections created"
   value       = aws_apprunner_connection.this
+  sensitive   = true
 }
 
 ################################################################################
@@ -128,6 +129,7 @@ output "connections" {
 output "auto_scaling_configurations" {
   description = "Map of attribute maps for all autoscaling configurations created"
   value       = aws_apprunner_auto_scaling_configuration_version.this
+  sensitive   = true
 }
 
 ################################################################################

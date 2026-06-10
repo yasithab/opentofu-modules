@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls if Headscale resources should be created."
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -174,7 +174,7 @@ variable "derp_stun_port" {
 }
 
 variable "oidc" {
-  description = "OIDC configuration for user authentication. Set to null to disable. For client_secret, provide the raw value directly or use secrets_manager_arn + secrets_manager_oidc_key to fetch from Secrets Manager at boot."
+  description = "OIDC configuration for user authentication. Set to null to disable. WARNING: an inline client_secret is rendered into the instance user_data and stored in OpenTofu state; prefer secrets_manager_arn + secrets_manager_oidc_key to fetch it from Secrets Manager at boot."
   type = object({
     issuer        = string
     client_id     = string
@@ -182,7 +182,8 @@ variable "oidc" {
     allowed_users = optional(list(string), [])
     expiry        = optional(string, "24h")
   })
-  default = null
+  default   = null
+  sensitive = true
 }
 
 ################################################################################
@@ -287,9 +288,9 @@ variable "letsencrypt_email" {
 ################################################################################
 
 variable "allowed_cidr_blocks" {
-  description = "CIDR blocks allowed to reach the Headscale HTTPS/gRPC port (443)."
+  description = "CIDR blocks allowed to reach the Headscale HTTPS/gRPC port (443). Empty by default - you must explicitly allow client networks (use [\"0.0.0.0/0\"] for a public coordination server)."
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = []
 }
 
 ################################################################################
@@ -428,4 +429,16 @@ variable "cloud_init_parts" {
     content_type = string
   }))
   default = []
+}
+
+variable "enable_instance_refresh" {
+  description = "Enable ASG instance refresh (rolling, 90% min healthy) so launch template changes roll out automatically."
+  type        = bool
+  default     = true
+}
+
+variable "cloudwatch_logs_kms_key_id" {
+  description = "KMS key ARN for encrypting the Headscale CloudWatch log group. Uses default CloudWatch encryption when null."
+  type        = string
+  default     = null
 }

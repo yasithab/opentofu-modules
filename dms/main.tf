@@ -227,14 +227,16 @@ resource "aws_dms_replication_instance" "this" {
 ################################################################################
 
 resource "aws_dms_endpoint" "this" {
-  for_each = { for k, v in var.endpoints : k => v if local.enabled }
+  # var.endpoints is sensitive, so iterate over its (nonsensitive) keys to keep
+  # for_each valid while the endpoint attributes themselves stay sensitive
+  for_each = toset([for k in nonsensitive(keys(var.endpoints)) : k if local.enabled])
 
-  certificate_arn = try(aws_dms_certificate.this[each.value.certificate_key].certificate_arn, null)
-  database_name   = lookup(each.value, "database_name", null)
+  certificate_arn = try(aws_dms_certificate.this[var.endpoints[each.key].certificate_key].certificate_arn, null)
+  database_name   = lookup(var.endpoints[each.key], "database_name", null)
 
   # https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Target.Elasticsearch.html
   dynamic "elasticsearch_settings" {
-    for_each = length(lookup(each.value, "elasticsearch_settings", [])) > 0 ? [each.value.elasticsearch_settings] : []
+    for_each = length(lookup(var.endpoints[each.key], "elasticsearch_settings", [])) > 0 ? [var.endpoints[each.key].elasticsearch_settings] : []
 
     content {
       endpoint_uri               = elasticsearch_settings.value.endpoint_uri
@@ -245,14 +247,14 @@ resource "aws_dms_endpoint" "this" {
     }
   }
 
-  endpoint_id                 = each.value.endpoint_id
-  endpoint_type               = each.value.endpoint_type
-  engine_name                 = each.value.engine_name
-  extra_connection_attributes = try(each.value.extra_connection_attributes, null)
+  endpoint_id                 = var.endpoints[each.key].endpoint_id
+  endpoint_type               = var.endpoints[each.key].endpoint_type
+  engine_name                 = var.endpoints[each.key].engine_name
+  extra_connection_attributes = try(var.endpoints[each.key].extra_connection_attributes, null)
 
   # https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Target.Kafka.html
   dynamic "kafka_settings" {
-    for_each = length(lookup(each.value, "kafka_settings", [])) > 0 ? [each.value.kafka_settings] : []
+    for_each = length(lookup(var.endpoints[each.key], "kafka_settings", [])) > 0 ? [var.endpoints[each.key].kafka_settings] : []
 
     content {
       broker                         = kafka_settings.value.broker
@@ -279,7 +281,7 @@ resource "aws_dms_endpoint" "this" {
 
   # https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Target.Kinesis.html
   dynamic "kinesis_settings" {
-    for_each = length(lookup(each.value, "kinesis_settings", [])) > 0 ? [each.value.kinesis_settings] : []
+    for_each = length(lookup(var.endpoints[each.key], "kinesis_settings", [])) > 0 ? [var.endpoints[each.key].kinesis_settings] : []
 
     content {
       include_control_details        = try(kinesis_settings.value.include_control_details, null)
@@ -295,11 +297,11 @@ resource "aws_dms_endpoint" "this" {
     }
   }
 
-  kms_key_arn = lookup(each.value, "kms_key_arn", null)
+  kms_key_arn = lookup(var.endpoints[each.key], "kms_key_arn", null)
 
   # https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Source.MongoDB.html
   dynamic "mongodb_settings" {
-    for_each = length(lookup(each.value, "mongodb_settings", [])) > 0 ? [each.value.mongodb_settings] : []
+    for_each = length(lookup(var.endpoints[each.key], "mongodb_settings", [])) > 0 ? [var.endpoints[each.key].mongodb_settings] : []
 
     content {
       auth_mechanism      = try(mongodb_settings.value.auth_mechanism, null)
@@ -312,13 +314,13 @@ resource "aws_dms_endpoint" "this" {
     }
   }
 
-  password                = lookup(each.value, "password", null)
-  pause_replication_tasks = try(each.value.pause_replication_tasks, null)
-  port                    = try(each.value.port, null)
+  password                = lookup(var.endpoints[each.key], "password", null)
+  pause_replication_tasks = try(var.endpoints[each.key].pause_replication_tasks, null)
+  port                    = try(var.endpoints[each.key].port, null)
 
   # https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Source.PostgreSQL.html
   dynamic "postgres_settings" {
-    for_each = length(lookup(each.value, "postgres_settings", [])) > 0 ? [each.value.postgres_settings] : []
+    for_each = length(lookup(var.endpoints[each.key], "postgres_settings", [])) > 0 ? [var.endpoints[each.key].postgres_settings] : []
     content {
       after_connect_script         = try(postgres_settings.value.after_connect_script, null)
       authentication_method        = try(postgres_settings.value.authentication_method, null)
@@ -343,7 +345,7 @@ resource "aws_dms_endpoint" "this" {
 
   # https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Source.MySQL.html
   dynamic "mysql_settings" {
-    for_each = length(lookup(each.value, "mysql_settings", [])) > 0 ? [each.value.mysql_settings] : []
+    for_each = length(lookup(var.endpoints[each.key], "mysql_settings", [])) > 0 ? [var.endpoints[each.key].mysql_settings] : []
 
     content {
       after_connect_script              = try(mysql_settings.value.after_connect_script, null)
@@ -361,7 +363,7 @@ resource "aws_dms_endpoint" "this" {
 
   # https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Source.Oracle.html
   dynamic "oracle_settings" {
-    for_each = length(lookup(each.value, "oracle_settings", [])) > 0 ? [each.value.oracle_settings] : []
+    for_each = length(lookup(var.endpoints[each.key], "oracle_settings", [])) > 0 ? [var.endpoints[each.key].oracle_settings] : []
 
     content {
       access_alternate_directly                     = try(oracle_settings.value.access_alternate_directly, null)
@@ -405,7 +407,7 @@ resource "aws_dms_endpoint" "this" {
   }
 
   dynamic "redis_settings" {
-    for_each = length(lookup(each.value, "redis_settings", [])) > 0 ? [each.value.redis_settings] : []
+    for_each = length(lookup(var.endpoints[each.key], "redis_settings", [])) > 0 ? [var.endpoints[each.key].redis_settings] : []
 
     content {
       auth_password          = try(redis_settings.value.auth_password, null)
@@ -419,7 +421,7 @@ resource "aws_dms_endpoint" "this" {
   }
 
   dynamic "redshift_settings" {
-    for_each = length(lookup(each.value, "redshift_settings", [])) > 0 ? [each.value.redshift_settings] : []
+    for_each = length(lookup(var.endpoints[each.key], "redshift_settings", [])) > 0 ? [var.endpoints[each.key].redshift_settings] : []
 
     content {
       bucket_folder                     = try(redshift_settings.value.bucket_folder, null)
@@ -430,14 +432,14 @@ resource "aws_dms_endpoint" "this" {
     }
   }
 
-  secrets_manager_access_role_arn = lookup(each.value, "secrets_manager_arn", null) != null ? lookup(each.value, "secrets_manager_access_role_arn", local.access_iam_role) : null
-  secrets_manager_arn             = lookup(each.value, "secrets_manager_arn", null)
-  server_name                     = lookup(each.value, "server_name", null)
-  service_access_role             = lookup(each.value, "service_access_role", local.access_iam_role)
-  ssl_mode                        = try(each.value.ssl_mode, null)
-  username                        = try(each.value.username, null)
+  secrets_manager_access_role_arn = lookup(var.endpoints[each.key], "secrets_manager_arn", null) != null ? lookup(var.endpoints[each.key], "secrets_manager_access_role_arn", local.access_iam_role) : null
+  secrets_manager_arn             = lookup(var.endpoints[each.key], "secrets_manager_arn", null)
+  server_name                     = lookup(var.endpoints[each.key], "server_name", null)
+  service_access_role             = lookup(var.endpoints[each.key], "service_access_role", local.access_iam_role)
+  ssl_mode                        = try(var.endpoints[each.key].ssl_mode, null)
+  username                        = try(var.endpoints[each.key].username, null)
 
-  tags = merge(local.tags, try(each.value.tags, {}))
+  tags = merge(local.tags, try(var.endpoints[each.key].tags, {}))
 
   timeouts {
     create = try(var.endpoint_timeouts.create, null)
@@ -516,7 +518,7 @@ resource "aws_dms_replication_task" "this" {
   cdc_start_position        = try(each.value.cdc_start_position, null)
   cdc_start_time            = try(each.value.cdc_start_time, null)
   migration_type            = each.value.migration_type
-  replication_instance_arn  = aws_dms_replication_instance.this.replication_instance_arn
+  replication_instance_arn  = try(each.value.replication_instance_arn, aws_dms_replication_instance.this.replication_instance_arn)
   replication_task_id       = each.value.replication_task_id
   replication_task_settings = try(each.value.replication_task_settings, null)
   resource_identifier       = try(each.value.resource_identifier, null)
@@ -526,6 +528,13 @@ resource "aws_dms_replication_task" "this" {
   target_endpoint_arn       = try(each.value.target_endpoint_arn, aws_dms_endpoint.this[each.value.target_endpoint_key].endpoint_arn, aws_dms_s3_endpoint.this[each.value.target_endpoint_key].endpoint_arn)
 
   tags = merge(local.tags, try(each.value.tags, {}))
+
+  lifecycle {
+    precondition {
+      condition     = var.create_repl_instance || try(each.value.replication_instance_arn, null) != null
+      error_message = "Replication tasks require either create_repl_instance = true or an explicit replication_instance_arn on the task."
+    }
+  }
 }
 
 ################################################################################
@@ -582,7 +591,7 @@ resource "aws_dms_event_subscription" "this" {
   sns_topic_arn    = each.value.sns_topic_arn
 
   source_ids = compact(concat(
-    lookup(each.value, "instance_event_subscription_keys", null) == var.repl_instance_id ? [aws_dms_replication_instance.this.replication_instance_id] : [],
+    contains(coalesce(lookup(each.value, "instance_event_subscription_keys", null), []), var.repl_instance_id) ? [aws_dms_replication_instance.this.replication_instance_id] : [],
     [
       for k, task in aws_dms_replication_task.this :
       task.replication_task_id if contains(lookup(each.value, "task_event_subscription_keys", []), k)
@@ -686,16 +695,20 @@ resource "aws_iam_role_policy_attachment" "access_additional" {
 data "aws_iam_policy_document" "access" {
   count = local.create_access_policy ? 1 : 0
 
-  statement {
-    sid = "KMS"
-    actions = [
-      "kms:Decrypt",
-      "kms:DescribeKey",
-    ]
-    resources = coalescelist(
-      var.access_kms_key_arns,
-      ["arn:${local.partition}:kms:${local.region}:${local.account_id}:key/*"]
-    )
+  # Only grant KMS access to explicitly provided keys - no statement is added
+  # when access_kms_key_arns is empty (previously fell back to all keys in the
+  # account)
+  dynamic "statement" {
+    for_each = length(var.access_kms_key_arns) > 0 ? [1] : []
+
+    content {
+      sid = "KMS"
+      actions = [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+      ]
+      resources = var.access_kms_key_arns
+    }
   }
 
   # https://docs.aws.amazon.com/dms/latest/userguide/security_iam_secretsmanager.html

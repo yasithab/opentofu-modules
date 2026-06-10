@@ -1,2 +1,2 @@
-alarm_name = "terratest-alarm"
+name       = "terratest-alarm"
 alarm_rule = "TRUE"

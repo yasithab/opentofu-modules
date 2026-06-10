@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls if Athena resources are created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -11,7 +11,7 @@ variable "name" {
 }
 
 variable "tags" {
-  description = "A map of tags to add to all resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -47,6 +47,11 @@ variable "enforce_workgroup_configuration" {
   description = "Whether users must use workgroup settings when running queries. Enforces security and cost controls"
   type        = bool
   default     = true
+
+  validation {
+    condition     = !var.enforce_workgroup_configuration || var.result_output_location != null
+    error_message = "result_output_location must be set when enforce_workgroup_configuration is true, otherwise queries in the workgroup have no result location and will fail."
+  }
 }
 
 variable "publish_cloudwatch_metrics_enabled" {
@@ -154,4 +159,35 @@ variable "databases" {
   description = "Map of Athena databases to create. Each key is the database name. Supports optional bucket, comment, encryption, and ACL settings"
   type        = any
   default     = {}
+}
+
+################################################################################
+# Prepared Statements
+################################################################################
+
+variable "prepared_statements" {
+  description = "Map of prepared statements to create in the workgroup. Each key is the statement name (must start with a letter or underscore and contain only alphanumerics/underscores). Values must include 'query_statement', optionally 'description'"
+  type = map(object({
+    query_statement = string
+    description     = optional(string)
+  }))
+  default = {}
+}
+
+################################################################################
+# Capacity Reservation
+################################################################################
+
+variable "capacity_reservation" {
+  description = "Athena capacity reservation configuration (dedicated DPU processing capacity). Set to `null` (default) to skip. `name` defaults to the workgroup name; `target_dpus` minimum is 24"
+  type = object({
+    name        = optional(string)
+    target_dpus = number
+  })
+  default = null
+
+  validation {
+    condition     = var.capacity_reservation == null || try(var.capacity_reservation.target_dpus >= 24, false)
+    error_message = "capacity_reservation.target_dpus must be at least 24."
+  }
 }

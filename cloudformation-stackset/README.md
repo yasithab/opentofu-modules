@@ -12,6 +12,12 @@ Manages AWS CloudFormation StackSets and their stack instances, supporting both 
 - **Operation Preferences** - Configurable failure tolerance, concurrency limits, and region ordering at both the StackSet and per-instance level
 - **Flexible Template Sources** - Accepts CloudFormation templates inline via `template_body` or from S3 via `template_url`
 
+## Notes
+
+- `deployments` is a `map(object)` keyed by a user-chosen identifier. Map keys become the
+  stack instance resource keys, so inserting/removing entries never reshuffles other instances.
+- Exactly one of `template_body` or `template_url` must be provided (validated at plan time).
+
 ## Usage
 
 ```hcl
@@ -24,12 +30,12 @@ module "cloudformation_stackset" {
 
   template_url = "https://s3.us-east-1.amazonaws.com/my-cfn-templates/baseline-config.yaml"
 
-  deployments = [
-    {
+  deployments = {
+    workloads-us-east-1 = {
       region                  = "us-east-1"
       organizational_unit_ids = ["ou-root-abc12345"]
-    },
-  ]
+    }
+  }
 
   tags = {
     Environment = "production"
@@ -62,16 +68,16 @@ module "cloudformation_stackset" {
   auto_deployment_enabled           = true
   retain_stacks_on_account_removal  = false
 
-  deployments = [
-    {
+  deployments = {
+    baseline-us-east-1 = {
       region                  = "us-east-1"
       organizational_unit_ids = ["ou-root-abc12345", "ou-root-def67890"]
-    },
-    {
+    }
+    baseline-eu-west-1 = {
       region                  = "eu-west-1"
       organizational_unit_ids = ["ou-root-abc12345", "ou-root-def67890"]
-    },
-  ]
+    }
+  }
 
   tags = {
     Environment = "all"
@@ -106,19 +112,19 @@ module "cloudformation_stackset_self_managed" {
   administration_role_arn = "arn:aws:iam::123456789012:role/AWSCloudFormationStackSetAdministrationRole"
   execution_role_name     = "AWSCloudFormationStackSetExecutionRole"
 
-  deployments = [
-    {
+  deployments = {
+    security-account-a = {
       region     = "us-east-1"
       account_id = "111122223333"
-    },
-    {
+    }
+    security-account-b = {
       region     = "us-east-1"
       account_id = "444455556666"
       parameter_overrides = {
         LogRetentionDays = "365"
       }
-    },
-  ]
+    }
+  }
 
   operation_preferences = {
     failure_tolerance_percentage = 10
@@ -166,14 +172,14 @@ module "cloudformation_stackset_delegated" {
   auto_deployment_enabled          = true
   retain_stacks_on_account_removal = true
 
-  deployments = [
-    {
+  deployments = {
+    tagging-us-east-1 = {
       region                  = "us-east-1"
       organizational_unit_ids = ["ou-root-abc12345"]
       account_filter_type     = "INTERSECTION"
       accounts                = ["111122223333", "444455556666"]
-    },
-  ]
+    }
+  }
 
   instance_timeouts = {
     create = "45m"

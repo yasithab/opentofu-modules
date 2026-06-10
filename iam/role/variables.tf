@@ -11,34 +11,47 @@ variable "tags" {
   default     = {}
 }
 
-variable "role_name" {
+variable "name" {
   description = "IAM role name"
   type        = string
   default     = null
 }
 
-variable "role_name_prefix" {
+variable "name_prefix" {
   description = "IAM role name prefix"
   type        = string
   default     = null
 }
 
 variable "principals" {
-  type        = map(list(string))
-  description = "Map of service name as key and a list of ARNs to allow assuming the role as value (e.g. map(`AWS`, list(`arn:aws:iam:::role/admin`)))"
+  type        = any
+  description = <<-EOT
+    Map of principal type (e.g. `AWS`, `Service`, `Federated`) to either:
+      - a list of identifiers (legacy shape), e.g. `{ Service = ["ec2.amazonaws.com"] }`, or
+      - an object `{ identifiers = list(string), conditions = optional(list(object({ test, variable, values }))) }`
+        where `conditions` apply only to that principal's assume-role statement.
+    Global `assume_role_conditions` apply to all principal statements.
+  EOT
   default     = {}
+
+  validation {
+    condition     = !var.enabled || length(var.principals) > 0
+    error_message = "`principals` must contain at least one principal type when `enabled` is true; the role's assume-role policy cannot be empty."
+  }
+
+  validation {
+    condition = alltrue([
+      for type, principal in var.principals :
+      can(tolist(principal)) || can(tolist(principal.identifiers))
+    ])
+    error_message = "Each `principals` value must be a list of identifier strings or an object with `identifiers` (list(string)) and optional `conditions`."
+  }
 }
 
 variable "policy_documents" {
   type        = list(string)
-  description = "List of JSON IAM policy documents"
+  description = "List of JSON IAM policy documents. When non-empty, an IAM policy is created from the merged documents and attached to the role"
   default     = []
-}
-
-variable "policy_document_count" {
-  type        = number
-  description = "Number of policy documents (length of policy_documents list)"
-  default     = 1
 }
 
 variable "managed_policy_arns" {
@@ -146,6 +159,6 @@ variable "force_detach_policies" {
 
 variable "policy_delay_after_creation_in_ms" {
   type        = number
-  description = "Number of milliseconds to wait between creating the policy and setting its version as default. Only applies when policy_document_count > 0."
+  description = "Number of milliseconds to wait between creating the policy and setting its version as default. Only applies when policy_documents is non-empty."
   default     = null
 }

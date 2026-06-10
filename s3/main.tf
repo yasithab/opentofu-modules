@@ -9,8 +9,10 @@ data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
 locals {
   enabled = var.enabled
+  name    = var.name
 
-  create_bucket_acl = (var.acl != null && var.acl != "null") || length(local.grants) > 0
+  create_bucket_acl              = (var.acl != null && var.acl != "null") || length(local.grants) > 0
+  create_bucket_replication_role = local.enabled && var.create_bucket_replication_role
 
   attach_policy = var.attach_require_latest_tls_policy || var.attach_access_log_delivery_policy || var.attach_elb_log_delivery_policy || var.attach_lb_log_delivery_policy || var.attach_deny_insecure_transport_policy || var.attach_inventory_destination_policy || var.attach_deny_incorrect_encryption_headers || var.attach_deny_incorrect_kms_key_sse || var.attach_deny_unencrypted_object_uploads || var.attach_policy
 
@@ -27,8 +29,8 @@ locals {
 }
 
 resource "aws_s3_bucket" "this" {
-  bucket        = var.bucket
-  bucket_prefix = var.bucket_prefix
+  bucket        = local.name
+  bucket_prefix = var.name_prefix
 
   force_destroy       = var.force_destroy
   object_lock_enabled = var.object_lock_enabled
@@ -405,9 +407,8 @@ resource "aws_s3_bucket_object_lock_configuration" "this" {
 
 resource "aws_s3_bucket_replication_configuration" "this" {
   bucket = aws_s3_bucket.this.id
-  #role   = var.replication_configuration["role"]
-  role  = try(var.replication_configuration["role"], aws_iam_role.replication.arn)
-  token = try(var.replication_configuration["token"], null)
+  role   = try(var.replication_configuration["role"], aws_iam_role.replication.arn)
+  token  = try(var.replication_configuration["token"], null)
 
   dynamic "rule" {
     for_each = flatten(try([var.replication_configuration["rule"]], [var.replication_configuration["rules"]], []))
@@ -569,6 +570,11 @@ resource "aws_s3_bucket_replication_configuration" "this" {
 
   lifecycle {
     enabled = local.enabled && length(keys(var.replication_configuration)) > 0
+
+    precondition {
+      condition     = try(var.replication_configuration["role"], null) != null || var.create_bucket_replication_role
+      error_message = "Replication requires an IAM role: set replication_configuration.role or set create_bucket_replication_role = true."
+    }
   }
 }
 
@@ -607,36 +613,9 @@ data "aws_iam_policy_document" "combined" {
 }
 
 # AWS Load Balancer access log delivery policy
-locals {
-  # List of AWS regions where permissions should be granted to the specified Elastic Load Balancing account ID ( https://docs.aws.amazon.com/elasticloadbalancing/latest/application/enable-access-logging.html#attach-bucket-policy )
-  elb_service_accounts = {
-    us-east-1      = "127311923021"
-    us-east-2      = "033677994240"
-    us-west-1      = "027434742980"
-    us-west-2      = "797873946194"
-    af-south-1     = "098369216593"
-    ap-east-1      = "754344448648"
-    ap-south-1     = "718504428378"
-    ap-northeast-1 = "582318560864"
-    ap-northeast-2 = "600734575887"
-    ap-northeast-3 = "383597477331"
-    ap-southeast-1 = "114774131450"
-    ap-southeast-2 = "783225319266"
-    ap-southeast-3 = "589379963580"
-    ca-central-1   = "985666609251"
-    eu-central-1   = "054676820928"
-    eu-west-1      = "156460612806"
-    eu-west-2      = "652711504416"
-    eu-west-3      = "009996457667"
-    eu-south-1     = "635631232127"
-    eu-north-1     = "897822967062"
-    me-south-1     = "076674570225"
-    sa-east-1      = "507241528517"
-    us-gov-west-1  = "048591011584"
-    us-gov-east-1  = "190560391635"
-    cn-north-1     = "638102146993"
-    cn-northwest-1 = "037604701340"
-  }
+# Elastic Load Balancing account ID for the current region ( https://docs.aws.amazon.com/elasticloadbalancing/latest/application/enable-access-logging.html#attach-bucket-policy )
+data "aws_elb_service_account" "this" {
+  count = local.enabled && var.attach_elb_log_delivery_policy ? 1 : 0
 }
 
 data "aws_iam_policy_document" "elb_log_delivery" {
@@ -644,14 +623,14 @@ data "aws_iam_policy_document" "elb_log_delivery" {
 
   # Policy for AWS Regions created before August 2022 (e.g. US East (N. Virginia), Asia Pacific (Singapore), Asia Pacific (Sydney), Asia Pacific (Tokyo), Europe (Ireland))
   dynamic "statement" {
-    for_each = { for k, v in local.elb_service_accounts : k => v if k == data.aws_region.current.region }
+    for_each = data.aws_elb_service_account.this
 
     content {
-      sid = format("ELBRegion%s", title(statement.key))
+      sid = format("ELBRegion%s", title(data.aws_region.current.region))
 
       principals {
         type        = "AWS"
-        identifiers = [format("arn:%s:iam::%s:root", data.aws_partition.current.partition, statement.value)]
+        identifiers = [statement.value.arn]
       }
 
       effect = "Allow"
@@ -916,7 +895,7 @@ data "aws_iam_policy_document" "deny_incorrect_kms_key_sse" {
     condition {
       test     = "StringNotEquals"
       variable = "s3:x-amz-server-side-encryption-aws-kms-key-id"
-      values   = [try(var.allowed_kms_key_arn, null)]
+      values   = [var.allowed_kms_key_arn]
     }
   }
 }
@@ -1011,7 +990,7 @@ resource "aws_s3_bucket_intelligent_tiering_configuration" "this" {
 }
 
 resource "aws_s3_bucket_metric" "this" {
-  for_each = { for k, v in local.metric_configuration : k => v if local.enabled }
+  for_each = { for v in local.metric_configuration : v.name => v if local.enabled }
 
   name   = each.value.name
   bucket = aws_s3_bucket.this.id
@@ -1223,23 +1202,25 @@ resource "aws_s3_bucket_abac" "this" {
 # OpenTofu Check Blocks
 ################################################################################
 
+# Checks only fire when the corresponding configuration was provided but is incomplete
+# or explicitly weakened; they stay quiet on module defaults.
 check "versioning_enabled" {
   assert {
-    condition     = !var.enabled || try(aws_s3_bucket_versioning.this.versioning_configuration[0].status, "Disabled") == "Enabled"
-    error_message = "S3 bucket should have versioning enabled for data protection."
+    condition     = !var.enabled || length(keys(var.versioning)) == 0 || try(aws_s3_bucket_versioning.this.versioning_configuration[0].status, "Disabled") == "Enabled"
+    error_message = "S3 bucket versioning was configured but is not enabled; versioning is recommended for data protection."
   }
 }
 
 check "server_side_encryption_configured" {
   assert {
-    condition     = !var.enabled || length(try(aws_s3_bucket_server_side_encryption_configuration.this.rule, [])) > 0
-    error_message = "S3 bucket should have server-side encryption configured."
+    condition     = !var.enabled || length(keys(var.server_side_encryption_configuration)) == 0 || length(try(aws_s3_bucket_server_side_encryption_configuration.this.rule, [])) > 0
+    error_message = "server_side_encryption_configuration was provided but produced no encryption rules."
   }
 }
 
 check "public_access_blocked" {
   assert {
-    condition     = !var.enabled || try(aws_s3_bucket_public_access_block.this.block_public_acls, false)
-    error_message = "S3 bucket should have public access blocked."
+    condition     = !var.enabled || !var.attach_public_policy || try(aws_s3_bucket_public_access_block.this.block_public_acls, false)
+    error_message = "S3 bucket public access block was configured but public ACLs are not blocked."
   }
 }

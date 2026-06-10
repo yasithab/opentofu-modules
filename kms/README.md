@@ -153,3 +153,53 @@ module "kms_dnssec" {
   }
 }
 ```
+
+## Variable Notes
+
+### Policy sources
+
+The key policy is built from `policy` (verbatim JSON, takes precedence) or the generated
+`aws_iam_policy_document` composed of `source_policy_documents`, `override_policy_documents`,
+the built-in statements (`enable_default_policy`, `key_owners`, `key_administrators`, `key_users`,
+`key_service_users`, `key_service_roles_for_autoscaling`, `key_*_users`, `enable_route53_dnssec`)
+and `key_statements`.
+
+When `enable_default_policy = false`, at least one other policy source **must** be provided —
+the module fails validation otherwise. This prevents creating a key with an empty policy,
+which would make the key unmanageable.
+
+### `key_statements` schema
+
+`key_statements` is a fully typed `list(object)`; unknown attributes are rejected.
+
+```hcl
+key_statements = [
+  {
+    sid           = optional(string)
+    effect        = optional(string)        # "Allow" or "Deny"
+    actions       = optional(list(string))
+    not_actions   = optional(list(string))
+    resources     = optional(list(string))
+    not_resources = optional(list(string))
+    principals = optional(list(object({
+      type        = string                  # e.g. "AWS", "Service"
+      identifiers = list(string)
+    })), [])
+    not_principals = optional(list(object({
+      type        = string
+      identifiers = list(string)
+    })), [])
+    conditions = optional(list(object({
+      test     = string
+      variable = string
+      values   = list(string)
+    })), [])
+  }
+]
+```
+
+### Typed maps
+
+- `grants` is a typed `map(object)` — see `variables.tf` for the full schema. Unknown attributes are rejected.
+- `computed_aliases` is `map(object({ name = string }))`.
+- `key_material_base64` is marked `sensitive` and is stored in the OpenTofu state — protect state access accordingly.

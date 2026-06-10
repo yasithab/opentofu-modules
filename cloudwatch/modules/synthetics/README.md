@@ -13,6 +13,11 @@ Provisions CloudWatch Synthetics canaries with S3 artifact storage, IAM executio
 - **Canary Groups** - Organize canaries into logical groups for easier management and reporting
 - **Artifact Encryption** - KMS encryption support for both the shared artifact bucket and per-canary artifact configuration
 
+> **Behavior changes:**
+> - When `artifact_s3_bucket_name` is not set, the default artifact bucket name is now `synthetics-artifacts-{name}-{account_id}-{region}` (account ID and region suffix added for global S3 name uniqueness).
+> - `artifact_s3_bucket_name` is required when `create_artifact_bucket = false`, and each canary must set `execution_role_arn` when `create_iam_role = false` (validated at plan time).
+> - Group association state keys changed from `{group}-{canary}` to `{group}/{canary}`; existing associations will be re-created in place on the next apply (no canary downtime, associations are recreated).
+
 ## Usage
 
 ```hcl

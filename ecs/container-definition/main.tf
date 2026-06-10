@@ -1,11 +1,14 @@
 data "aws_region" "current" {}
 
 locals {
+  enabled = var.enabled
+  name    = var.name
+
   environment = var.environment
 
   is_not_windows = contains(["LINUX"], var.operating_system_family)
 
-  log_group_name = try(coalesce(var.cloudwatch_log_group_name, "/aws/ecs/${var.service}/${var.name}"), "")
+  log_group_name = try(coalesce(var.cloudwatch_log_group_name, "/aws/ecs/${var.service}/${local.name}"), "")
 
   log_configuration = merge(
     { for k, v in {
@@ -92,6 +95,6 @@ resource "aws_cloudwatch_log_group" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = var.create_cloudwatch_log_group && var.enable_cloudwatch_logging
+    enabled = local.enabled && var.create_cloudwatch_log_group && var.enable_cloudwatch_logging
   }
 }

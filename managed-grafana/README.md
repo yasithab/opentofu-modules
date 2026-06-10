@@ -1,6 +1,6 @@
 # Amazon Managed Grafana
 
-Provisions an Amazon Managed Grafana workspace with configurable authentication, data sources, notification destinations, IAM roles, VPC configuration, and API key management.
+Provisions an Amazon Managed Grafana workspace with configurable authentication, data sources, notification destinations, IAM roles, VPC configuration, and service account management.
 
 ## Features
 
@@ -9,8 +9,8 @@ Provisions an Amazon Managed Grafana workspace with configurable authentication,
 - **Data Sources** - Automatic IAM policy provisioning for CloudWatch, Prometheus, X-Ray, Timestream, and other AWS data sources
 - **VPC Configuration** - Private workspace access through VPC endpoints and network access controls
 - **IAM Role** - Least-privilege IAM role with per-data-source policies, automatically scoped to selected data sources
-- **API Key Management** - Create and manage workspace API keys with configurable roles and TTL
-- **License Management** - Support for Enterprise and free-tier license types
+- **Service Accounts** - Create and manage workspace service accounts and tokens (the supported replacement for API keys)
+- **License Management** - Opt-in license association via `create_license_association` supporting ENTERPRISE and ENTERPRISE_FREE_TRIAL license types
 - **SNS Notifications** - Scoped SNS publish permissions for alert notification channels
 
 ## Usage
@@ -71,7 +71,9 @@ module "grafana_private" {
   authentication_providers = ["SAML"]
   permission_type          = "CUSTOMER_MANAGED"
   data_sources             = ["CLOUDWATCH", "PROMETHEUS", "XRAY"]
-  license_type             = "ENTERPRISE"
+
+  create_license_association = true
+  license_type               = "ENTERPRISE"
 
   enable_saml_configuration = true
   saml_idp_metadata_url     = "https://idp.example.com/metadata"
@@ -95,9 +97,9 @@ module "grafana_private" {
 }
 ```
 
-### Enterprise with API Keys and Custom Plugins
+### Enterprise with Service Accounts and Custom Plugins
 
-Creates an Enterprise-licensed workspace with API keys for automation and custom workspace configuration including plugins.
+Creates an Enterprise-licensed workspace with service accounts (and tokens) for automation and custom workspace configuration including plugins.
 
 ```hcl
 module "grafana_enterprise" {
@@ -109,8 +111,10 @@ module "grafana_enterprise" {
   authentication_providers = ["AWS_SSO"]
   permission_type          = "SERVICE_MANAGED"
   data_sources             = ["CLOUDWATCH", "PROMETHEUS", "XRAY", "TIMESTREAM"]
-  license_type             = "ENTERPRISE"
   grafana_version          = "10.4"
+
+  create_license_association = true
+  license_type               = "ENTERPRISE"
 
   workspace_configuration = {
     plugins = {
@@ -121,14 +125,22 @@ module "grafana_enterprise" {
     }
   }
 
-  api_keys = {
-    ci_viewer = {
-      key_role        = "VIEWER"
-      seconds_to_live = 2592000
+  service_accounts = {
+    ci-viewer = {
+      grafana_role = "VIEWER"
+      tokens = {
+        ci = {
+          seconds_to_live = 2592000
+        }
+      }
     }
-    automation_editor = {
-      key_role        = "EDITOR"
-      seconds_to_live = 2592000
+    automation-editor = {
+      grafana_role = "EDITOR"
+      tokens = {
+        automation = {
+          seconds_to_live = 2592000
+        }
+      }
     }
   }
 
@@ -144,3 +156,22 @@ module "grafana_enterprise" {
   }
 }
 ```
+
+### Service accounts
+
+Workspace API keys are deprecated by AWS and do not work on Grafana 9+ workspaces; define automation credentials as service accounts instead:
+
+```hcl
+service_accounts = {
+  ci-viewer = {
+    grafana_role = "VIEWER"
+    tokens = {
+      ci = {
+        seconds_to_live = 2592000
+      }
+    }
+  }
+}
+```
+
+Token secrets are exposed via the sensitive `service_account_tokens` output.

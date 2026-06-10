@@ -27,7 +27,7 @@ variable "region" {
 }
 
 variable "tags" {
-  description = "Tags to apply to all resources."
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -56,10 +56,21 @@ variable "kms_key_deletion_window" {
 }
 
 variable "cloudformation_execution_policy_arns" {
-  description = "List of IAM policy ARNs for the CloudFormation execution role. Defaults to AdministratorAccess."
+  description = "List of IAM policy ARNs for the CloudFormation execution role. Defaults to AdministratorAccess - strongly consider supplying a scoped-down policy instead (see README)."
   type        = list(string)
   default     = null
   nullable    = true
+}
+
+variable "stack_name_prefix" {
+  description = "CloudFormation stack name prefix that the deploy role may manage (scoped as stack/<prefix>/*). Defaults to \"*\" (all stacks), matching the upstream CDK bootstrap template. Narrow this to your stack naming convention for least privilege."
+  type        = string
+  default     = "*"
+
+  validation {
+    condition     = length(var.stack_name_prefix) > 0
+    error_message = "stack_name_prefix must not be empty."
+  }
 }
 
 variable "trust_account_ids" {

@@ -89,7 +89,7 @@ resource "aws_iam_user_group_membership" "this" {
 resource "aws_iam_user_ssh_key" "this" {
   username   = aws_iam_user.this.name
   encoding   = var.ssh_key_encoding
-  public_key = try(var.ssh_public_key, "")
+  public_key = var.ssh_public_key != null ? var.ssh_public_key : ""
   status     = var.ssh_key_status
 
   lifecycle {

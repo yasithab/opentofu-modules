@@ -1,21 +1,21 @@
 output "configuration_recorder_id" {
   description = "The name (ID) of the AWS Config configuration recorder."
-  value       = local.enabled ? aws_config_configuration_recorder.this.id : null
+  value       = try(aws_config_configuration_recorder.this.id, "")
 }
 
 output "delivery_channel_id" {
   description = "The name (ID) of the AWS Config delivery channel."
-  value       = local.enabled && var.delivery_channel_s3_bucket_name != null ? aws_config_delivery_channel.this.id : null
+  value       = try(aws_config_delivery_channel.this.id, "")
 }
 
 output "iam_role_arn" {
   description = "ARN of the IAM role used by the configuration recorder (created or provided)."
-  value       = local.create_iam_role ? aws_iam_role.config[0].arn : var.iam_role_arn
+  value       = try(aws_iam_role.config[0].arn, coalesce(var.iam_role_arn, ""))
 }
 
 output "iam_role_name" {
-  description = "Name of the IAM role used by the configuration recorder (created or provided)."
-  value       = local.create_iam_role ? aws_iam_role.config[0].name : null
+  description = "Name of the IAM role used by the configuration recorder. Empty when an external role is supplied."
+  value       = try(aws_iam_role.config[0].name, "")
 }
 
 output "managed_config_rule_arns" {
@@ -34,16 +34,16 @@ output "custom_policy_config_rule_arns" {
 }
 
 output "configuration_aggregator_arn" {
-  description = "ARN of the configuration aggregator. Null when create_aggregator is false."
-  value       = local.enabled && var.create_aggregator ? aws_config_configuration_aggregator.this.arn : null
+  description = "ARN of the configuration aggregator. Empty when create_aggregator is false."
+  value       = try(aws_config_configuration_aggregator.this.arn, "")
 }
 
 output "configuration_aggregator_id" {
-  description = "ID of the configuration aggregator. Null when create_aggregator is false."
-  value       = local.enabled && var.create_aggregator ? aws_config_configuration_aggregator.this.id : null
+  description = "ID of the configuration aggregator. Empty when create_aggregator is false."
+  value       = try(aws_config_configuration_aggregator.this.id, "")
 }
 
 output "configuration_aggregator_authorization_id" {
-  description = "ID of the aggregator authorization created in this (child) account. Null when create_aggregator_authorization is false."
-  value       = local.create_aggregator_auth ? aws_config_aggregate_authorization.this.id : null
+  description = "ID of the aggregator authorization created in this (child) account. Empty when create_aggregator_authorization is false."
+  value       = try(aws_config_aggregate_authorization.this.id, "")
 }

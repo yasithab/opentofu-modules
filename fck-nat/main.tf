@@ -1,3 +1,4 @@
+data "aws_partition" "current" {}
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
@@ -25,7 +26,7 @@ data "aws_ami" "this" {
   count = local.enabled && var.ami_id == null ? 1 : 0
 
   most_recent = true
-  owners      = ["568608671756"]
+  owners      = [var.ami_owner]
 
   filter {
     name   = "name"
@@ -137,6 +138,8 @@ resource "aws_route" "this" {
 ################################################################################
 
 data "cloudinit_config" "this" {
+  count = local.enabled ? 1 : 0
+
   gzip          = true
   base64_encode = true
 
@@ -169,7 +172,7 @@ resource "aws_launch_template" "this" {
   name_prefix   = "${var.name}-"
   image_id      = local.ami_id
   instance_type = var.instance_type
-  user_data     = data.cloudinit_config.this.rendered
+  user_data     = try(data.cloudinit_config.this[0].rendered, null)
 
   iam_instance_profile {
     name = aws_iam_instance_profile.this.name
@@ -395,7 +398,7 @@ data "aws_iam_policy_document" "this" {
         "ec2:DisassociateAddress",
       ]
       resources = [
-        "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:elastic-ip/${var.eip_allocation_ids[0]}",
+        "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:elastic-ip/${var.eip_allocation_ids[0]}",
       ]
     }
   }
@@ -411,7 +414,7 @@ data "aws_iam_policy_document" "this" {
         "ec2:DisassociateAddress",
       ]
       resources = [
-        "arn:aws:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:network-interface/*",
+        "arn:${data.aws_partition.current.partition}:ec2:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:network-interface/*",
       ]
 
       condition {
@@ -419,22 +422,6 @@ data "aws_iam_policy_document" "this" {
         variable = "ec2:ResourceTag/Name"
         values   = [local.instance_name]
       }
-    }
-  }
-
-  # trivy:ignore:AVD-AWS-0057 - SSM actions require wildcard resources per AWS documentation
-  dynamic "statement" {
-    for_each = var.attach_ssm_patch_policy ? [1] : []
-
-    content {
-      sid    = "SSMPatchManager"
-      effect = "Allow"
-      actions = [
-        "ssm:UpdateInstanceInformation",
-        "ssm:GetDeployablePatchSnapshotForInstance",
-        "ssm:PutComplianceItems",
-      ]
-      resources = ["*"]
     }
   }
 
@@ -473,5 +460,16 @@ resource "aws_iam_role_policy_attachment" "this" {
 
   lifecycle {
     enabled = local.enabled
+  }
+}
+
+# Full SSM agent permissions (registration, messaging, patch baseline retrieval).
+# The previous inline three-action policy was insufficient for Patch Manager to work.
+resource "aws_iam_role_policy_attachment" "ssm_core" {
+  role       = aws_iam_role.this.name
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+
+  lifecycle {
+    enabled = local.enabled && var.attach_ssm_patch_policy
   }
 }

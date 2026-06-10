@@ -1,7 +1,19 @@
 locals {
-  tags = merge(var.tags, {
-    ManagedBy = "opentofu"
-  })
+  enabled = var.enabled
+  name    = var.name
+
+  # A virtual private gateway is only needed when the VPN connection does not
+  # terminate on a transit gateway.
+  create_vpn_gateway = local.enabled && var.vpn_connection_transit_gateway_id == null
+
+  # Only create the CloudWatch log group when tunnel logging is enabled.
+  create_log_group = local.enabled && (var.vpn_connection_tunnel1_log_enabled || var.vpn_connection_tunnel2_log_enabled)
+
+  tags = merge(
+    var.tags,
+    { ManagedBy = "opentofu" },
+    local.name != null ? { Name = local.name } : {},
+  )
 }
 
 resource "aws_cloudwatch_log_group" "this" {
@@ -15,7 +27,7 @@ resource "aws_cloudwatch_log_group" "this" {
   tags                        = local.tags
 
   lifecycle {
-    enabled = var.enabled
+    enabled = local.create_log_group
   }
 }
 
@@ -29,7 +41,7 @@ resource "aws_customer_gateway" "this" {
   tags             = local.tags
 
   lifecycle {
-    enabled = var.enabled
+    enabled = local.enabled
   }
 }
 
@@ -40,12 +52,12 @@ resource "aws_vpn_gateway" "this" {
   tags              = local.tags
 
   lifecycle {
-    enabled = var.enabled
+    enabled = local.create_vpn_gateway
   }
 }
 
 resource "aws_vpn_gateway_route_propagation" "this" {
-  count          = var.enabled ? length(var.route_propagation_route_table_ids) : 0
+  count          = local.create_vpn_gateway ? length(var.route_propagation_route_table_ids) : 0
   vpn_gateway_id = try(aws_vpn_gateway.this.id, "")
   route_table_id = element(var.route_propagation_route_table_ids, count.index)
 }
@@ -90,10 +102,10 @@ resource "aws_vpn_connection" "this" {
     cloudwatch_log_options {
       log_enabled           = var.vpn_connection_tunnel1_log_enabled
       log_output_format     = var.vpn_connection_tunnel1_log_output_format
-      log_group_arn         = aws_cloudwatch_log_group.this.arn
-      bgp_log_enabled       = try(var.vpn_connection_tunnel1_log_bgp_enabled, null)
-      bgp_log_group_arn     = try(var.vpn_connection_tunnel1_log_bgp_group_arn, null)
-      bgp_log_output_format = try(var.vpn_connection_tunnel1_log_bgp_output_format, null)
+      log_group_arn         = var.vpn_connection_tunnel1_log_enabled ? aws_cloudwatch_log_group.this.arn : null
+      bgp_log_enabled       = var.vpn_connection_tunnel1_log_bgp_enabled
+      bgp_log_group_arn     = var.vpn_connection_tunnel1_log_bgp_group_arn
+      bgp_log_output_format = var.vpn_connection_tunnel1_log_bgp_output_format
     }
   }
   tunnel2_inside_cidr                     = var.vpn_connection_tunnel2_inside_cidr
@@ -118,22 +130,22 @@ resource "aws_vpn_connection" "this" {
     cloudwatch_log_options {
       log_enabled           = var.vpn_connection_tunnel2_log_enabled
       log_output_format     = var.vpn_connection_tunnel2_log_output_format
-      log_group_arn         = aws_cloudwatch_log_group.this.arn
-      bgp_log_enabled       = try(var.vpn_connection_tunnel2_log_bgp_enabled, null)
-      bgp_log_group_arn     = try(var.vpn_connection_tunnel2_log_bgp_group_arn, null)
-      bgp_log_output_format = try(var.vpn_connection_tunnel2_log_bgp_output_format, null)
+      log_group_arn         = var.vpn_connection_tunnel2_log_enabled ? aws_cloudwatch_log_group.this.arn : null
+      bgp_log_enabled       = var.vpn_connection_tunnel2_log_bgp_enabled
+      bgp_log_group_arn     = var.vpn_connection_tunnel2_log_bgp_group_arn
+      bgp_log_output_format = var.vpn_connection_tunnel2_log_bgp_output_format
     }
   }
 
   tags = local.tags
 
   lifecycle {
-    enabled = var.enabled
+    enabled = local.enabled
   }
 }
 
 resource "aws_vpn_connection_route" "this" {
-  for_each               = var.enabled ? toset(var.vpn_connection_route_destination_cidr_block) : []
+  for_each               = local.enabled ? toset(var.vpn_connection_route_destination_cidr_block) : []
   destination_cidr_block = each.key
   vpn_connection_id      = aws_vpn_connection.this.id
 }

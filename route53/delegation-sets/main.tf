@@ -3,7 +3,7 @@ locals {
 }
 
 resource "aws_route53_delegation_set" "default" {
-  for_each = local.enabled ? var.delegation_sets : tomap({})
+  for_each = { for k, v in var.delegation_sets : k => v if local.enabled }
 
-  reference_name = lookup(each.value, "reference_name", null)
+  reference_name = each.value.reference_name
 }

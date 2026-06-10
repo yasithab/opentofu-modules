@@ -1,11 +1,17 @@
 variable "enabled" {
-  description = "Controls if GuardDuty detector and associated resources are created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
 
+variable "name" {
+  description = "Name identifier for the GuardDuty deployment, used for naming and tagging conventions"
+  type        = string
+  default     = null
+}
+
 variable "tags" {
-  description = "Map of tags to apply to all GuardDuty resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -18,6 +24,11 @@ variable "finding_publishing_frequency" {
   description = "Frequency of notifications sent about subsequent finding occurrences. Valid values: FIFTEEN_MINUTES, ONE_HOUR, SIX_HOURS"
   type        = string
   default     = "FIFTEEN_MINUTES"
+
+  validation {
+    condition     = contains(["FIFTEEN_MINUTES", "ONE_HOUR", "SIX_HOURS"], var.finding_publishing_frequency)
+    error_message = "finding_publishing_frequency must be FIFTEEN_MINUTES, ONE_HOUR, or SIX_HOURS."
+  }
 }
 
 ################################################################################
@@ -104,6 +115,13 @@ variable "ipsets" {
     location = string
   }))
   default = {}
+
+  validation {
+    condition = alltrue([
+      for v in values(var.ipsets) : contains(["TXT", "STIX", "OTX_CSV", "ALIEN_VAULT", "PROOF_POINT", "FIRE_EYE"], v.format)
+    ])
+    error_message = "Each ipsets entry format must be one of: TXT, STIX, OTX_CSV, ALIEN_VAULT, PROOF_POINT, FIRE_EYE."
+  }
 }
 
 ################################################################################
@@ -118,6 +136,13 @@ variable "threat_intel_sets" {
     location = string
   }))
   default = {}
+
+  validation {
+    condition = alltrue([
+      for v in values(var.threat_intel_sets) : contains(["TXT", "STIX", "OTX_CSV", "ALIEN_VAULT", "PROOF_POINT", "FIRE_EYE"], v.format)
+    ])
+    error_message = "Each threat_intel_sets entry format must be one of: TXT, STIX, OTX_CSV, ALIEN_VAULT, PROOF_POINT, FIRE_EYE."
+  }
 }
 
 ################################################################################
@@ -141,6 +166,69 @@ variable "filters" {
     }))
   }))
   default = {}
+}
+
+################################################################################
+# Organization Support
+################################################################################
+
+variable "create_organization_admin_account" {
+  description = "Whether to designate a delegated GuardDuty administrator account for the organization. Apply from the organization management account"
+  type        = bool
+  default     = false
+}
+
+variable "admin_account_id" {
+  description = "AWS account ID to designate as the GuardDuty delegated administrator. Required when create_organization_admin_account is true"
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.admin_account_id == null || can(regex("^[0-9]{12}$", var.admin_account_id))
+    error_message = "admin_account_id must be a 12-digit AWS account ID."
+  }
+}
+
+variable "create_organization_configuration" {
+  description = "Whether to manage the organization-wide GuardDuty configuration. Apply from the delegated administrator account"
+  type        = bool
+  default     = false
+}
+
+variable "auto_enable_organization_members" {
+  description = "How GuardDuty is auto-enabled for organization member accounts. Valid values: ALL, NEW, NONE"
+  type        = string
+  default     = "NEW"
+
+  validation {
+    condition     = contains(["ALL", "NEW", "NONE"], var.auto_enable_organization_members)
+    error_message = "auto_enable_organization_members must be ALL, NEW, or NONE."
+  }
+}
+
+variable "organization_configuration_features" {
+  description = <<-EOT
+    Map of GuardDuty detector features to auto-enable for organization member accounts.
+    Each key is the feature name (e.g. S3_DATA_EVENTS, EKS_AUDIT_LOGS, EBS_MALWARE_PROTECTION,
+    RDS_LOGIN_EVENTS, LAMBDA_NETWORK_LOGS, RUNTIME_MONITORING). auto_enable must be ALL, NEW,
+    or NONE. additional_configuration supports nested agent-management settings for
+    RUNTIME_MONITORING (EKS_ADDON_MANAGEMENT, ECS_FARGATE_AGENT_MANAGEMENT, EC2_AGENT_MANAGEMENT).
+  EOT
+  type = map(object({
+    auto_enable = string
+    additional_configuration = optional(list(object({
+      name        = string
+      auto_enable = string
+    })), [])
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for v in values(var.organization_configuration_features) : contains(["ALL", "NEW", "NONE"], v.auto_enable)
+    ])
+    error_message = "Each organization_configuration_features entry auto_enable must be ALL, NEW, or NONE."
+  }
 }
 
 ################################################################################

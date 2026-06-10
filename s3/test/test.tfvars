@@ -1,1 +1,1 @@
-bucket = "terratest-plan-bucket"
+name = "terratest-plan-bucket"

@@ -17,6 +17,29 @@ OpenTofu module for creating and managing AWS Auto Scaling Groups with launch te
 - **Security Group** - Optional security group with ingress and egress rules
 - **Security by Default** - IMDSv2 required, detailed monitoring enabled, EBS encryption default
 
+### Desired capacity drift
+
+Whether OpenTofu manages `desired_capacity` is controlled by the
+`ignore_desired_capacity_changes` variable (default `true`).
+
+OpenTofu cannot make `lifecycle { ignore_changes }` dynamic, so the module maintains
+**two copies** of the ASG resource and enables exactly one via mutually exclusive
+`lifecycle { enabled }` conditions (the same pattern as the `dynamodb` module's 3-copy
+table):
+
+| `ignore_desired_capacity_changes` | Active resource address | Behaviour |
+|---|---|---|
+| `true` (default) | `aws_autoscaling_group.this` | `lifecycle { ignore_changes = [desired_capacity] }` - changes made by scaling policies, scheduled actions, or manual console edits are **never reverted** by OpenTofu, and updating `desired_capacity` in your configuration after initial creation has **no effect** on the existing group. Use `min_size`/`max_size` to bound capacity. |
+| `false` | `aws_autoscaling_group.tracked` | `desired_capacity` is fully managed - OpenTofu reverts out-of-band changes and applies configuration updates. Only use this when nothing else (scaling policies, scheduled actions) adjusts capacity. |
+
+All module outputs resolve from whichever resource is active, so consumers are
+unaffected by the choice.
+
+### Launch template naming
+
+The launch template uses `name_prefix` (`<name>-`) with `create_before_destroy` instead of an
+exact name, so template changes that require replacement do not fail on name collisions.
+
 ## Usage
 
 ```hcl

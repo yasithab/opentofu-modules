@@ -79,7 +79,7 @@ resource "aws_redshift_cluster" "this" {
   snapshot_cluster_identifier       = var.snapshot_cluster_identifier
 
   snapshot_identifier    = var.snapshot_identifier
-  vpc_security_group_ids = concat([aws_security_group.this.id], var.vpc_security_group_ids)
+  vpc_security_group_ids = compact(concat([try(aws_security_group.this.id, "")], var.vpc_security_group_ids))
 
   tags = local.tags
 
@@ -297,7 +297,7 @@ resource "aws_redshift_endpoint_access" "this" {
   endpoint_name          = var.endpoint_name
   resource_owner         = var.endpoint_resource_owner
   subnet_group_name      = coalesce(var.endpoint_subnet_group_name, local.subnet_group_name)
-  vpc_security_group_ids = try([aws_security_group.this.id], var.endpoint_vpc_security_group_ids)
+  vpc_security_group_ids = var.create_security_group ? [aws_security_group.this.id] : var.endpoint_vpc_security_group_ids
 
   lifecycle {
     enabled = local.enabled && var.create_endpoint_access

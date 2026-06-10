@@ -45,13 +45,18 @@ variable "path" {
 }
 
 variable "policy" {
-  description = "The policy document JSON string. Provide this or use policy_documents to merge multiple statements."
+  description = "The policy document JSON string. Provide exactly one of `policy` or `policy_documents`."
   type        = string
   default     = null
+
+  validation {
+    condition     = (var.policy != null) != (length(var.policy_documents) > 0)
+    error_message = "Exactly one of `policy` or `policy_documents` must be provided (non-empty)."
+  }
 }
 
 variable "policy_documents" {
-  description = "List of JSON policy document strings to merge into a single policy. Ignored if policy is set."
+  description = "List of JSON policy document strings to merge into a single policy. Provide exactly one of `policy` or `policy_documents`."
   type        = list(string)
   default     = []
 }

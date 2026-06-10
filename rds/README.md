@@ -17,6 +17,11 @@ Provisions Amazon RDS database instances with comprehensive support for multiple
 - **S3 Import** - Restore MySQL databases from Percona Xtrabackup files stored in S3
 - **Encryption Enforcement** - Built-in check block that validates storage encryption is enabled
 
+## Notes
+
+- **Enhanced Monitoring and Performance Insights are disabled by default** (`monitoring_interval = 0`, `performance_insights_enabled = null`). For production workloads, consider setting `monitoring_interval` (e.g. `60`) and `performance_insights_enabled = true`.
+- **Final snapshot identifier** - when `skip_final_snapshot = false` (the default) and `final_snapshot_identifier` is not provided, the module derives `<name>-final` automatically so instance deletion does not fail.
+
 ## Usage
 
 ```hcl

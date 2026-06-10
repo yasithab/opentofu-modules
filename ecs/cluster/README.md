@@ -22,7 +22,7 @@ OpenTofu module to create an Amazon ECS cluster with support for both Fargate an
 module "ecs_cluster" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ecs/cluster?depth=1&ref=master"
 
-  cluster_name = "my-cluster"
+  name         = "my-cluster"
 
   fargate_capacity_providers = {
     FARGATE = {
@@ -50,7 +50,7 @@ module "ecs_cluster" {
 module "ecs_cluster" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ecs/cluster?depth=1&ref=master"
 
-  cluster_name                          = "my-ec2-cluster"
+  name                                  = "my-ec2-cluster"
   default_capacity_provider_use_fargate = false
 
   autoscaling_capacity_providers = {
@@ -87,7 +87,7 @@ module "ecs_cluster" {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|----------|
-| `cluster_name` | Name of the cluster | `string` | `null` | no |
+| `name` | Name of the cluster | `string` | `null` | no |
 | `cluster_configuration` | The execute command configuration for the cluster | `any` | `{}` | no |
 | `cluster_settings` | List of cluster settings (Container Insights enabled by default) | `any` | `[{name = "containerInsights", value = "enabled"}]` | no |
 | `cluster_service_connect_defaults` | Configures a default Service Connect namespace | `map(string)` | `{}` | no |
@@ -136,7 +136,7 @@ module "ecs_cluster" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ecs/cluster?depth=1&ref=master"
 
   enabled      = true
-  cluster_name = "myapp-production"
+  name         = "myapp-production"
 
   fargate_capacity_providers = {
     FARGATE = {
@@ -168,7 +168,7 @@ module "ecs_cluster" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ecs/cluster?depth=1&ref=master"
 
   enabled      = true
-  cluster_name = "myapp-production"
+  name         = "myapp-production"
 
   fargate_capacity_providers = {
     FARGATE = {
@@ -205,7 +205,7 @@ module "ecs_ec2_cluster" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ecs/cluster?depth=1&ref=master"
 
   enabled      = true
-  cluster_name = "myapp-ec2-production"
+  name         = "myapp-ec2-production"
 
   default_capacity_provider_use_fargate = false
 

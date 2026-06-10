@@ -1,25 +1,25 @@
 locals {
-  role_name                         = var.enabled && var.create_role ? coalesce(var.role_name, var.name, "*") : null
-  application_role_name             = coalesce(var.application_role_name, "${var.name}-application-role", "*")
-  create_application_role_policy    = var.enabled && var.create_application_role_policy
+  role_name                         = local.enabled && var.create_role ? coalesce(var.role_name, local.name) : null
+  application_role_name             = var.application_role_name != null ? var.application_role_name : (local.name != null ? "${local.name}-application-role" : null)
+  create_application_role_policy    = local.enabled && var.create_application_role_policy
   add_backup_policies               = local.enable_s3_backup && var.s3_backup_use_existing_role
-  add_kinesis_source_policy         = var.enabled && var.create_role && local.is_kinesis_source && var.source_use_existing_role
-  add_msk_source_policy             = var.enabled && var.create_role && local.is_msk_source && var.source_use_existing_role
-  add_lambda_policy                 = var.enabled && var.create_role && var.enable_lambda_transform
-  add_s3_kms_policy                 = var.enabled && var.create_role && ((local.add_backup_policies && var.s3_backup_enable_encryption) || var.enable_s3_encryption)
-  add_glue_policy                   = var.enabled && var.create_role && var.enable_data_format_conversion && var.data_format_conversion_glue_use_existing_role
-  add_s3_policy                     = var.enabled && var.create_role
-  add_cw_policy                     = var.enabled && var.create_role && ((local.add_backup_policies && var.s3_backup_enable_log) || var.enable_destination_log)
-  add_elasticsearch_policy          = var.enabled && var.create_role && local.destination == "elasticsearch"
-  add_opensearch_policy             = var.enabled && var.create_role && local.destination == "opensearch"
-  add_opensearchserverless_policy   = var.enabled && var.create_role && local.destination == "opensearchserverless"
-  add_vpc_policy                    = var.enabled && var.create_role && var.enable_vpc && var.vpc_use_existing_role && local.is_search_destination
-  add_secretsmanager_policy         = var.enabled && var.create_role && var.enable_secrets_manager
+  add_kinesis_source_policy         = local.enabled && var.create_role && local.is_kinesis_source && var.source_use_existing_role
+  add_msk_source_policy             = local.enabled && var.create_role && local.is_msk_source && var.source_use_existing_role
+  add_lambda_policy                 = local.enabled && var.create_role && var.enable_lambda_transform
+  add_s3_kms_policy                 = local.enabled && var.create_role && ((local.add_backup_policies && var.s3_backup_enable_encryption) || var.enable_s3_encryption)
+  add_glue_policy                   = local.enabled && var.create_role && var.enable_data_format_conversion && var.data_format_conversion_glue_use_existing_role
+  add_s3_policy                     = local.enabled && var.create_role
+  add_cw_policy                     = local.enabled && var.create_role && ((local.add_backup_policies && var.s3_backup_enable_log) || var.enable_destination_log)
+  add_elasticsearch_policy          = local.enabled && var.create_role && local.destination == "elasticsearch"
+  add_opensearch_policy             = local.enabled && var.create_role && local.destination == "opensearch"
+  add_opensearchserverless_policy   = local.enabled && var.create_role && local.destination == "opensearchserverless"
+  add_vpc_policy                    = local.enabled && var.create_role && var.enable_vpc && var.vpc_use_existing_role && local.is_search_destination
+  add_secretsmanager_policy         = local.enabled && var.create_role && var.enable_secrets_manager
   add_secretsmanager_decrypt_policy = local.add_secretsmanager_policy && var.secret_kms_key_arn != null
 }
 
 data "aws_iam_policy_document" "assume_role" {
-  count = var.enabled && var.create_role ? 1 : 0
+  count = local.enabled && var.create_role ? 1 : 0
 
   statement {
     effect  = "Allow"
@@ -51,7 +51,7 @@ resource "aws_iam_role" "firehose" {
   tags = merge(local.tags, var.role_tags)
 
   lifecycle {
-    enabled = var.enabled && var.create_role
+    enabled = local.enabled && var.create_role
   }
 }
 
@@ -161,7 +161,7 @@ resource "aws_iam_policy" "msk" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.is_msk_source
+    enabled = local.add_msk_source_policy
   }
 }
 
@@ -275,9 +275,9 @@ data "aws_iam_policy_document" "glue" {
       "glue:GetTableVersions"
     ]
     resources = [
-      "arn:aws:glue:${local.data_format_conversion_glue_region}:${local.data_format_conversion_glue_catalog_id}:catalog",
-      "arn:aws:glue:${local.data_format_conversion_glue_region}:${local.data_format_conversion_glue_catalog_id}:database/${var.data_format_conversion_glue_database}",
-      "arn:aws:glue:${local.data_format_conversion_glue_region}:${local.data_format_conversion_glue_catalog_id}:table/${var.data_format_conversion_glue_database}/${var.data_format_conversion_glue_table_name}"
+      "arn:${data.aws_partition.current.partition}:glue:${local.data_format_conversion_glue_region}:${local.data_format_conversion_glue_catalog_id}:catalog",
+      "arn:${data.aws_partition.current.partition}:glue:${local.data_format_conversion_glue_region}:${local.data_format_conversion_glue_catalog_id}:database/${var.data_format_conversion_glue_database}",
+      "arn:${data.aws_partition.current.partition}:glue:${local.data_format_conversion_glue_region}:${local.data_format_conversion_glue_catalog_id}:table/${var.data_format_conversion_glue_database}/${var.data_format_conversion_glue_table_name}"
     ]
   }
 }
@@ -350,7 +350,7 @@ resource "aws_iam_role_policy_attachment" "s3" {
 }
 
 data "aws_iam_policy_document" "cross_account_s3" {
-  count   = var.enabled && var.create_role && local.s3_destination && var.s3_cross_account ? 1 : 0
+  count   = local.enabled && var.create_role && local.s3_destination && var.s3_cross_account ? 1 : 0
   version = "2012-10-17"
   statement {
     sid    = "Cross Account Access to ${data.aws_caller_identity.current.account_id} Account"
@@ -389,8 +389,8 @@ data "aws_iam_policy_document" "cw" {
       "logs:PutLogEvents"
     ]
     resources = distinct(compact([
-      var.enable_destination_log ? "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:${local.destination_cw_log_group_name}:log-stream:${local.destination_cw_log_stream_name}" : "",
-      var.s3_backup_enable_log ? "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:${local.s3_backup_cw_log_group_name}:log-stream:${local.s3_backup_cw_log_stream_name}" : ""
+      var.enable_destination_log ? "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:${local.destination_cw_log_group_name}:log-stream:${local.destination_cw_log_stream_name}" : "",
+      var.s3_backup_enable_log ? "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:${local.s3_backup_cw_log_group_name}:log-stream:${local.s3_backup_cw_log_stream_name}" : ""
     ]))
   }
 }
@@ -424,7 +424,7 @@ resource "aws_redshift_cluster_iam_roles" "this" {
   iam_role_arns      = [aws_iam_role.firehose.arn]
 
   lifecycle {
-    enabled = var.enabled && var.create_role && var.destination == "redshift" && var.associate_role_to_redshift_cluster
+    enabled = local.enabled && var.create_role && var.destination == "redshift" && var.associate_role_to_redshift_cluster
   }
 }
 

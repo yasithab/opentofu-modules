@@ -77,6 +77,12 @@ module "sqs_with_dlq" {
   deadletter_queue_enabled = true
   deadletter_queue_count   = 5
 
+  # DLQ retention defaults to the 14-day maximum (1209600s); override if needed
+  deadletter_message_retention_seconds = 1209600
+
+  # Optionally restrict redrive into the DLQ to the main queue only
+  deadletter_redrive_allow_policy_enabled = true
+
   kms_master_key_id = "arn:aws:kms:eu-west-1:123456789012:key/mrk-00000000000000000000000000000000"
 
   tags = {

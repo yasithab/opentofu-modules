@@ -1,18 +1,25 @@
 variable "enabled" {
-  description = "Controls if Security Hub and associated resources are created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
 
 
 variable "name" {
-  description = "Name prefix for Security Hub resources used in naming and tagging"
+  description = "Optional name prefix for Security Hub resources. When set, custom action target names are prefixed with it"
   type        = string
+  default     = null
 
   validation {
-    condition     = length(var.name) > 0
+    condition     = var.name == null || length(coalesce(var.name, "x")) > 0
     error_message = "The name must not be empty."
   }
+}
+
+variable "tags" {
+  description = "Map of tags for module convention. Security Hub resources do not currently support tags; kept for forward compatibility"
+  type        = map(string)
+  default     = {}
 }
 
 ################################################################################
@@ -140,6 +147,96 @@ variable "action_targets" {
   type = map(object({
     identifier  = string
     description = string
+  }))
+  default = {}
+}
+
+################################################################################
+# Automation Rules
+################################################################################
+
+variable "automation_rules" {
+  description = <<-EOT
+    Map of Security Hub automation rules. Each rule matches findings against `criteria`
+    (string filters with `comparison` of EQUALS, NOT_EQUALS, PREFIX, PREFIX_NOT_EQUALS, or CONTAINS)
+    and applies the finding-field updates in `actions`. `rule_name` defaults to the map key.
+    Lower `rule_order` values run first; set `is_terminal = true` to stop processing subsequent rules.
+  EOT
+  type = map(object({
+    rule_name   = optional(string)
+    rule_order  = number
+    description = string
+    rule_status = optional(string, "ENABLED")
+    is_terminal = optional(bool, false)
+    criteria = object({
+      aws_account_id                 = optional(list(object({ comparison = string, value = string })), [])
+      compliance_status              = optional(list(object({ comparison = string, value = string })), [])
+      compliance_security_control_id = optional(list(object({ comparison = string, value = string })), [])
+      generator_id                   = optional(list(object({ comparison = string, value = string })), [])
+      product_name                   = optional(list(object({ comparison = string, value = string })), [])
+      record_state                   = optional(list(object({ comparison = string, value = string })), [])
+      resource_type                  = optional(list(object({ comparison = string, value = string })), [])
+      severity_label                 = optional(list(object({ comparison = string, value = string })), [])
+      title                          = optional(list(object({ comparison = string, value = string })), [])
+      type                           = optional(list(object({ comparison = string, value = string })), [])
+      workflow_status                = optional(list(object({ comparison = string, value = string })), [])
+    })
+    actions = object({
+      severity_label      = optional(string)
+      workflow_status     = optional(string)
+      verification_state  = optional(string)
+      confidence          = optional(number)
+      criticality         = optional(number)
+      types               = optional(list(string))
+      user_defined_fields = optional(map(string))
+      note_text           = optional(string)
+      note_updated_by     = optional(string, "opentofu")
+    })
+  }))
+  default = {}
+
+  validation {
+    condition     = alltrue([for v in values(var.automation_rules) : contains(["ENABLED", "DISABLED"], v.rule_status)])
+    error_message = "automation_rules rule_status must be ENABLED or DISABLED."
+  }
+
+  validation {
+    condition     = alltrue([for v in values(var.automation_rules) : v.actions.severity_label == null || contains(["INFORMATIONAL", "LOW", "MEDIUM", "HIGH", "CRITICAL"], coalesce(v.actions.severity_label, "_"))])
+    error_message = "automation_rules actions.severity_label must be one of: INFORMATIONAL, LOW, MEDIUM, HIGH, CRITICAL."
+  }
+
+  validation {
+    condition     = alltrue([for v in values(var.automation_rules) : v.actions.workflow_status == null || contains(["NEW", "NOTIFIED", "RESOLVED", "SUPPRESSED"], coalesce(v.actions.workflow_status, "_"))])
+    error_message = "automation_rules actions.workflow_status must be one of: NEW, NOTIFIED, RESOLVED, SUPPRESSED."
+  }
+}
+
+################################################################################
+# Insights
+################################################################################
+
+variable "insights" {
+  description = <<-EOT
+    Map of Security Hub custom insights. Each insight groups findings matching `filters`
+    (string filters with `comparison` of EQUALS, NOT_EQUALS, PREFIX, PREFIX_NOT_EQUALS, or CONTAINS)
+    by `group_by_attribute` (e.g. ResourceId, AwsAccountId, SeverityLabel, Type).
+    `name` defaults to the map key.
+  EOT
+  type = map(object({
+    name               = optional(string)
+    group_by_attribute = string
+    filters = object({
+      aws_account_id    = optional(list(object({ comparison = string, value = string })), [])
+      compliance_status = optional(list(object({ comparison = string, value = string })), [])
+      generator_id      = optional(list(object({ comparison = string, value = string })), [])
+      product_name      = optional(list(object({ comparison = string, value = string })), [])
+      record_state      = optional(list(object({ comparison = string, value = string })), [])
+      resource_type     = optional(list(object({ comparison = string, value = string })), [])
+      severity_label    = optional(list(object({ comparison = string, value = string })), [])
+      title             = optional(list(object({ comparison = string, value = string })), [])
+      type              = optional(list(object({ comparison = string, value = string })), [])
+      workflow_status   = optional(list(object({ comparison = string, value = string })), [])
+    })
   }))
   default = {}
 }

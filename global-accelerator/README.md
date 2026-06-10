@@ -202,3 +202,8 @@ module "dual_stack_accelerator" {
   }
 }
 ```
+
+## Notes
+
+- `flow_logs_enabled` now defaults to `false`; when set to `true`, `flow_logs_s3_bucket` is required (validated at plan time).
+- `listeners`, `endpoint_groups`, `custom_routing_listeners`, `custom_routing_endpoint_groups`, and `cross_account_attachments` use typed object schemas with optional attributes.

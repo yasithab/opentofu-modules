@@ -21,7 +21,7 @@ variable "create_service" {
   default     = true
 }
 
-variable "service_name" {
+variable "name" {
   description = "The name of the service"
   type        = string
   default     = null
@@ -35,38 +35,89 @@ variable "auto_scaling_configuration_arn" {
 
 variable "encryption_configuration" {
   description = "The encryption configuration for the service"
-  type        = any
-  default     = {}
+  type = object({
+    kms_key = string
+  })
+  default = null
 }
 
 variable "health_check_configuration" {
   description = "The health check configuration for the service"
-  type        = any
-  default     = {}
+  type = object({
+    healthy_threshold   = optional(number)
+    interval            = optional(number)
+    path                = optional(string)
+    protocol            = optional(string)
+    timeout             = optional(number)
+    unhealthy_threshold = optional(number)
+  })
+  default = null
 }
 
 variable "instance_configuration" {
   description = "The instance configuration for the service"
-  type        = any
-  default     = {}
+  type = object({
+    cpu               = optional(string)
+    memory            = optional(string)
+    instance_role_arn = optional(string)
+  })
+  default = null
 }
 
 variable "network_configuration" {
   description = "The network configuration for the service"
-  type        = any
-  default     = {}
-}
-
-variable "observability_configuration" {
-  description = "The observability configuration for the service"
-  type        = any
-  default     = {}
+  type = object({
+    ip_address_type = optional(string)
+    ingress_configuration = optional(object({
+      is_publicly_accessible = optional(bool)
+    }))
+    egress_configuration = optional(object({
+      egress_type       = optional(string, "VPC")
+      vpc_connector_arn = optional(string)
+    }))
+  })
+  default = null
 }
 
 variable "source_configuration" {
   description = "The source configuration for the service"
-  type        = any
-  default     = {}
+  type = object({
+    auto_deployments_enabled = optional(bool, false)
+    authentication_configuration = optional(object({
+      access_role_arn = optional(string)
+      connection_arn  = optional(string)
+    }))
+    code_repository = optional(object({
+      repository_url   = string
+      source_directory = optional(string)
+      source_code_version = object({
+        type  = optional(string, "BRANCH")
+        value = string
+      })
+      code_configuration = optional(object({
+        configuration_source = string
+        code_configuration_values = optional(object({
+          build_command                 = optional(string)
+          port                          = optional(string)
+          runtime                       = string
+          runtime_environment_variables = optional(map(string), {})
+          runtime_environment_secrets   = optional(map(string), {})
+          start_command                 = optional(string)
+        }))
+      }))
+    }))
+    image_repository = optional(object({
+      image_identifier      = string
+      image_repository_type = string
+      image_configuration = optional(object({
+        port                          = optional(string)
+        runtime_environment_variables = optional(map(string), {})
+        runtime_environment_secrets   = optional(map(string), {})
+        start_command                 = optional(string)
+      }))
+    }))
+  })
+  default = null
 }
 
 ################################################################################
@@ -209,8 +260,28 @@ variable "instance_iam_role_policies" {
 
 variable "instance_policy_statements" {
   description = "A map of IAM policy [statements](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document#statement) for custom permission usage"
-  type        = any
-  default     = {}
+  type = map(object({
+    sid           = optional(string)
+    actions       = optional(list(string))
+    not_actions   = optional(list(string))
+    effect        = optional(string)
+    resources     = optional(list(string))
+    not_resources = optional(list(string))
+    principals = optional(list(object({
+      type        = string
+      identifiers = list(string)
+    })), [])
+    not_principals = optional(list(object({
+      type        = string
+      identifiers = list(string)
+    })), [])
+    conditions = optional(list(object({
+      test     = string
+      values   = list(string)
+      variable = string
+    })), [])
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -307,8 +378,12 @@ variable "vpc_connector_security_groups" {
 
 variable "connections" {
   description = "Map of connection definitions to create"
-  type        = any
-  default     = {}
+  type = map(object({
+    name          = optional(string)
+    provider_type = optional(string, "GITHUB")
+    tags          = optional(map(string), {})
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -317,8 +392,14 @@ variable "connections" {
 
 variable "auto_scaling_configurations" {
   description = "Map of auto-scaling configuration definitions to create"
-  type        = any
-  default     = {}
+  type = map(object({
+    name            = optional(string)
+    max_concurrency = optional(number)
+    max_size        = optional(number)
+    min_size        = optional(number)
+    tags            = optional(map(string), {})
+  }))
+  default = {}
 }
 
 ################################################################################

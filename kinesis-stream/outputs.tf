@@ -17,3 +17,8 @@ output "consumers" {
   description = "List of consumers registered with Kinesis stream."
   value       = aws_kinesis_stream_consumer.default
 }
+
+output "resource_policy_id" {
+  description = "ID of the Kinesis resource policy (the stream ARN it is attached to)."
+  value       = try(aws_kinesis_resource_policy.default.id, "")
+}

@@ -6,13 +6,19 @@ data "aws_caller_identity" "current" {}
 
 locals {
   enabled = var.enabled
-  name    = try(trimsuffix(var.topic_name, ".fifo"), "")
+  name    = trimsuffix(var.name, ".fifo")
+
+  create_subscription = local.enabled && var.create_subscription
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
   })
 }
 
+# Encrypted with the AWS-managed key by default so cross-service publishers
+# (CloudWatch, S3 events, etc.) work without key-policy changes; pass a CMK
+# ARN via kms_master_key_id for customer-managed encryption.
+#trivy:ignore:AVD-AWS-0136
 resource "aws_sns_topic" "this" {
   name        = var.use_name_prefix ? null : (var.fifo_topic ? "${local.name}.fifo" : local.name)
   name_prefix = var.use_name_prefix ? "${local.name}-" : null
@@ -156,7 +162,7 @@ resource "aws_sns_topic_policy" "this" {
 ################################################################################
 
 resource "aws_sns_topic_subscription" "this" {
-  for_each = { for k, v in var.subscriptions : k => v if local.enabled && var.create_subscription }
+  for_each = { for k, v in var.subscriptions : k => v if local.create_subscription }
 
   confirmation_timeout_in_minutes = try(each.value.confirmation_timeout_in_minutes, null)
   delivery_policy                 = try(each.value.delivery_policy, null)

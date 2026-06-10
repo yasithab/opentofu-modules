@@ -24,7 +24,7 @@ POLICY
   tags = local.tags
 
   lifecycle {
-    enabled = var.create_bucket_replication_role == true
+    enabled = local.create_bucket_replication_role
   }
 }
 
@@ -42,7 +42,7 @@ resource "aws_iam_policy" "replication" {
       ],
       "Effect": "Allow",
       "Resource": [
-        "arn:aws:s3:::${aws_s3_bucket.this.id}"
+        "arn:${data.aws_partition.current.partition}:s3:::${aws_s3_bucket.this.id}"
       ]
     },
     {
@@ -52,7 +52,7 @@ resource "aws_iam_policy" "replication" {
       ],
       "Effect": "Allow",
       "Resource": [
-        "arn:aws:s3:::${aws_s3_bucket.this.id}/*"
+        "arn:${data.aws_partition.current.partition}:s3:::${aws_s3_bucket.this.id}/*"
       ]
     },
     {
@@ -61,14 +61,14 @@ resource "aws_iam_policy" "replication" {
         "s3:ReplicateDelete"
       ],
       "Effect": "Allow",
-      "Resource": "arn:aws:s3:::${var.destination_bucket_name}/*"
+      "Resource": "arn:${data.aws_partition.current.partition}:s3:::${var.destination_bucket_name}/*"
     }
   ]
 }
 POLICY
 
   lifecycle {
-    enabled = var.create_bucket_replication_role == true
+    enabled = local.create_bucket_replication_role
   }
 }
 
@@ -77,6 +77,6 @@ resource "aws_iam_role_policy_attachment" "replication" {
   policy_arn = aws_iam_policy.replication.arn
 
   lifecycle {
-    enabled = var.create_bucket_replication_role == true
+    enabled = local.create_bucket_replication_role
   }
 }

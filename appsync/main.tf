@@ -1,7 +1,9 @@
 data "aws_partition" "current" {}
+data "aws_caller_identity" "current" {}
 
 locals {
   enabled = var.enabled
+  name    = var.name
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -15,7 +17,7 @@ locals {
 ################################################################################
 
 resource "aws_appsync_graphql_api" "this" {
-  name                 = var.name
+  name                 = local.name
   authentication_type  = var.authentication_type
   schema               = var.schema
   xray_enabled         = var.xray_enabled
@@ -73,33 +75,33 @@ resource "aws_appsync_graphql_api" "this" {
       authentication_type = additional_authentication_provider.value.authentication_type
 
       dynamic "user_pool_config" {
-        for_each = additional_authentication_provider.value.authentication_type == "AMAZON_COGNITO_USER_POOLS" ? [try(additional_authentication_provider.value.user_pool_config, {})] : []
+        for_each = additional_authentication_provider.value.authentication_type == "AMAZON_COGNITO_USER_POOLS" && additional_authentication_provider.value.user_pool_config != null ? [additional_authentication_provider.value.user_pool_config] : []
 
         content {
           user_pool_id        = user_pool_config.value.user_pool_id
-          app_id_client_regex = try(user_pool_config.value.app_id_client_regex, null)
-          aws_region          = try(user_pool_config.value.aws_region, null)
+          app_id_client_regex = user_pool_config.value.app_id_client_regex
+          aws_region          = user_pool_config.value.aws_region
         }
       }
 
       dynamic "openid_connect_config" {
-        for_each = additional_authentication_provider.value.authentication_type == "OPENID_CONNECT" ? [try(additional_authentication_provider.value.openid_connect_config, {})] : []
+        for_each = additional_authentication_provider.value.authentication_type == "OPENID_CONNECT" && additional_authentication_provider.value.openid_connect_config != null ? [additional_authentication_provider.value.openid_connect_config] : []
 
         content {
           issuer    = openid_connect_config.value.issuer
-          auth_ttl  = try(openid_connect_config.value.auth_ttl, null)
-          client_id = try(openid_connect_config.value.client_id, null)
-          iat_ttl   = try(openid_connect_config.value.iat_ttl, null)
+          auth_ttl  = openid_connect_config.value.auth_ttl
+          client_id = openid_connect_config.value.client_id
+          iat_ttl   = openid_connect_config.value.iat_ttl
         }
       }
 
       dynamic "lambda_authorizer_config" {
-        for_each = additional_authentication_provider.value.authentication_type == "AWS_LAMBDA" ? [try(additional_authentication_provider.value.lambda_authorizer_config, {})] : []
+        for_each = additional_authentication_provider.value.authentication_type == "AWS_LAMBDA" && additional_authentication_provider.value.lambda_authorizer_config != null ? [additional_authentication_provider.value.lambda_authorizer_config] : []
 
         content {
           authorizer_uri                   = lambda_authorizer_config.value.authorizer_uri
-          authorizer_result_ttl_in_seconds = try(lambda_authorizer_config.value.authorizer_result_ttl_in_seconds, 300)
-          identity_validation_expression   = try(lambda_authorizer_config.value.identity_validation_expression, null)
+          authorizer_result_ttl_in_seconds = lambda_authorizer_config.value.authorizer_result_ttl_in_seconds
+          identity_validation_expression   = lambda_authorizer_config.value.identity_validation_expression
         }
       }
     }
@@ -120,8 +122,8 @@ resource "aws_appsync_api_key" "this" {
   for_each = { for k, v in var.api_keys : k => v if local.enabled }
 
   api_id      = aws_appsync_graphql_api.this.id
-  description = try(each.value.description, null)
-  expires     = try(each.value.expires, null)
+  description = each.value.description
+  expires     = each.value.expires
 }
 
 ################################################################################
@@ -404,11 +406,29 @@ resource "aws_wafv2_web_acl_association" "this" {
 }
 
 ################################################################################
+# CloudWatch Log Group
+################################################################################
+
+# AppSync writes API logs to /aws/appsync/apis/<api_id>. Managing the log
+# group here allows enforcing retention and KMS encryption.
+resource "aws_cloudwatch_log_group" "this" {
+  name              = "/aws/appsync/apis/${aws_appsync_graphql_api.this.id}"
+  retention_in_days = var.log_group_retention_in_days
+  kms_key_id        = var.log_group_kms_key_id
+
+  tags = local.tags
+
+  lifecycle {
+    enabled = local.enabled && var.logging_enabled && var.create_log_group
+  }
+}
+
+################################################################################
 # IAM - Logging Role
 ################################################################################
 
 resource "aws_iam_role" "logging" {
-  name = "${var.name}-appsync-logging"
+  name = "${local.name}-appsync-logging"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -418,6 +438,11 @@ resource "aws_iam_role" "logging" {
         Effect = "Allow"
         Principal = {
           Service = "appsync.amazonaws.com"
+        }
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
         }
       }
     ]

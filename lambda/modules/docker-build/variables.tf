@@ -1,3 +1,9 @@
+variable "enabled" {
+  description = "Set to false to prevent the module from creating any resources."
+  type        = bool
+  default     = true
+}
+
 variable "create_ecr_repo" {
   description = "Controls whether ECR repository for Lambda image should be created"
   type        = bool
@@ -29,7 +35,7 @@ variable "ecr_repo" {
 }
 
 variable "image_tag" {
-  description = "Image tag to use. If not specified current timestamp in format 'YYYYMMDDhhmmss' will be used. This can lead to unnecessary rebuilds."
+  description = "Image tag to use. If not specified, a hash of the source_path contents is used when source_path is set; otherwise the current timestamp in format 'YYYYMMDDhhmmss' will be used (which can lead to unnecessary rebuilds)."
   type        = string
   default     = null
 }
@@ -55,7 +61,7 @@ variable "docker_file_path" {
 variable "image_tag_mutability" {
   description = "The tag mutability setting for the repository. Must be one of: `MUTABLE`, `IMMUTABLE`, `MUTABLE_WITH_EXCLUSION`, or `IMMUTABLE_WITH_EXCLUSION`"
   type        = string
-  default     = "MUTABLE"
+  default     = "IMMUTABLE"
 
   validation {
     condition     = contains(["MUTABLE", "IMMUTABLE", "MUTABLE_WITH_EXCLUSION", "IMMUTABLE_WITH_EXCLUSION"], var.image_tag_mutability)
@@ -78,12 +84,12 @@ variable "image_tag_mutability_exclusion_filter" {
 variable "scan_on_push" {
   description = "Indicates whether images are scanned after being pushed to the repository"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "ecr_force_delete" {
   description = "If true, will delete the repository even if it contains images."
-  default     = true
+  default     = false
   type        = bool
 }
 

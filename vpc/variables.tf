@@ -2,6 +2,11 @@ variable "name" {
   description = "Name to use for resource naming and tagging."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.name != null
+    error_message = "name must be set; it is used for resource naming and Name tags."
+  }
 }
 
 variable "tags" {
@@ -15,7 +20,7 @@ variable "tags" {
 ################################################################################
 
 variable "enabled" {
-  description = "Controls if VPC should be created (it affects almost all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -144,8 +149,14 @@ variable "vpc_block_public_access_options" {
 
 variable "vpc_block_public_access_exclusions" {
   description = "A map of VPC block public access exclusions"
-  type        = map(any)
-  default     = {}
+  type = map(object({
+    exclude_vpc                     = optional(bool, false)
+    exclude_subnet                  = optional(bool, false)
+    subnet_type                     = optional(string)
+    subnet_index                    = optional(number)
+    internet_gateway_exclusion_mode = string
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -1325,8 +1336,12 @@ variable "nat_gateway_secondary_private_ip_addresses" {
 
 variable "customer_gateways" {
   description = "Maps of Customer Gateway's attributes (BGP ASN and Gateway's Internet-routable external IP address)"
-  type        = map(map(any))
-  default     = {}
+  type = map(object({
+    bgp_asn     = number
+    ip_address  = string
+    device_name = optional(string)
+  }))
+  default = {}
 }
 
 variable "customer_gateway_tags" {
@@ -1701,7 +1716,7 @@ variable "flow_log_cloudwatch_log_group_name_suffix" {
 variable "flow_log_cloudwatch_log_group_retention_in_days" {
   description = "Specifies the number of days you want to retain log events in the specified log group for VPC flow logs"
   type        = number
-  default     = null
+  default     = 30
 }
 
 variable "flow_log_cloudwatch_log_group_kms_key_id" {

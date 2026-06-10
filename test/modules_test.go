@@ -45,6 +45,11 @@ func TestPlanAllModules(t *testing.T) {
 	t.Parallel()
 
 	if os.Getenv("AWS_DEFAULT_REGION") == "" && os.Getenv("AWS_REGION") == "" {
+		if os.Getenv("CI") == "true" {
+			// In CI a missing AWS configuration means the OIDC credential step
+			// silently failed - fail hard instead of skipping the plan suite.
+			t.Fatal("CI run without AWS credentials configured (set AWS_REGION) - plan tests must not be skipped in CI")
+		}
 		t.Skip("Skipping plan tests: no AWS credentials configured (set AWS_REGION)")
 	}
 

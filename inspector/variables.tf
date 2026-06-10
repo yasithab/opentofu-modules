@@ -1,17 +1,18 @@
 variable "enabled" {
-  description = "Controls if Inspector and associated resources are created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
 
 
 variable "name" {
-  description = "Name prefix for Inspector resources used in naming and tagging"
+  description = "Name identifier for the Inspector deployment, used for naming and tagging conventions"
   type        = string
+  default     = null
 }
 
 variable "tags" {
-  description = "Map of tags to apply to all Inspector resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -29,6 +30,13 @@ variable "resource_types" {
   description = "List of resource types to enable scanning for. Valid values: EC2, ECR, LAMBDA, LAMBDA_CODE"
   type        = list(string)
   default     = ["EC2", "ECR", "LAMBDA"]
+
+  validation {
+    condition = alltrue([
+      for t in var.resource_types : contains(["EC2", "ECR", "LAMBDA", "LAMBDA_CODE"], t)
+    ])
+    error_message = "resource_types entries must be one of: EC2, ECR, LAMBDA, LAMBDA_CODE."
+  }
 }
 
 ################################################################################
@@ -67,6 +75,12 @@ variable "auto_enable_lambda" {
   description = "Whether to automatically enable Lambda scanning for new member accounts in the organization"
   type        = bool
   default     = true
+}
+
+variable "auto_enable_lambda_code" {
+  description = "Whether to automatically enable Lambda code scanning for new member accounts in the organization. Requires auto_enable_lambda to be true"
+  type        = bool
+  default     = false
 }
 
 ################################################################################

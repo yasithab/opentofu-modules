@@ -1,8 +1,12 @@
 locals {
   enabled = var.enabled
+  name    = var.name
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
   })
+
+  create_organization_admin_account = local.enabled && var.create_organization_admin_account
+  create_organization_configuration = local.enabled && var.create_organization_configuration
 }
 
 ################################################################################
@@ -160,5 +164,41 @@ resource "aws_macie2_classification_export_configuration" "this" {
 
   lifecycle {
     enabled = local.enabled && var.classification_export_bucket_name != null
+
+    precondition {
+      condition     = var.classification_export_bucket_name == null || var.classification_export_kms_key_arn != null
+      error_message = "classification_export_kms_key_arn must be set when classification_export_bucket_name is set - Macie requires KMS encryption for classification results."
+    }
+  }
+}
+
+################################################################################
+# Organization Support
+################################################################################
+
+# Designates a member account as the Macie delegated administrator for the
+# organization. Must be applied from the organization management account.
+resource "aws_macie2_organization_admin_account" "this" {
+  admin_account_id = coalesce(var.admin_account_id, "000000000000")
+
+  lifecycle {
+    enabled = local.create_organization_admin_account
+
+    precondition {
+      condition     = !local.create_organization_admin_account || var.admin_account_id != null
+      error_message = "admin_account_id must be set when create_organization_admin_account is true."
+    }
+  }
+}
+
+# Organization-wide auto-enable behaviour. Must be applied from the delegated
+# administrator account.
+resource "aws_macie2_organization_configuration" "this" {
+  auto_enable = var.auto_enable_organization_members
+
+  depends_on = [aws_macie2_account.this]
+
+  lifecycle {
+    enabled = local.create_organization_configuration
   }
 }

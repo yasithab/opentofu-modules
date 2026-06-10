@@ -19,6 +19,10 @@ Provisions Amazon Aurora database clusters with support for Aurora MySQL and Aur
 - **Limitless Database** - Support for Aurora Limitless Database scalability mode and shard groups
 - **Encryption Enforcement** - Built-in check block that validates storage encryption is enabled
 
+## Notes
+
+- **Enhanced Monitoring and Performance Insights are disabled by default** (`monitoring_interval = 0`, `cluster_monitoring_interval = 0`, `performance_insights_enabled = null`). For production workloads, consider setting a monitoring interval (e.g. `60`) and `performance_insights_enabled = true`. The enhanced monitoring IAM role is created automatically when monitoring is enabled at the cluster level, the module-wide instance level, or via any per-instance `monitoring_interval` override.
+
 ## Usage
 
 ```hcl

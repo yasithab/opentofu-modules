@@ -1,5 +1,6 @@
 locals {
   enabled = var.enabled
+  name    = var.name
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -37,7 +38,7 @@ resource "aws_efs_file_system" "this" {
     }
   }
 
-  tags = merge(local.tags, { Name = var.name })
+  tags = merge(local.tags, { Name = local.name })
 
   lifecycle {
     enabled = local.enabled
@@ -174,7 +175,7 @@ resource "aws_efs_mount_target" "this" {
 ################################################################################
 
 locals {
-  security_group_name = try(coalesce(var.security_group_name, var.name), "")
+  security_group_name = try(coalesce(var.security_group_name, local.name), "")
 
   create_security_group = local.enabled && var.create_security_group && length(var.mount_targets) > 0
 }
@@ -196,37 +197,37 @@ resource "aws_security_group" "this" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "this" {
-  for_each = { for k, v in var.security_group_rules : k => v if local.create_security_group && try(v.type, "ingress") == "ingress" }
+  for_each = { for k, v in var.security_group_rules : k => v if local.create_security_group && v.type == "ingress" }
 
   security_group_id = aws_security_group.this.id
-  ip_protocol       = try(each.value.protocol, "tcp")
-  from_port         = try(each.value.from_port, 2049)
-  to_port           = try(each.value.to_port, 2049)
+  ip_protocol       = each.value.ip_protocol
+  from_port         = coalesce(each.value.from_port, 2049)
+  to_port           = coalesce(each.value.to_port, 2049)
 
-  cidr_ipv4                    = lookup(each.value, "cidr_blocks", null)
-  cidr_ipv6                    = lookup(each.value, "ipv6_cidr_blocks", null)
-  description                  = try(each.value.description, null)
-  prefix_list_id               = try(each.value.prefix_list_ids[0], null)
-  referenced_security_group_id = try(each.value.self, false) ? aws_security_group.this.id : lookup(each.value, "source_security_group_id", null)
+  cidr_ipv4                    = each.value.cidr_ipv4
+  cidr_ipv6                    = each.value.cidr_ipv6
+  description                  = each.value.description
+  prefix_list_id               = each.value.prefix_list_id
+  referenced_security_group_id = each.value.referenced_security_group_id
 
-  tags = local.tags
+  tags = merge(local.tags, each.value.tags)
 }
 
 resource "aws_vpc_security_group_egress_rule" "this" {
-  for_each = { for k, v in var.security_group_rules : k => v if local.create_security_group && try(v.type, "ingress") == "egress" }
+  for_each = { for k, v in var.security_group_rules : k => v if local.create_security_group && v.type == "egress" }
 
   security_group_id = aws_security_group.this.id
-  ip_protocol       = try(each.value.protocol, "-1")
-  from_port         = try(each.value.from_port, null)
-  to_port           = try(each.value.to_port, null)
+  ip_protocol       = each.value.ip_protocol
+  from_port         = each.value.from_port
+  to_port           = each.value.to_port
 
-  cidr_ipv4                    = lookup(each.value, "cidr_blocks", null)
-  cidr_ipv6                    = lookup(each.value, "ipv6_cidr_blocks", null)
-  description                  = try(each.value.description, null)
-  prefix_list_id               = try(each.value.prefix_list_ids[0], null)
-  referenced_security_group_id = try(each.value.self, false) ? aws_security_group.this.id : lookup(each.value, "source_security_group_id", null)
+  cidr_ipv4                    = each.value.cidr_ipv4
+  cidr_ipv6                    = each.value.cidr_ipv6
+  description                  = each.value.description
+  prefix_list_id               = each.value.prefix_list_id
+  referenced_security_group_id = each.value.referenced_security_group_id
 
-  tags = local.tags
+  tags = merge(local.tags, each.value.tags)
 }
 
 ################################################################################

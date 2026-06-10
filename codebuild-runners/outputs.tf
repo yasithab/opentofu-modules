@@ -1,39 +1,20 @@
 ################################################################################
-# Build Runner
+# Runner Projects (keyed by runner: "build", "deployment")
 ################################################################################
 
-output "build_runner_project_arn" {
-  description = "ARN of the CodeBuild build runner project"
-  value       = try(aws_codebuild_project.codebuild_build_runner.arn, null)
+output "project_arns" {
+  description = "Map of runner key to CodeBuild project ARN"
+  value       = { for k, v in aws_codebuild_project.this : k => v.arn }
 }
 
-output "build_runner_project_name" {
-  description = "Name of the CodeBuild build runner project"
-  value       = try(aws_codebuild_project.codebuild_build_runner.name, null)
+output "project_names" {
+  description = "Map of runner key to CodeBuild project name"
+  value       = { for k, v in aws_codebuild_project.this : k => v.name }
 }
 
-output "build_runner_webhook_url" {
-  description = "URL of the webhook to trigger builds for the build runner"
-  value       = try(aws_codebuild_webhook.codebuild_build_runner.url, null)
-}
-
-################################################################################
-# Deployment Runner
-################################################################################
-
-output "deployment_runner_project_arn" {
-  description = "ARN of the CodeBuild deployment runner project"
-  value       = try(aws_codebuild_project.codebuild_deployment_runner.arn, null)
-}
-
-output "deployment_runner_project_name" {
-  description = "Name of the CodeBuild deployment runner project"
-  value       = try(aws_codebuild_project.codebuild_deployment_runner.name, null)
-}
-
-output "deployment_runner_webhook_url" {
-  description = "URL of the webhook to trigger builds for the deployment runner"
-  value       = try(aws_codebuild_webhook.codebuild_deployment_runner.url, null)
+output "webhook_urls" {
+  description = "Map of runner key to the URL of the webhook that triggers its builds"
+  value       = { for k, v in aws_codebuild_webhook.this : k => v.url }
 }
 
 ################################################################################

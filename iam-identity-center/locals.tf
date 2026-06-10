@@ -41,12 +41,13 @@ locals {
   ssoadmin_instance_arn = tolist(data.aws_ssoadmin_instances.sso_instance.arns)[0]
   sso_instance_id       = tolist(data.aws_ssoadmin_instances.sso_instance.identity_store_ids)[0]
 
-  # Filter permission sets by attached policy types
-  aws_managed_permission_sets                           = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if can(pset_index.aws_managed_policies) }
-  customer_managed_permission_sets                      = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if can(pset_index.customer_managed_policies) }
-  inline_policy_permission_sets                         = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if can(pset_index.inline_policy) && try(pset_index.inline_policy, "") != "" }
-  permissions_boundary_aws_managed_permission_sets      = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if can(pset_index.permissions_boundary.managed_policy_arn) }
-  permissions_boundary_customer_managed_permission_sets = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if can(pset_index.permissions_boundary.customer_managed_policy_reference) }
+  # Filter permission sets by attached policy types (permission_sets is a typed
+  # map(object) - unknown attributes are rejected at plan time)
+  aws_managed_permission_sets                           = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if length(pset_index.aws_managed_policies) > 0 }
+  customer_managed_permission_sets                      = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if length(pset_index.customer_managed_policies) > 0 }
+  inline_policy_permission_sets                         = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if pset_index.inline_policy != null && pset_index.inline_policy != "" }
+  permissions_boundary_aws_managed_permission_sets      = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if pset_index.permissions_boundary != null && try(pset_index.permissions_boundary.managed_policy_arn, null) != null }
+  permissions_boundary_customer_managed_permission_sets = { for pset_name, pset_index in var.permission_sets : pset_name => pset_index if pset_index.permissions_boundary != null && try(pset_index.permissions_boundary.customer_managed_policy_reference, null) != null }
 
   # AWS Managed Policy maps - flat list of pset_name + policy_arn pairs
   pset_aws_managed_policy_maps = flatten([
@@ -54,7 +55,7 @@ locals {
       for policy in pset_index.aws_managed_policies : {
         pset_name  = pset_name
         policy_arn = policy
-      } if pset_index.aws_managed_policies != null && can(pset_index.aws_managed_policies)
+      }
     ]
   ])
 
@@ -64,7 +65,7 @@ locals {
       for policy in pset_index.customer_managed_policies : {
         pset_name   = pset_name
         policy_name = policy
-      } if pset_index.customer_managed_policies != null && can(pset_index.customer_managed_policies)
+      }
     ]
   ])
 
@@ -123,16 +124,21 @@ locals {
           principal_name = var.account_assignments[this_assignment].principal_name
           principal_type = var.account_assignments[this_assignment].principal_type
           principal_idp  = var.account_assignments[this_assignment].principal_idp
-          # Support both 12-digit account IDs and account names (resolved via organization)
-          account_id = length(regexall("[0-9]{12}", account)) > 0 ? account : lookup(local.accounts_ids_maps, account, null)
+          # Support both 12-digit account IDs and account names (resolved via organization).
+          # Unresolved names yield account_id = null and fail loudly via a resource
+          # precondition on aws_ssoadmin_account_assignment.
+          account_id    = can(regex("^[0-9]{12}$", account)) ? account : lookup(local.accounts_ids_maps, account, null)
+          account_input = account
         }
       ]
     ]
   ])
 
-  # Convert to map keyed by a unique combination string for for_each
+  # Convert to map keyed by a unique combination string for for_each.
+  # The raw input is used as key fallback so unresolved account names reach the
+  # resource precondition instead of crashing key construction.
   principals_and_their_account_assignments = {
-    for s in local.flatten_account_assignment_data : format("Type:%s__Principal:%s__Permission:%s__Account:%s", s.principal_type, s.principal_name, s.permission_set, s.account_id) => s
+    for s in local.flatten_account_assignment_data : format("Type:%s__Principal:%s__Permission:%s__Account:%s", s.principal_type, s.principal_name, s.permission_set, coalesce(s.account_id, s.account_input)) => s
   }
 
   # Lists of names defined in this module (used for conditional resource vs data source references)

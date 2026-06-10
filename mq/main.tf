@@ -4,10 +4,11 @@
 
 locals {
   enabled            = var.enabled
+  name               = var.name
   security_group_ids = var.create_security_group ? [aws_security_group.this.id] : var.security_groups
 
   create_security_group = local.enabled && var.create_security_group
-  security_group_name   = try(coalesce(var.security_group_name, var.broker_name), "")
+  security_group_name   = try(coalesce(var.security_group_name, local.name), "")
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -21,7 +22,7 @@ locals {
 resource "aws_security_group" "this" {
   name        = var.security_group_use_name_prefix ? null : local.security_group_name
   name_prefix = var.security_group_use_name_prefix ? "${local.security_group_name}-" : null
-  description = coalesce(var.security_group_description, "Security group for MQ broker ${var.broker_name}")
+  description = coalesce(var.security_group_description, "Security group for MQ broker ${local.name}")
   vpc_id      = var.vpc_id
 
   tags = merge(local.tags, var.security_group_tags, { Name = local.security_group_name })
@@ -71,7 +72,7 @@ resource "aws_vpc_security_group_egress_rule" "this" {
 ################################################################################
 
 resource "aws_mq_broker" "this" {
-  broker_name        = var.broker_name
+  broker_name        = local.name
   engine_type        = var.engine_type
   engine_version     = var.engine_version
   host_instance_type = var.host_instance_type

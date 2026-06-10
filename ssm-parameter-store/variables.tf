@@ -18,16 +18,16 @@ variable "ignore_value_changes" {
 }
 
 variable "secure_type" {
-  description = "Whether the type of the value should be considered as secure or not?"
+  description = "Whether the inferred parameter type (when `type` is not set) should be SecureString. Defaults to true so single-value parameters are encrypted unless explicitly opted out"
   type        = bool
-  default     = false
+  default     = true
 }
 
 ################################################################################
 # SSM Parameter
 ################################################################################
 
-variable "parameter_name" {
+variable "name" {
   description = "Name of SSM parameter"
   type        = string
   default     = null
@@ -38,6 +38,11 @@ variable "parameter_value" {
   type        = string
   default     = null
   sensitive   = true
+
+  validation {
+    condition     = !var.enabled || var.parameter_value != null || length(var.parameter_values) > 0 || var.value_wo != null
+    error_message = "One of parameter_value, parameter_values, or value_wo must be set when the module is enabled."
+  }
 }
 
 variable "parameter_values" {

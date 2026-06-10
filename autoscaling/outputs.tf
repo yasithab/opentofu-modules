@@ -33,47 +33,47 @@ output "launch_template_default_version" {
 
 output "autoscaling_group_id" {
   description = "The ID of the Auto Scaling Group"
-  value       = try(aws_autoscaling_group.this.id, "")
+  value       = try(aws_autoscaling_group.this.id, aws_autoscaling_group.tracked.id, "")
 }
 
 output "autoscaling_group_arn" {
   description = "The ARN of the Auto Scaling Group"
-  value       = try(aws_autoscaling_group.this.arn, "")
+  value       = try(aws_autoscaling_group.this.arn, aws_autoscaling_group.tracked.arn, "")
 }
 
 output "autoscaling_group_name" {
   description = "The name of the Auto Scaling Group"
-  value       = try(aws_autoscaling_group.this.name, "")
+  value       = try(aws_autoscaling_group.this.name, aws_autoscaling_group.tracked.name, "")
 }
 
 output "autoscaling_group_min_size" {
   description = "The minimum size of the Auto Scaling Group"
-  value       = try(aws_autoscaling_group.this.min_size, "")
+  value       = try(aws_autoscaling_group.this.min_size, aws_autoscaling_group.tracked.min_size, "")
 }
 
 output "autoscaling_group_max_size" {
   description = "The maximum size of the Auto Scaling Group"
-  value       = try(aws_autoscaling_group.this.max_size, "")
+  value       = try(aws_autoscaling_group.this.max_size, aws_autoscaling_group.tracked.max_size, "")
 }
 
 output "autoscaling_group_desired_capacity" {
   description = "The desired capacity of the Auto Scaling Group"
-  value       = try(aws_autoscaling_group.this.desired_capacity, "")
+  value       = try(aws_autoscaling_group.this.desired_capacity, aws_autoscaling_group.tracked.desired_capacity, "")
 }
 
 output "autoscaling_group_availability_zones" {
   description = "The availability zones of the Auto Scaling Group"
-  value       = try(aws_autoscaling_group.this.availability_zones, [])
+  value       = try(aws_autoscaling_group.this.availability_zones, aws_autoscaling_group.tracked.availability_zones, [])
 }
 
 output "autoscaling_group_vpc_zone_identifier" {
   description = "The VPC zone identifier (subnets) of the Auto Scaling Group"
-  value       = try(aws_autoscaling_group.this.vpc_zone_identifier, [])
+  value       = try(aws_autoscaling_group.this.vpc_zone_identifier, aws_autoscaling_group.tracked.vpc_zone_identifier, [])
 }
 
 output "autoscaling_group_health_check_type" {
   description = "The health check type of the Auto Scaling Group"
-  value       = try(aws_autoscaling_group.this.health_check_type, "")
+  value       = try(aws_autoscaling_group.this.health_check_type, aws_autoscaling_group.tracked.health_check_type, "")
 }
 
 ################################################################################

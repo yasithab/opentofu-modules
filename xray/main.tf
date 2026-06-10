@@ -1,6 +1,8 @@
 locals {
   enabled = var.enabled
 
+  create_encryption_config = local.enabled && var.create_encryption_config
+
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
   })
@@ -12,12 +14,12 @@ locals {
 ################################################################################
 
 resource "aws_xray_encryption_config" "this" {
-  type   = var.kms_key_id != null ? "KMS" : "NONE"
+  type   = "KMS"
   key_id = var.kms_key_id
   region = var.region
 
   lifecycle {
-    enabled = local.enabled && var.create_encryption_config
+    enabled = local.create_encryption_config
   }
 }
 
@@ -30,16 +32,16 @@ resource "aws_xray_sampling_rule" "this" {
 
   rule_name      = each.key
   priority       = each.value.priority
-  version        = try(each.value.version, 1)
+  version        = each.value.version
   reservoir_size = each.value.reservoir_size
   fixed_rate     = each.value.fixed_rate
-  url_path       = try(each.value.url_path, "*")
-  host           = try(each.value.host, "*")
-  http_method    = try(each.value.http_method, "*")
-  service_type   = try(each.value.service_type, "*")
-  service_name   = try(each.value.service_name, "*")
-  resource_arn   = try(each.value.resource_arn, "*")
-  attributes     = try(each.value.attributes, {})
+  url_path       = each.value.url_path
+  host           = each.value.host
+  http_method    = each.value.http_method
+  service_type   = each.value.service_type
+  service_name   = each.value.service_name
+  resource_arn   = each.value.resource_arn
+  attributes     = each.value.attributes
   region         = var.region
 
   tags = local.tags
@@ -57,11 +59,11 @@ resource "aws_xray_group" "this" {
   region            = var.region
 
   dynamic "insights_configuration" {
-    for_each = try(each.value.insights_configuration, null) != null ? [each.value.insights_configuration] : []
+    for_each = each.value.insights_configuration != null ? [each.value.insights_configuration] : []
 
     content {
-      insights_enabled      = try(insights_configuration.value.insights_enabled, true)
-      notifications_enabled = try(insights_configuration.value.notifications_enabled, true)
+      insights_enabled      = insights_configuration.value.insights_enabled
+      notifications_enabled = insights_configuration.value.notifications_enabled
     }
   }
 
@@ -77,7 +79,7 @@ resource "aws_xray_resource_policy" "this" {
 
   policy_name                 = each.key
   policy_document             = each.value.policy_document
-  bypass_policy_lockout_check = try(each.value.bypass_policy_lockout_check, false)
+  bypass_policy_lockout_check = each.value.bypass_policy_lockout_check
   region                      = var.region
 }
 

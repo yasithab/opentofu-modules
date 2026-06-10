@@ -1,12 +1,22 @@
-data "aws_region" "current" {}
-data "aws_partition" "current" {}
-data "aws_caller_identity" "current" {}
+data "aws_region" "current" {
+  count = local.enabled ? 1 : 0
+}
+
+data "aws_partition" "current" {
+  count = local.enabled ? 1 : 0
+}
+
+data "aws_caller_identity" "current" {
+  count = local.enabled ? 1 : 0
+}
 
 locals {
-  account_id = data.aws_caller_identity.current.account_id
-  dns_suffix = data.aws_partition.current.dns_suffix
-  partition  = data.aws_partition.current.partition
-  region     = data.aws_region.current.region
+  enabled = var.enabled
+
+  account_id = try(data.aws_caller_identity.current[0].account_id, "")
+  dns_suffix = try(data.aws_partition.current[0].dns_suffix, "")
+  partition  = try(data.aws_partition.current[0].partition, "")
+  region     = try(data.aws_region.current[0].region, "")
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -18,7 +28,7 @@ locals {
 ################################################################################
 
 locals {
-  create_iam_role        = var.enabled && var.create_iam_role
+  create_iam_role        = local.enabled && var.create_iam_role
   irsa_oidc_provider_url = replace(var.irsa_oidc_provider_arn, "/^(.*provider/)/", "")
 }
 
@@ -148,7 +158,7 @@ resource "aws_eks_pod_identity_association" "karpenter" {
 ################################################################################
 
 locals {
-  enable_spot_termination = var.enabled && var.enable_spot_termination
+  enable_spot_termination = local.enabled && var.enable_spot_termination
 
   queue_name = coalesce(var.queue_name, "Karpenter-${var.cluster_name}")
 }
@@ -290,7 +300,7 @@ resource "aws_cloudwatch_event_target" "this" {
 ################################################################################
 
 locals {
-  create_node_iam_role = var.enabled && var.create_node_iam_role
+  create_node_iam_role = local.enabled && var.create_node_iam_role
 
   node_iam_role_name          = coalesce(var.node_iam_role_name, "Karpenter-${var.cluster_name}")
   node_iam_role_policy_prefix = "arn:${local.partition}:iam::aws:policy"
@@ -299,7 +309,7 @@ locals {
     AmazonEKS_CNI_Policy = "${local.node_iam_role_policy_prefix}/AmazonEKS_CNI_Policy"
   } : k => v if var.node_iam_role_attach_cni_policy && var.cluster_ip_family == "ipv4" }
   ipv6_cni_policy = { for k, v in {
-    AmazonEKS_CNI_IPv6_Policy = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:policy/AmazonEKS_CNI_IPv6_Policy"
+    AmazonEKS_CNI_IPv6_Policy = "arn:${local.partition}:iam::${local.account_id}:policy/AmazonEKS_CNI_IPv6_Policy"
   } : k => v if var.node_iam_role_attach_cni_policy && var.cluster_ip_family == "ipv6" }
 }
 
@@ -374,7 +384,7 @@ resource "aws_eks_access_entry" "node" {
   ]
 
   lifecycle {
-    enabled = var.enabled && var.create_access_entry
+    enabled = local.enabled && var.create_access_entry
   }
 }
 
@@ -398,6 +408,6 @@ resource "aws_iam_instance_profile" "this" {
   tags = merge(local.tags, var.node_iam_role_tags)
 
   lifecycle {
-    enabled = var.enabled && var.create_instance_profile
+    enabled = local.enabled && var.create_instance_profile
   }
 }

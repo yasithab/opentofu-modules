@@ -47,19 +47,29 @@ variable "output_format" {
 }
 
 variable "exclude_filter" {
-  description = "Map of exclusive metric filters. Each key is the namespace (e.g. AWS/EC2), and the value is a map with an optional `metric_names` list. Conflicts with `include_filter`."
-  type        = any
-  default     = {}
+  description = "Map of exclusive metric filters. Each key is the namespace (e.g. AWS/EC2), and the value is an object with an optional `metric_names` list. Conflicts with `include_filter`."
+  type = map(object({
+    metric_names = optional(list(string), [])
+  }))
+  default = {}
 }
 
 variable "include_filter" {
-  description = "Map of inclusive metric filters. Each key is the namespace (e.g. AWS/EC2), and the value is a map with an optional `metric_names` list. Conflicts with `exclude_filter`."
-  type        = any
-  default     = {}
+  description = "Map of inclusive metric filters. Each key is the namespace (e.g. AWS/EC2), and the value is an object with an optional `metric_names` list. Conflicts with `exclude_filter`."
+  type = map(object({
+    metric_names = optional(list(string), [])
+  }))
+  default = {}
 }
 
 variable "statistics_configuration" {
-  description = "List of statistics configurations for additional statistics to stream. Each element is a map with `additional_statistics` (list) and `include_metric` (list of maps with `metric_name` and `namespace`)."
-  type        = any
-  default     = []
+  description = "List of statistics configurations for additional statistics to stream. Each element is an object with `additional_statistics` (list) and `include_metric` (list of objects with `metric_name` and `namespace`)."
+  type = list(object({
+    additional_statistics = list(string)
+    include_metric = list(object({
+      metric_name = string
+      namespace   = string
+    }))
+  }))
+  default = []
 }

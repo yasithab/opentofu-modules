@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Set to false to disable all resources in this module."
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -11,7 +11,7 @@ variable "name" {
 }
 
 variable "tags" {
-  description = "Map of tags to apply to all taggable resources."
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -42,17 +42,40 @@ variable "recording_group" {
     global_resource_collector_region when set), exclusion_by_resource_types,
     and recording_strategy sub-objects.
   EOT
-  type        = any
-  default     = {}
+  type = object({
+    all_supported                 = optional(bool, true)
+    include_global_resource_types = optional(bool, false)
+    exclusion_by_resource_types = optional(object({
+      resource_types = list(string)
+    }))
+    recording_strategy = optional(object({
+      use_only = string
+    }))
+  })
+  default = {}
 }
 
 variable "recording_mode" {
   description = <<-EOT
     Recording mode configuration. Set recording_frequency to CONTINUOUS or DAILY.
     Optionally supply recording_mode_override list for per-resource-type overrides.
+    Set to null (the default) to use the AWS default (CONTINUOUS) without managing
+    a recording_mode block.
   EOT
-  type        = any
-  default     = {}
+  type = object({
+    recording_frequency = optional(string, "CONTINUOUS")
+    recording_mode_override = optional(list(object({
+      description         = optional(string)
+      recording_frequency = string
+      resource_types      = list(string)
+    })), [])
+  })
+  default = null
+
+  validation {
+    condition     = var.recording_mode == null || contains(["CONTINUOUS", "DAILY"], try(var.recording_mode.recording_frequency, "CONTINUOUS"))
+    error_message = "recording_mode.recording_frequency must be CONTINUOUS or DAILY."
+  }
 }
 
 # -- Delivery Channel ---------------------------------------------------------

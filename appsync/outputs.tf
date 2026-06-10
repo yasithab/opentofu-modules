@@ -105,3 +105,17 @@ output "logging_role_arn" {
   description = "The ARN of the AppSync logging IAM role."
   value       = try(aws_iam_role.logging.arn, "")
 }
+
+################################################################################
+# CloudWatch Log Group
+################################################################################
+
+output "log_group_name" {
+  description = "The name of the managed CloudWatch log group for AppSync API logs."
+  value       = try(aws_cloudwatch_log_group.this.name, "")
+}
+
+output "log_group_arn" {
+  description = "The ARN of the managed CloudWatch log group for AppSync API logs."
+  value       = try(aws_cloudwatch_log_group.this.arn, "")
+}

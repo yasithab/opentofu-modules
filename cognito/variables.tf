@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls if Cognito resources should be created."
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -61,6 +61,17 @@ variable "username_attributes" {
   default     = []
 }
 
+variable "advanced_security_mode" {
+  description = "Advanced security mode for the User Pool: 'OFF', 'AUDIT', or 'ENFORCED'. AUDIT logs risk events; ENFORCED additionally blocks/challenges risky sign-ins. Note: AUDIT and ENFORCED enable Cognito advanced security features, which incur additional cost per monthly active user."
+  type        = string
+  default     = "AUDIT"
+
+  validation {
+    condition     = contains(["OFF", "AUDIT", "ENFORCED"], var.advanced_security_mode)
+    error_message = "advanced_security_mode must be OFF, AUDIT, or ENFORCED."
+  }
+}
+
 variable "account_recovery" {
   description = "Account recovery mechanism."
   type        = string
@@ -99,13 +110,16 @@ variable "custom_domain_certificate_arn" {
 ################################################################################
 
 variable "clients" {
-  description = "Map of OAuth/OIDC client applications to create. Each client gets its own client ID and secret."
+  description = "Map of OAuth/OIDC client applications to create. Each client gets its own client ID and secret. `supported_identity_providers` defaults to COGNITO plus every provider in `identity_providers` when not set."
   type = map(object({
-    callback_urls        = list(string)
-    logout_urls          = optional(list(string), [])
-    generate_secret      = optional(bool, true)
-    allowed_oauth_flows  = optional(list(string), ["code"])
-    allowed_oauth_scopes = optional(list(string), ["openid", "email", "profile"])
+    callback_urls                        = list(string)
+    logout_urls                          = optional(list(string), [])
+    generate_secret                      = optional(bool, true)
+    allowed_oauth_flows                  = optional(list(string), ["code"])
+    allowed_oauth_scopes                 = optional(list(string), ["openid", "email", "profile"])
+    allowed_oauth_flows_user_pool_client = optional(bool, true)
+    explicit_auth_flows                  = optional(list(string), ["ALLOW_REFRESH_TOKEN_AUTH", "ALLOW_USER_SRP_AUTH"])
+    supported_identity_providers         = optional(list(string))
     token_validity = optional(object({
       access_token_hours = optional(number, 1)
       id_token_hours     = optional(number, 1)
@@ -120,7 +134,8 @@ variable "clients" {
 ################################################################################
 
 variable "identity_providers" {
-  description = "Map of external identity providers to federate with. Supports Google, Facebook, Amazon, Apple, SAML, and OIDC."
+  description = "Map of external identity providers to federate with. Supports Google, Facebook, Amazon, Apple, SAML, and OIDC. Marked sensitive because `provider_details` carries IdP client secrets - these values are also stored in the OpenTofu state."
+  sensitive   = true
   type = map(object({
     provider_type    = string # Google, Facebook, LoginWithAmazon, SignInWithApple, SAML, OIDC
     provider_details = map(string)
@@ -132,3 +147,43 @@ variable "identity_providers" {
   default = {}
 }
 
+################################################################################
+# Resource Servers (custom OAuth scopes)
+################################################################################
+
+variable "resource_servers" {
+  description = "Map of resource servers defining custom OAuth scopes (e.g., for machine-to-machine APIs). `name` defaults to the map key. Clients reference scopes as <identifier>/<scope_name> in allowed_oauth_scopes."
+  type = map(object({
+    name       = optional(string)
+    identifier = string
+    scopes = optional(list(object({
+      scope_name        = string
+      scope_description = string
+    })), [])
+  }))
+  default = {}
+
+  validation {
+    condition     = alltrue([for v in values(var.resource_servers) : length(v.scopes) <= 100])
+    error_message = "Each resource server supports at most 100 scopes."
+  }
+}
+
+################################################################################
+# User Groups
+################################################################################
+
+variable "user_groups" {
+  description = "Map of user groups to create in the User Pool. Each key is the group name. Lower `precedence` values take priority when a user belongs to multiple groups; `role_arn` sets the IAM role claimed in the cognito:preferred_role token claim."
+  type = map(object({
+    description = optional(string)
+    precedence  = optional(number)
+    role_arn    = optional(string)
+  }))
+  default = {}
+
+  validation {
+    condition     = alltrue([for v in values(var.user_groups) : v.role_arn == null || can(regex("^arn:", coalesce(v.role_arn, "_")))])
+    error_message = "user_groups role_arn must be a valid IAM role ARN starting with 'arn:'."
+  }
+}

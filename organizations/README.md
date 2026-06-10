@@ -223,3 +223,26 @@ module "organizations" {
   }
 }
 ```
+
+## Notes
+
+### `close_on_deletion` defaults to `false` (safety)
+
+Removing an account from `accounts` only detaches it from OpenTofu management/the
+organization; the AWS account itself is not closed. Set `close_on_deletion = true` per
+account if closing on removal is genuinely intended.
+
+### Unresolved `parent_key` / `target_key` fail the plan
+
+- An account `parent_key` must match an `organizational_units` key; otherwise the plan fails
+  with a precondition error.
+- A child OU `parent_key` must reference a root-level OU; otherwise the plan fails with a
+  precondition error.
+- A policy `target_keys` entry must match `__root__`, an OU key, or an account key.
+- Accounts and policy attachments can target child OUs by key.
+
+### Two-level OU limit
+
+The module supports exactly two OU levels: root-level OUs (`parent_key = null`) and child OUs
+whose `parent_key` references a root-level OU. Deeper nesting (a child OU under another child
+OU) is not supported and fails validation.

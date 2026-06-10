@@ -44,9 +44,9 @@ variable "shard_level_metrics" {
 }
 
 variable "enforce_consumer_deletion" {
-  description = "A boolean that indicates all registered consumers should be deregistered from the stream so that the stream can be destroyed without error."
+  description = "A boolean that indicates all registered consumers should be deregistered from the stream so that the stream can be destroyed without error. Defaults to `false` so streams with registered consumers are not destroyed accidentally."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "encryption_type" {
@@ -77,4 +77,15 @@ variable "max_record_size_in_kib" {
   description = "The maximum size of a data payload that can be written to the stream in KiB. Defaults to 1024 KiB. Valid values between 1024 and 10240."
   type        = number
   default     = null
+}
+
+variable "resource_policy" {
+  description = "IAM resource policy (JSON) to attach to the Kinesis stream, e.g. for cross-account read/write access. Set to `null` (default) to skip creating a resource policy."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.resource_policy == null || can(jsondecode(var.resource_policy))
+    error_message = "resource_policy must be a valid JSON policy document."
+  }
 }

@@ -1,6 +1,6 @@
 # OpenTofu Modules
 
-A collection of 128+ reusable [OpenTofu](https://opentofu.org/) modules for AWS infrastructure, targeting AWS provider >= 6.34.
+A collection of 128+ reusable [OpenTofu](https://opentofu.org/) modules for AWS infrastructure, targeting AWS provider >= 6.49, < 7.0.
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@ This repository provides reusable OpenTofu modules that follow industry best pra
 | Tool | Minimum version |
 |------|----------------|
 | [OpenTofu](https://opentofu.org/docs/intro/install/) | >= 1.11.0 |
-| [AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest) | >= 6.34 |
+| [AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest) | >= 6.49, < 7.0 |
 | [Task](https://taskfile.dev/installation/) | >= 3.0 |
 | [tflint](https://github.com/terraform-linters/tflint#installation) | latest |
 | [Go](https://go.dev/doc/install) | >= 1.22 |
@@ -57,52 +57,93 @@ Some modules contain additional files for organisational clarity (e.g. `iam.tf` 
 
 | Module | Description |
 |--------|-------------|
-| `acm/certificate-manager` | ACM certificate with DNS validation |
-| `amp` | Amazon Managed Prometheus workspace + scraper |
-| `api-gateway` | API Gateway REST API with CloudWatch logging |
+| `acm` | ACM certificate with DNS/email validation (`certificate-manager` submodule) |
+| `amp` | Amazon Managed Prometheus workspace, alert manager, and rule groups |
+| `api-gateway` | API Gateway REST API with CloudWatch logging and Private Link |
+| `app-runner` | App Runner service with IAM roles, VPC networking, and custom domains |
+| `appconfig` | AppConfig applications, environments, and configuration profiles |
+| `appsync` | AppSync GraphQL API with data sources and resolvers |
+| `athena` | Athena workgroups, named queries, data catalogs, and databases |
+| `autoscaling` | Auto Scaling Group with launch templates and scaling policies |
+| `aws-config` | AWS Config recorder, rules, and delivery channel (+ `conformance-pack` submodule) |
+| `aws-flow-logs` | Flow logs for VPC/subnet/ENI/TGW/NAT to CloudWatch, S3, or Firehose |
 | `backup` | AWS Backup plan, vault, and IAM role |
+| `bastion` | Bastion host (SSM and public SSH modes) |
+| `batch` | AWS Batch compute environments, job queues, and job definitions |
+| `cdk-bootstrap` | CDK bootstrap resources provisioned natively in OpenTofu |
 | `chatbot-slack` | AWS Chatbot Slack and Teams channel configurations |
-| `cloudfront` | CloudFront distribution |
+| `cloudformation-stackset` | CloudFormation StackSets and stack instances |
+| `cloudfront` | CloudFront distributions, policies, functions, and signing keys |
+| `cloudmap` | Cloud Map namespaces and service discovery services |
+| `cloudwatch` | CloudWatch log groups (+ alarm, dashboard, metric, synthetics submodules) |
+| `codebuild-runners` | CodeBuild projects as GitHub Actions self-hosted runners |
 | `codeconnections` | CodeConnections + host |
-| `dynamodb` | DynamoDB table with resource policy |
-| `ec2` | EC2 instance |
-| `ecr` | ECR repository |
-| `ecs/cluster` | ECS cluster |
-| `ecs/service` | ECS service + task definition |
-| `efs` | EFS file system |
-| `eks` | EKS cluster |
-| `elasticache` | ElastiCache replication group |
-| `elb` | Application / Network load balancer |
-| `eventbridge` | EventBridge rule and target |
-| `github/oidc` | GitHub OIDC identity provider |
-| `glue` | Glue job and crawler |
-| `iam-identity-center` | IAM Identity Center permission sets + trusted token issuer |
+| `cognito` | Cognito user pool for OIDC/OAuth2 authentication |
+| `cost-usage-report` | Cost and Usage Report definitions with S3 delivery |
+| `dms` | DMS replication instances, endpoints, and tasks |
+| `documentdb` | DocumentDB cluster with encryption and log exports |
+| `dynamodb` | DynamoDB table with autoscaling, global tables, and PITR |
+| `ec2` | EC2 instance with spot, IAM instance profile, and EIP support |
+| `ecr` | ECR repository (private and public) |
+| `ecs` | ECS (`cluster`, `service`, `container-definition` submodules) |
+| `efs` | EFS file system with mount targets and access points |
+| `eks` | EKS cluster (+ `karpenter`, node-group, fargate-profile submodules) |
+| `eks-pod-identity` | EKS Pod Identity associations with dedicated IAM roles |
+| `elasticache` | ElastiCache replication group (+ `serverless-cache`, `user-group` submodules) |
+| `emr-serverless` | EMR Serverless applications for Spark and Hive |
+| `eventbridge` | EventBridge buses, rules, targets, schedules, and pipes |
+| `fck-nat` | Cost-effective NAT instance using the fck-nat AMI |
+| `firewall-manager` | Firewall Manager WAFv2 policies across an Organization |
+| `fsx` | FSx file systems (Lustre, ONTAP, OpenZFS, Windows) |
+| `github` | GitHub integration (`oidc` provider, `actions` IAM roles submodules) |
+| `global-accelerator` | Global Accelerator with listeners and endpoint groups |
+| `guardduty` | GuardDuty threat detection and finding exports |
+| `headscale` | Self-hosted Headscale server on EC2 (+ `subnet-router` submodule) |
+| `iam` | IAM building blocks (`group`, `policy`, `role`, `user` submodules) |
+| `iam-identity-center` | IAM Identity Center users, groups, permission sets, and assignments |
+| `inspector` | Amazon Inspector vulnerability scanning |
+| `key-pair` | EC2 key pair with optional TLS private key generation |
 | `kinesis-firehose` | Kinesis Firehose delivery stream (incl. Iceberg destination) |
-| `kinesis-stream` | Kinesis data stream |
-| `kms` | KMS key (+ external / replica variants) |
-| `lambda` | Lambda function |
-| `mq` | Amazon MQ broker |
-| `opensearch` | OpenSearch domain |
+| `kinesis-stream` | Kinesis data stream with consumers and KMS encryption |
+| `kms` | KMS key (standard, external, replica, multi-region) (+ `wrappers`) |
+| `lake-formation` | Lake Formation settings, registration, and permissions |
+| `lambda` | Lambda function and layers (+ alias, deploy, docker-build submodules and `wrappers`) |
+| `loadbalancer` | ALB / NLB / GWLB with listeners and target groups |
+| `macie` | Macie sensitive data discovery and classification jobs |
+| `managed-grafana` | Amazon Managed Grafana workspace |
+| `managed-prefix-list` | EC2 managed prefix list with optional RAM sharing |
+| `memorydb` | MemoryDB cluster with ACLs and snapshots |
+| `mq` | Amazon MQ broker (RabbitMQ and ActiveMQ) |
+| `msk` | MSK provisioned and serverless clusters |
+| `neptune` | Neptune graph database cluster |
+| `opensearch` | OpenSearch domain with VPC and fine-grained access control |
+| `organizations` | AWS Organizations, OUs, accounts, and delegated admins |
+| `ram` | RAM resource shares |
+| `rds` | RDS instance with replicas, parameter and option groups |
 | `rds-aurora` | Aurora cluster with write-only password |
-| `rds-instance` | RDS instance |
+| `rds-proxy` | RDS Proxy connection pooling |
 | `redshift` | Redshift cluster |
 | `redshift-serverless` | Redshift Serverless namespace + workgroup |
-| `route53` | Route53 hosted zone and records |
-| `resolver-endpoints` | Route53 Resolver inbound/outbound endpoints |
+| `route53` | Route 53 (`zone`, `records`, `delegation-sets`, `resolver-endpoints`, `resolver-rule-associations` submodules) |
 | `s3` | S3 bucket with notifications, object lock, and lifecycle |
+| `s3-object` | S3 object upload/copy with encryption and object lock |
+| `secret-manager` | Secrets Manager secret with rotation and replication (+ `wrappers`) |
 | `security-group` | Security group using ingress/egress rule resources |
-| `ses` | SES email identity and configuration set |
+| `security-hub` | Security Hub standards and multi-region aggregation |
+| `service-control-policy` | Organizations SCPs with pre-built guardrails |
 | `sns` | SNS topic |
 | `sqs` | SQS queue with redrive allow policy |
-| `ssm` | SSM Parameter Store parameter |
+| `ssm` | Bulk SSM Parameter Store read/write |
+| `ssm-parameter-store` | Single SSM parameter with write-only secret support |
 | `step-functions` | Step Functions state machine |
-| `transit-gateway` | Transit Gateway and attachments |
-| `transit-gateway/route-table` | Transit Gateway route table |
-| `vpc` | VPC with subnets, NAT gateway, and flow logs |
-| `vpc-endpoints` | VPC interface and gateway endpoints |
+| `tag-policy` | Organizations tag policies |
+| `timestream` | Timestream databases and tables |
+| `transfer-family` | Transfer Family servers (SFTP, FTPS, FTP, AS2) |
+| `transit-gateway` | Transit Gateway (+ `route-table`, `vpc-attachments` submodules) |
+| `vpc` | VPC with subnets, NAT gateway, and flow logs (+ `vpc-endpoints`, `vpc-peering` submodules) |
 | `vpn-site-to-site` | Site-to-site VPN with Secrets Manager preshared keys |
-| `waf` | WAFv2 web ACL |
-| *(and more…)* | |
+| `waf` | WAFv2 web ACL (regional and CloudFront) |
+| `xray` | X-Ray sampling rules, trace groups, and encryption |
 
 ## How to Use
 
@@ -111,7 +152,7 @@ Reference a module by selecting a specific tag with a shallow clone - **never po
 ```hcl
 # select a specific tag and do shallow clone
 module "vpc" {
-  source = "git::https://github.com/yasithab/opentofu-modules.git//vpc?depth=1&ref=master"
+  source = "git::https://github.com/yasithab/opentofu-modules.git//vpc?depth=1&ref=v2.0.0"
 
   name    = "my-vpc"
   enabled = true
@@ -135,6 +176,7 @@ task --list
 |------|-------------|
 | `task format` | Format all OpenTofu code recursively |
 | `task validate` | Run `tofu validate` in every module (backend-less) |
+| `task lockfiles` | (Re)generate `.terraform.lock.hcl` in every module |
 | `task lint` | Run tflint across all modules |
 | `task test` | Run Terratest validate on all modules (no AWS creds needed) |
 | `task test-plan` | Run Terratest plan on all modules (requires AWS credentials) |
@@ -185,11 +227,11 @@ task security
 
 Runs on every pull request:
 
-1. Format (`task format`) - auto-commits any formatting changes
+1. Format check (`tofu fmt -check -recursive`) - fails on formatting drift (run `task format` locally to fix)
 2. Validate all modules (`task validate`)
 3. Lint with tflint (`task lint`)
 4. Terratest validate - Go-based syntax/type validation
-5. Terratest plan - validates all modules against real AWS APIs via OIDC (read-only, no resources created)
+5. Terratest plan - validates changed modules against real AWS APIs via OIDC (read-only, no resources created)
 6. Trivy security scan (fails on CRITICAL/HIGH)
 
 ### Release Workflow (`.github/workflows/release.yml`)

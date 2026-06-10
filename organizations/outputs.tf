@@ -12,11 +12,6 @@ output "organization_id" {
   value       = try(aws_organizations_organization.this.id, "")
 }
 
-output "organization_name" {
-  description = "Name identifier for the organization module instance."
-  value       = var.name
-}
-
 output "master_account_arn" {
   description = "ARN of the master (management) account."
   value       = try(aws_organizations_organization.this.master_account_arn, "")

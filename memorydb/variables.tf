@@ -54,6 +54,11 @@ variable "engine" {
   description = "The name of the engine to be used for the cluster. Valid values are redis and valkey."
   type        = string
   default     = "redis"
+
+  validation {
+    condition     = contains(["redis", "valkey"], var.engine)
+    error_message = "engine must be 'redis' or 'valkey'."
+  }
 }
 
 variable "engine_version" {
@@ -204,7 +209,14 @@ variable "acl_name" {
 }
 
 variable "users" {
-  description = "Map of MemoryDB user configurations to create. Each user must have user_name, access_string, and authentication_mode."
+  description = "Map of MemoryDB user configurations to create. Each user must have user_name, access_string, and authentication_mode. Prefer authentication_mode type `iam` over `password` so no credentials are stored in state."
   type        = any
   default     = {}
+  sensitive   = true
+}
+
+variable "include_default_user" {
+  description = "Whether to include the open-access `default` user in the created ACL. Disabled by default for security - the default user has no password and full access."
+  type        = bool
+  default     = false
 }

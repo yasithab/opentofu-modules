@@ -1,6 +1,6 @@
 locals {
-  firehose_role_arn           = var.enabled && var.create_role ? aws_iam_role.firehose.arn : var.firehose_role
-  cw_log_group_name           = "/aws/kinesisfirehose/${var.name}"
+  firehose_role_arn           = local.enabled && var.create_role ? aws_iam_role.firehose.arn : var.firehose_role
+  cw_log_group_name           = "/aws/kinesisfirehose/${local.name}"
   cw_log_delivery_stream_name = "DestinationDelivery"
   cw_log_backup_stream_name   = "BackupDelivery"
   is_kinesis_source           = var.input_source == "kinesis" ? true : false
@@ -195,8 +195,8 @@ locals {
   destination_cw_log_stream_name = var.create_destination_cw_log_group ? local.cw_log_delivery_stream_name : var.destination_log_stream_name
 
   # Cloudwatch
-  create_destination_logs = var.enabled && var.enable_destination_log && var.create_destination_cw_log_group
-  create_backup_logs      = var.enabled && var.enable_s3_backup && var.s3_backup_enable_log && var.s3_backup_create_cw_log_group
+  create_destination_logs = local.enabled && var.enable_destination_log && var.create_destination_cw_log_group
+  create_backup_logs      = local.enabled && var.enable_s3_backup && var.s3_backup_enable_log && var.s3_backup_create_cw_log_group
 
   # VPC Config
   vpc_role_arn = (var.enable_vpc ? (
@@ -255,7 +255,7 @@ locals {
 
   # New Relic
   newrelic_endpoint_url = {
-    logs_us : "https://aws-api.newrelic.om/firehose/v1"
+    logs_us : "https://aws-api.newrelic.com/firehose/v1"
     logs_eu : "https://aws-api.eu.newrelic.com/firehose/v1"
     metrics_us : "https://aws-api.newrelic.com/cloudwatch-metrics/v1"
     metrics_eu : "https://aws-api.eu01.nr-data.net/cloudwatch-metrics/v1"

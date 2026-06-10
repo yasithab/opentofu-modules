@@ -14,7 +14,7 @@ variable "tags" {
 # Metric Alarm
 ################################################################################
 
-variable "alarm_name" {
+variable "name" {
   description = "The descriptive name for the alarm."
   type        = string
 }
@@ -52,6 +52,11 @@ variable "threshold" {
   description = "The value against which the specified statistic is compared. Required if metric_query is not provided."
   type        = number
   default     = null
+
+  validation {
+    condition     = (var.threshold != null) != (var.threshold_metric_id != null)
+    error_message = "Exactly one of threshold or threshold_metric_id must be set."
+  }
 }
 
 variable "threshold_metric_id" {
@@ -92,6 +97,11 @@ variable "statistic" {
   validation {
     condition     = var.statistic == null || contains(["SampleCount", "Average", "Sum", "Minimum", "Maximum"], var.statistic)
     error_message = "statistic must be one of: SampleCount, Average, Sum, Minimum, Maximum."
+  }
+
+  validation {
+    condition     = !(var.statistic != null && var.extended_statistic != null)
+    error_message = "statistic and extended_statistic cannot both be set."
   }
 }
 
@@ -161,6 +171,21 @@ variable "evaluate_low_sample_count_percentiles" {
 
 variable "metric_query" {
   description = "Enables you to create an alarm based on a metric math expression. A list of metric query objects."
-  type        = any
-  default     = []
+  type = list(object({
+    id          = string
+    account_id  = optional(string)
+    expression  = optional(string)
+    label       = optional(string)
+    return_data = optional(bool)
+    period      = optional(number)
+    metric = optional(object({
+      metric_name = string
+      namespace   = string
+      period      = number
+      stat        = string
+      unit        = optional(string)
+      dimensions  = optional(map(string))
+    }))
+  }))
+  default = []
 }

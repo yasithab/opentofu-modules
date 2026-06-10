@@ -107,3 +107,22 @@ output "event_role_arn" {
   description = "The ARN of the IAM role created for EventBridge"
   value       = try(aws_iam_role.events.arn, "")
 }
+
+output "state_machine_version_arn" {
+  description = "The ARN of the state machine version published during creation/update (when publish = true)"
+  value       = try(aws_sfn_state_machine.this.state_machine_version_arn, "")
+}
+
+################################################################################
+# Aliases
+################################################################################
+
+output "alias_arns" {
+  description = "Map of alias names to their ARNs"
+  value       = { for k, v in aws_sfn_alias.this : k => v.arn }
+}
+
+output "alias_creation_dates" {
+  description = "Map of alias names to their creation dates"
+  value       = { for k, v in aws_sfn_alias.this : k => v.creation_date }
+}

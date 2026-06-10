@@ -1,5 +1,6 @@
 locals {
   enabled = var.enabled
+  name    = var.name
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -10,7 +11,7 @@ resource "aws_elasticache_serverless_cache" "this" {
   region = var.region
 
   engine = var.engine
-  name   = var.cache_name
+  name   = local.name
 
   dynamic "cache_usage_limits" {
     for_each = length(var.cache_usage_limits) > 0 ? [var.cache_usage_limits] : []

@@ -14,22 +14,22 @@ resource "aws_route53_resolver_rule" "default" {
   for_each = { for k, v in var.resolver_rules : k => v if local.enabled }
 
   domain_name          = each.value.domain_name
-  name                 = try(each.value.name, null)
+  name                 = each.value.name
   rule_type            = each.value.rule_type
-  resolver_endpoint_id = try(each.value.resolver_endpoint_id, null)
+  resolver_endpoint_id = each.value.resolver_endpoint_id
 
   dynamic "target_ip" {
-    for_each = try(each.value.target_ips, [])
+    for_each = each.value.target_ips
 
     content {
-      ip       = try(target_ip.value.ip, null)
-      ipv6     = try(target_ip.value.ipv6, null)
-      port     = try(target_ip.value.port, 53)
-      protocol = try(target_ip.value.protocol, "Do53")
+      ip       = target_ip.value.ip
+      ipv6     = target_ip.value.ipv6
+      port     = target_ip.value.port
+      protocol = target_ip.value.protocol
     }
   }
 
-  tags = merge(local.tags, { Name = try(each.value.name, each.key) })
+  tags = merge(local.tags, { Name = coalesce(each.value.name, each.key) })
 }
 
 ################################################################################
@@ -39,7 +39,7 @@ resource "aws_route53_resolver_rule" "default" {
 resource "aws_route53_resolver_rule_association" "default" {
   for_each = { for k, v in var.resolver_rule_associations : k => v if local.enabled }
 
-  name             = try(each.value.name, null)
-  vpc_id           = try(each.value.vpc_id, var.vpc_id)
-  resolver_rule_id = try(each.value.resolver_rule_id, aws_route53_resolver_rule.default[each.key].id)
+  name             = each.value.name
+  vpc_id           = coalesce(each.value.vpc_id, var.vpc_id)
+  resolver_rule_id = each.value.resolver_rule_id != null ? each.value.resolver_rule_id : aws_route53_resolver_rule.default[each.key].id
 }

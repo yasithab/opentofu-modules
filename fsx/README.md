@@ -5,13 +5,16 @@ OpenTofu module for provisioning and managing Amazon FSx file systems with suppo
 ## Features
 
 - **FSx for Lustre** - High-performance scratch and persistent file systems with S3 data repository integration
-- **FSx for NetApp ONTAP** - Multi-protocol file storage with Storage Virtual Machines and volumes
+- **FSx for NetApp ONTAP** - Multi-protocol file storage with multiple Storage Virtual Machines (`ontap_svms`) and volumes per file system
 - **FSx for OpenZFS** - Fully managed ZFS file system with snapshots, compression, and NFS exports
 - **FSx for Windows File Server** - Fully managed Windows-native file storage with Active Directory integration
 - **Security Group Management** - Optional creation of a dedicated security group with configurable ingress and egress rules
 - **KMS Encryption** - Server-side encryption at rest using AWS KMS (customer-managed or AWS-managed keys)
 - **Backup Configuration** - Automatic daily backups with configurable retention and maintenance windows
 - **Data Repository Associations** - Lustre-to-S3 bidirectional data synchronisation with auto-import and auto-export policies
+- **OpenZFS Snapshots** - Optional point-in-time snapshots of the root volume or any module-managed OpenZFS volume (`openzfs_snapshots`)
+
+ONTAP volumes reference their parent SVM via `svm_key`, which must match a key of the `ontap_svms` map.
 
 ## Usage
 
@@ -120,9 +123,9 @@ module "fsx_lustre_persistent" {
 }
 ```
 
-## ONTAP Multi-Protocol
+## ONTAP Multi-Protocol with Multiple SVMs
 
-An ONTAP file system with an SVM and volumes supporting both NFS and SMB access patterns.
+An ONTAP file system hosting multiple SVMs, each with its own volumes, supporting both NFS and SMB access patterns.
 
 ```hcl
 module "fsx_ontap" {
@@ -142,14 +145,21 @@ module "fsx_ontap" {
 
   kms_key_id = "arn:aws:kms:ap-southeast-1:123456789012:key/mrk-abc123"
 
-  ontap_svm = {
-    name                       = "svm01"
-    root_volume_security_style = "MIXED"
+  ontap_svms = {
+    apps = {
+      name                       = "svm01"
+      root_volume_security_style = "MIXED"
+    }
+    analytics = {
+      # name defaults to the map key ("analytics")
+      root_volume_security_style = "UNIX"
+    }
   }
 
   ontap_volumes = {
     data = {
       name              = "data_vol"
+      svm_key           = "apps"
       junction_path     = "/data"
       size_in_megabytes = 204800
       security_style    = "MIXED"
@@ -160,6 +170,7 @@ module "fsx_ontap" {
     }
     logs = {
       name              = "logs_vol"
+      svm_key           = "analytics"
       junction_path     = "/logs"
       size_in_megabytes = 51200
       security_style    = "UNIX"
@@ -255,6 +266,15 @@ module "fsx_openzfs" {
           }
         ]
       }
+    }
+  }
+
+  openzfs_snapshots = {
+    databases-baseline = {
+      volume_key = "databases" # snapshot of the "databases" volume
+    }
+    root-baseline = {
+      name = "app-storage-root" # volume_key omitted: snapshots the root volume
     }
   }
 

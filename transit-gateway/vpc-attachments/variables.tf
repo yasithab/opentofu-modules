@@ -22,9 +22,9 @@ variable "tags" {
 
 
 variable "vpc_attachments" {
-  description = "Map of VPC attachment configurations. Each entry requires tgw_id, vpc_id, and subnet_ids."
+  description = "Map of VPC attachment configurations. Each entry requires transit_gateway_id, vpc_id, and subnet_ids."
   type = map(object({
-    tgw_id                                          = string
+    transit_gateway_id                              = string
     vpc_id                                          = string
     subnet_ids                                      = list(string)
     dns_support                                     = optional(bool, true)

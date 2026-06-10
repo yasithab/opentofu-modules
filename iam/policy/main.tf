@@ -3,8 +3,9 @@ locals {
   tags    = merge(var.tags, { ManagedBy = "opentofu" })
 
   # Use the explicit policy JSON if provided; otherwise merge policy_documents
+  # (exactly one of the two is enforced by validation on var.policy)
   use_policy_documents = var.policy == null && length(var.policy_documents) > 0
-  policy_json          = local.use_policy_documents ? try(data.aws_iam_policy_document.merged[0].json, "") : var.policy
+  policy_json          = local.use_policy_documents ? try(data.aws_iam_policy_document.merged[0].json, null) : var.policy
 }
 
 data "aws_iam_policy_document" "merged" {

@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Whether to create the AppSync resources."
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -137,8 +137,26 @@ variable "lambda_authorizer_config" {
 
 variable "additional_authentication_providers" {
   description = "List of additional authentication provider configurations."
-  type        = any
-  default     = []
+  type = list(object({
+    authentication_type = string
+    user_pool_config = optional(object({
+      user_pool_id        = string
+      app_id_client_regex = optional(string)
+      aws_region          = optional(string)
+    }))
+    openid_connect_config = optional(object({
+      issuer    = string
+      auth_ttl  = optional(number)
+      client_id = optional(string)
+      iat_ttl   = optional(number)
+    }))
+    lambda_authorizer_config = optional(object({
+      authorizer_uri                   = string
+      authorizer_result_ttl_in_seconds = optional(number, 300)
+      identity_validation_expression   = optional(string)
+    }))
+  }))
+  default = []
 }
 
 ################################################################################
@@ -147,8 +165,11 @@ variable "additional_authentication_providers" {
 
 variable "api_keys" {
   description = "Map of API key configurations."
-  type        = any
-  default     = {}
+  type = map(object({
+    description = optional(string)
+    expires     = optional(string)
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -287,6 +308,29 @@ variable "logging_enabled" {
   description = "Whether CloudWatch logging is enabled for the API."
   type        = bool
   default     = true
+}
+
+variable "create_log_group" {
+  description = "Whether to manage the CloudWatch log group (`/aws/appsync/apis/<api_id>`) that AppSync writes to, enforcing retention and optional KMS encryption. Only applies when `logging_enabled` is true."
+  type        = bool
+  default     = true
+}
+
+variable "log_group_retention_in_days" {
+  description = "Number of days to retain AppSync API logs in the managed CloudWatch log group."
+  type        = number
+  default     = 30
+}
+
+variable "log_group_kms_key_id" {
+  description = "ARN of the KMS key to use for encrypting the managed CloudWatch log group."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.log_group_kms_key_id == null || can(regex("^arn:", var.log_group_kms_key_id))
+    error_message = "log_group_kms_key_id must be a valid ARN starting with 'arn:'."
+  }
 }
 
 variable "create_logging_role" {

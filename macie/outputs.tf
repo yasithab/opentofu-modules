@@ -10,7 +10,17 @@ output "account_arn" {
 
 output "name" {
   description = "Name identifier for the Macie deployment"
-  value       = var.name
+  value       = local.name
+}
+
+output "organization_admin_account_id" {
+  description = "AWS account ID of the Macie delegated administrator account"
+  value       = try(aws_macie2_organization_admin_account.this.admin_account_id, "")
+}
+
+output "organization_configuration_auto_enable" {
+  description = "Whether the Macie organization configuration auto-enables new member accounts"
+  value       = try(aws_macie2_organization_configuration.this.auto_enable, null)
 }
 
 output "classification_job_ids" {

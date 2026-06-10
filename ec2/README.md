@@ -6,9 +6,9 @@ OpenTofu module for provisioning Amazon EC2 instances with support for spot inst
 
 - **Instance Types** - Supports on-demand instances, spot instance requests, and instances with ignore-AMI-changes lifecycle for immutable deployments
 - **AMI Resolution** - Automatic AMI lookup via SSM parameter store or explicit AMI ID specification
-- **IAM Instance Profile** - Optional creation of IAM role and instance profile with customizable policies and permissions boundaries
+- **IAM Instance Profile** - Optional creation of IAM role and instance profile with customizable policies and permissions boundaries. When `create_iam_instance_profile = true`, either `iam_role_name` or `name` must be set
 - **Elastic IP** - Optional EIP allocation and association with configurable BYOIP and IPAM pool support
-- **Block Devices** - Full configuration of root, EBS, and ephemeral block devices with encryption support
+- **Block Devices** - Full configuration of root, EBS, and ephemeral block devices. Root and additional EBS volumes are **encrypted by default** (set `encrypted = false` per volume to opt out)
 - **Networking** - Support for primary, secondary, and additional network interfaces with IPv6, placement groups, and private DNS options
 - **Spot Instances** - Dedicated spot instance request support with configurable pricing, interruption behavior, and validity windows
 - **Security** - IMDSv2 enforced by default, Nitro Enclave support, and termination/stop protection options
@@ -25,7 +25,7 @@ OpenTofu module for provisioning Amazon EC2 instances with support for spot inst
 module "ec2" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ec2?depth=1&ref=master"
 
-  instance_name = "my-instance"
+  name          = "my-instance"
   instance_type = "t3.micro"
   subnet_id     = "subnet-0123456789abcdef0"
 
@@ -49,7 +49,7 @@ module "bastion" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ec2?depth=1&ref=master"
 
   enabled       = true
-  instance_name = "bastion-prod"
+  name          = "bastion-prod"
   instance_type = "t3.micro"
 
   subnet_id              = "subnet-0abc123def456789a"
@@ -73,7 +73,7 @@ module "app_server" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ec2?depth=1&ref=master"
 
   enabled       = true
-  instance_name = "app-server-prod"
+  name          = "app-server-prod"
   instance_type = "m5.large"
 
   ami                  = "ami-0c55b159cbfafe1f0"
@@ -110,7 +110,7 @@ module "worker" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ec2?depth=1&ref=master"
 
   enabled       = true
-  instance_name = "worker-prod"
+  name          = "worker-prod"
   instance_type = "c5.xlarge"
 
   subnet_id              = "subnet-0abc123def456789a"
@@ -148,7 +148,7 @@ module "spot_worker" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ec2?depth=1&ref=master"
 
   enabled       = true
-  instance_name = "spot-worker"
+  name          = "spot-worker"
   instance_type = "r5.2xlarge"
 
   subnet_id              = "subnet-0abc123def456789a"

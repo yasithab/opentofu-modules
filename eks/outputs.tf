@@ -271,6 +271,7 @@ output "eks_managed_node_groups_autoscaling_group_names" {
 output "self_managed_node_groups" {
   description = "Map of attribute maps for all self managed node groups created"
   value       = module.self_managed_node_group
+  sensitive   = true
 }
 
 output "self_managed_node_groups_autoscaling_group_names" {

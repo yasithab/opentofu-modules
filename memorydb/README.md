@@ -14,6 +14,11 @@ Provisions Amazon MemoryDB for Redis-compatible clusters with configurable shard
 - **Multi-AZ** - Multi-AZ enabled by default for high availability with automatic failover
 - **Auto Minor Version Upgrade** - Automatically apply minor engine patches during maintenance windows
 
+## Security notes
+
+- **Prefer IAM authentication for users** (`authentication_mode = { type = "iam" }`) over `password`. Passwords supplied via `users` are stored in OpenTofu state even though the variable and the `users` output are marked `sensitive`.
+- The created ACL **does not include the open-access `default` user by default** - it contains only the users you define in `users`. The MemoryDB `default` user has no password and full access, so only opt in via `include_default_user = true` if clients must connect without credentials.
+
 ## Usage
 
 ```hcl

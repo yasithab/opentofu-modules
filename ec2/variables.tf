@@ -6,12 +6,12 @@ variable "tags" {
 }
 
 variable "enabled" {
-  description = "Whether to create an instance"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
 
-variable "instance_name" {
+variable "name" {
   description = "Name to be used on EC2 instance created"
   type        = string
   default     = null
@@ -43,14 +43,24 @@ variable "associate_public_ip_address" {
 
 variable "maintenance_options" {
   description = "The maintenance options for the instance"
-  type        = any
-  default     = {}
+  type = object({
+    auto_recovery = optional(string)
+  })
+  default = null
 }
 
 variable "instance_market_options" {
   description = "Customize the market (purchasing) option for the instance. Used when launching instances as Spot via aws_instance (not aws_spot_instance_request)"
-  type        = any
-  default     = {}
+  type = object({
+    market_type = optional(string)
+    spot_options = optional(object({
+      instance_interruption_behavior = optional(string)
+      max_price                      = optional(string)
+      spot_instance_type             = optional(string)
+      valid_until                    = optional(string)
+    }))
+  })
+  default = null
 }
 
 variable "availability_zone" {
@@ -61,8 +71,14 @@ variable "availability_zone" {
 
 variable "capacity_reservation_specification" {
   description = "Describes an instance's Capacity Reservation targeting option"
-  type        = any
-  default     = {}
+  type = object({
+    capacity_reservation_preference = optional(string)
+    capacity_reservation_target = optional(object({
+      capacity_reservation_id                 = optional(string)
+      capacity_reservation_resource_group_arn = optional(string)
+    }))
+  })
+  default = null
 }
 
 variable "cpu_credits" {
@@ -78,9 +94,20 @@ variable "disable_api_termination" {
 }
 
 variable "ebs_block_device" {
-  description = "Additional EBS block devices to attach to the instance"
-  type        = list(any)
-  default     = []
+  description = "Additional EBS block devices to attach to the instance. Volumes are encrypted by default; set `encrypted = false` to opt out."
+  type = list(object({
+    device_name           = string
+    delete_on_termination = optional(bool)
+    encrypted             = optional(bool, true)
+    iops                  = optional(number)
+    kms_key_id            = optional(string)
+    snapshot_id           = optional(string)
+    volume_size           = optional(number)
+    volume_type           = optional(string)
+    throughput            = optional(number)
+    tags                  = optional(map(string), {})
+  }))
+  default = []
 }
 
 variable "ebs_optimized" {
@@ -208,14 +235,23 @@ variable "network_interface" {
 
 variable "primary_network_interface" {
   description = "Configuration for the primary network interface. Specify network_interface_id to attach a pre-existing ENI as the primary network interface."
-  type        = any
-  default     = null
+  type = object({
+    network_interface_id = string
+  })
+  default = null
 }
 
 variable "secondary_network_interface" {
   description = "List of secondary network interfaces to attach at instance boot time. Each object must include secondary_subnet_id (required) and network_card_index (required), plus optional delete_on_termination, device_index, interface_type, and private_ip_address_count."
-  type        = list(any)
-  default     = []
+  type = list(object({
+    secondary_subnet_id      = string
+    network_card_index       = number
+    delete_on_termination    = optional(bool)
+    device_index             = optional(number)
+    interface_type           = optional(string)
+    private_ip_address_count = optional(number)
+  }))
+  default = []
 }
 
 variable "private_dns_name_options" {
@@ -255,9 +291,18 @@ variable "private_ip" {
 }
 
 variable "root_block_device" {
-  description = "Customize details about the root block device of the instance. See Block Devices below for details"
-  type        = list(any)
-  default     = []
+  description = "Customize details about the root block device of the instance. Encrypted by default; set `encrypted = false` to opt out."
+  type = list(object({
+    delete_on_termination = optional(bool)
+    encrypted             = optional(bool, true)
+    iops                  = optional(number)
+    kms_key_id            = optional(string)
+    volume_size           = optional(number)
+    volume_type           = optional(string)
+    throughput            = optional(number)
+    tags                  = optional(map(string), {})
+  }))
+  default = []
 }
 
 variable "secondary_private_ips" {
@@ -322,14 +367,23 @@ variable "vpc_security_group_ids" {
 
 variable "timeouts" {
   description = "Define maximum timeout for creating, updating, and deleting EC2 instance resources"
-  type        = map(string)
-  default     = {}
+  type = object({
+    create = optional(string)
+    update = optional(string)
+    delete = optional(string)
+  })
+  default = {}
 }
 
 variable "cpu_options" {
   description = "Defines CPU options to apply to the instance at launch time."
-  type        = any
-  default     = {}
+  type = object({
+    core_count            = optional(number)
+    threads_per_core      = optional(number)
+    amd_sev_snp           = optional(string)
+    nested_virtualization = optional(string)
+  })
+  default = null
 }
 
 # Spot instance request
@@ -396,6 +450,11 @@ variable "create_iam_instance_profile" {
   description = "Determines whether an IAM instance profile is created or to use an existing IAM instance profile"
   type        = bool
   default     = false
+
+  validation {
+    condition     = !var.create_iam_instance_profile || var.iam_role_name != null || var.name != null
+    error_message = "When create_iam_instance_profile is true, either iam_role_name or name must be set."
+  }
 }
 
 variable "iam_role_name" {

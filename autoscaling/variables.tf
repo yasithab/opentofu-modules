@@ -1,6 +1,6 @@
 
 variable "enabled" {
-  description = "Determines whether resources will be created (affects all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -83,24 +83,44 @@ variable "enable_monitoring" {
 
 variable "metadata_options" {
   description = "Metadata options for the launch template. Defaults enforce IMDSv2."
-  type        = any
-  default = {
-    http_endpoint               = "enabled"
-    http_tokens                 = "required"
-    http_put_response_hop_limit = 2
-  }
+  type = object({
+    http_endpoint               = optional(string, "enabled")
+    http_tokens                 = optional(string, "required")
+    http_put_response_hop_limit = optional(number, 2)
+    instance_metadata_tags      = optional(string)
+  })
+  default = {}
 }
 
 variable "network_interfaces" {
-  description = "List of network interface configurations for the launch template"
-  type        = any
-  default     = []
+  description = "List of network interface configurations for the launch template. `device_index` defaults to the list index; `security_groups` defaults to the module-managed security group IDs."
+  type = list(object({
+    associate_public_ip_address = optional(bool)
+    delete_on_termination       = optional(bool, true)
+    description                 = optional(string)
+    device_index                = optional(number)
+    security_groups             = optional(list(string))
+    subnet_id                   = optional(string)
+  }))
+  default = []
 }
 
 variable "block_device_mappings" {
-  description = "List of block device mappings for the launch template"
-  type        = any
-  default     = []
+  description = "List of block device mappings for the launch template. EBS volumes are gp3 and encrypted by default."
+  type = list(object({
+    device_name = string
+    ebs = optional(object({
+      volume_size           = optional(number)
+      volume_type           = optional(string, "gp3")
+      encrypted             = optional(bool, true)
+      kms_key_id            = optional(string)
+      iops                  = optional(number)
+      throughput            = optional(number)
+      delete_on_termination = optional(bool, true)
+      snapshot_id           = optional(string)
+    }))
+  }))
+  default = []
 }
 
 variable "iam_instance_profile_arn" {
@@ -116,14 +136,21 @@ variable "iam_instance_profile_arn" {
 
 variable "placement" {
   description = "Placement configuration for the launch template"
-  type        = any
-  default     = {}
+  type = object({
+    availability_zone = optional(string)
+    group_name        = optional(string)
+    tenancy           = optional(string)
+  })
+  default = null
 }
 
 variable "tag_specifications" {
   description = "Additional tag specifications for resources created by the launch template (e.g., `instance`, `volume`)"
-  type        = any
-  default     = []
+  type = list(object({
+    resource_type = string
+    tags          = optional(map(string), {})
+  }))
+  default = []
 }
 
 ################################################################################
@@ -207,13 +234,31 @@ variable "vpc_id" {
 
 variable "security_group_ingress_rules" {
   description = "Map of ingress rules for the security group"
-  type        = any
-  default     = {}
+  type = map(object({
+    description                  = optional(string)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    ip_protocol                  = optional(string, "tcp")
+    referenced_security_group_id = optional(string)
+    prefix_list_id               = optional(string)
+  }))
+  default = {}
 }
 
 variable "security_group_egress_rules" {
   description = "Map of egress rules for the security group"
-  type        = any
+  type = map(object({
+    description                  = optional(string)
+    cidr_ipv4                    = optional(string)
+    cidr_ipv6                    = optional(string)
+    from_port                    = optional(number)
+    to_port                      = optional(number)
+    ip_protocol                  = optional(string, "-1")
+    referenced_security_group_id = optional(string)
+    prefix_list_id               = optional(string)
+  }))
   default = {
     all = {
       ip_protocol = "-1"
@@ -253,10 +298,15 @@ variable "max_size" {
     condition     = var.max_size >= 0
     error_message = "max_size must be >= 0."
   }
+
+  validation {
+    condition     = var.max_size >= var.min_size
+    error_message = "max_size must be >= min_size."
+  }
 }
 
 variable "desired_capacity" {
-  description = "Desired number of instances in the ASG"
+  description = "Desired number of instances in the ASG. NOTE: when `ignore_desired_capacity_changes` is true (the default), out-of-band changes to desired capacity (e.g., by scaling policies or scheduled actions) are ignored (`lifecycle.ignore_changes`); OpenTofu will not revert them on subsequent applies. See the README's 'Desired capacity drift' section."
   type        = number
   default     = null
 
@@ -264,6 +314,12 @@ variable "desired_capacity" {
     condition     = var.desired_capacity == null || var.desired_capacity >= 0
     error_message = "desired_capacity must be >= 0."
   }
+}
+
+variable "ignore_desired_capacity_changes" {
+  description = "Whether to ignore out-of-band changes to `desired_capacity` (default true). When true the ASG is created as `aws_autoscaling_group.this` with `lifecycle.ignore_changes = [desired_capacity]`, so scaling policies/scheduled actions/manual edits are never reverted. When false the ASG is created as `aws_autoscaling_group.tracked` and OpenTofu manages `desired_capacity` like any other attribute. Toggling this after creation moves the group to a different resource address - see the README's 'Desired capacity drift' section for the required `tofu state mv`."
+  type        = bool
+  default     = true
 }
 
 variable "vpc_zone_identifier" {
@@ -397,8 +453,11 @@ variable "use_mixed_instances_policy" {
 
 variable "mixed_instances_override" {
   description = "List of instance type overrides for mixed instances policy"
-  type        = any
-  default     = []
+  type = list(object({
+    instance_type     = optional(string)
+    weighted_capacity = optional(string)
+  }))
+  default = []
 }
 
 variable "on_demand_base_capacity" {
@@ -447,8 +506,57 @@ variable "spot_max_price" {
 
 variable "scaling_policies" {
   description = "Map of scaling policies to create. Supports target_tracking, step, simple, and predictive types."
-  type        = any
-  default     = {}
+  type = map(object({
+    name                      = optional(string)
+    policy_type               = optional(string, "TargetTrackingScaling")
+    adjustment_type           = optional(string)
+    scaling_adjustment        = optional(number)
+    cooldown                  = optional(number)
+    min_adjustment_magnitude  = optional(number)
+    metric_aggregation_type   = optional(string)
+    estimated_instance_warmup = optional(number)
+    target_tracking_configuration = optional(object({
+      target_value     = number
+      disable_scale_in = optional(bool, false)
+      predefined_metric_specification = optional(object({
+        predefined_metric_type = string
+        resource_label         = optional(string)
+      }))
+      customized_metric_specification = optional(object({
+        metric_name = optional(string)
+        namespace   = optional(string)
+        statistic   = optional(string)
+        unit        = optional(string)
+        metric_dimensions = optional(list(object({
+          name  = string
+          value = string
+        })), [])
+      }))
+    }))
+    step_adjustments = optional(list(object({
+      scaling_adjustment          = number
+      metric_interval_lower_bound = optional(number)
+      metric_interval_upper_bound = optional(number)
+    })), [])
+    predictive_scaling_configuration = optional(object({
+      mode                         = optional(string, "ForecastAndScale")
+      scheduling_buffer_time       = optional(number)
+      max_capacity_breach_behavior = optional(string)
+      max_capacity_buffer          = optional(number)
+      metric_specification = optional(object({
+        target_value = number
+        predefined_scaling_metric_specification = optional(object({
+          predefined_metric_type = string
+          resource_label         = optional(string)
+        }))
+        predefined_load_metric_specification = optional(object({
+          predefined_metric_type = string
+          resource_label         = optional(string)
+        }))
+      }))
+    }))
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -457,8 +565,17 @@ variable "scaling_policies" {
 
 variable "scheduled_actions" {
   description = "Map of scheduled actions. Each entry supports `min_size`, `max_size`, `desired_capacity`, `start_time`, `end_time`, `recurrence`, and `time_zone`."
-  type        = any
-  default     = {}
+  type = map(object({
+    name             = optional(string)
+    min_size         = optional(number)
+    max_size         = optional(number)
+    desired_capacity = optional(number)
+    start_time       = optional(string)
+    end_time         = optional(string)
+    recurrence       = optional(string)
+    time_zone        = optional(string)
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -467,8 +584,15 @@ variable "scheduled_actions" {
 
 variable "warm_pool" {
   description = "Warm pool configuration. Set to `{}` to enable with defaults. Supports `pool_state`, `min_size`, `max_group_prepared_capacity`, and `instance_reuse_policy`."
-  type        = any
-  default     = null
+  type = object({
+    pool_state                  = optional(string, "Stopped")
+    min_size                    = optional(number, 0)
+    max_group_prepared_capacity = optional(number)
+    instance_reuse_policy = optional(object({
+      reuse_on_scale_in = optional(bool, false)
+    }))
+  })
+  default = null
 }
 
 ################################################################################
@@ -477,8 +601,21 @@ variable "warm_pool" {
 
 variable "instance_refresh" {
   description = "Instance refresh configuration. Set to `{}` to enable with defaults. Supports `strategy`, `preferences`, and `triggers`."
-  type        = any
-  default     = null
+  type = object({
+    strategy = optional(string, "Rolling")
+    triggers = optional(list(string))
+    preferences = optional(object({
+      min_healthy_percentage       = optional(number, 90)
+      instance_warmup              = optional(number)
+      checkpoint_delay             = optional(number)
+      checkpoint_percentages       = optional(list(number))
+      skip_matching                = optional(bool)
+      auto_rollback                = optional(bool)
+      scale_in_protected_instances = optional(string)
+      standby_instances            = optional(string)
+    }))
+  })
+  default = null
 }
 
 ################################################################################
@@ -487,8 +624,16 @@ variable "instance_refresh" {
 
 variable "lifecycle_hooks" {
   description = "Map of lifecycle hooks. Each entry supports `lifecycle_transition`, `default_result`, `heartbeat_timeout`, `notification_metadata`, `notification_target_arn`, and `role_arn`."
-  type        = any
-  default     = {}
+  type = map(object({
+    name                    = optional(string)
+    lifecycle_transition    = string
+    default_result          = optional(string, "CONTINUE")
+    heartbeat_timeout       = optional(number, 3600)
+    notification_metadata   = optional(string)
+    notification_target_arn = optional(string)
+    role_arn                = optional(string)
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -497,8 +642,11 @@ variable "lifecycle_hooks" {
 
 variable "notification_configurations" {
   description = "Map of notification configurations. Each entry requires `topic_arn` and `notifications` (list of event types)."
-  type        = any
-  default     = {}
+  type = map(object({
+    topic_arn     = string
+    notifications = list(string)
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -507,8 +655,11 @@ variable "notification_configurations" {
 
 variable "traffic_source_attachments" {
   description = "Map of traffic source attachments (ALB/NLB target group ARNs). Each entry requires `traffic_source_identifier` and optionally `traffic_source_type`."
-  type        = any
-  default     = {}
+  type = map(object({
+    traffic_source_identifier = string
+    traffic_source_type       = optional(string, "elbv2")
+  }))
+  default = {}
 }
 
 variable "target_group_arns" {

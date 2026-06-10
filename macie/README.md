@@ -10,6 +10,13 @@ OpenTofu module for provisioning and managing Amazon Macie sensitive data discov
 - **Allow Lists** - Create S3-backed word lists or regex-based allow lists to exclude known acceptable data patterns from findings
 - **Member Account Management** - Invite and manage member accounts for centralized sensitive data discovery across the organization
 - **Classification Export** - Export classification results to an S3 bucket with KMS encryption for long-term retention and compliance
+- **Organization Support** - Designate a delegated Macie administrator and auto-enable Macie for new AWS Organizations member accounts
+
+## Notes
+
+- `name` is optional (defaults to `null`); it is exposed via the `name` output for composition.
+- `classification_export_kms_key_arn` is required whenever `classification_export_bucket_name`
+  is set - Macie mandates KMS encryption for classification results.
 
 ## Usage
 
@@ -95,6 +102,33 @@ module "macie" {
     Environment = "production"
     Team        = "security"
   }
+}
+```
+
+### Organization Management
+
+Designate a delegated administrator from the organization management account, then manage
+organization-wide auto-enable settings from the delegated administrator account.
+
+```hcl
+# In the organization management account
+module "macie_mgmt" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//macie?depth=1&ref=master"
+
+  name = "macie-org"
+
+  create_organization_admin_account = true
+  admin_account_id                  = "111111111111" # security/audit account
+}
+
+# In the delegated administrator (security) account
+module "macie_admin" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//macie?depth=1&ref=master"
+
+  name = "macie-org-admin"
+
+  create_organization_configuration = true
+  auto_enable_organization_members  = true
 }
 ```
 

@@ -222,3 +222,8 @@ module "pod_identity_multi_sa" {
   }
 }
 ```
+
+## Notes
+
+- Managed policy attachments are keyed by policy ARN, so reordering or removing entries in
+  `managed_policy_arns` never churns unrelated attachments.

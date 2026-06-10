@@ -1,13 +1,14 @@
 locals {
   enabled                 = var.enabled
+  name                    = var.name
   ram_principals_provided = length(var.ram_principals) > 0
-  ram_principals = toset(local.enabled ? toset(
-    local.ram_principals_provided ? concat(
-      var.ram_principals,
-      ) : [
-      data.aws_organizations_organization.default[0].arn
-    ]
-  ) : [])
+
+  # Falls back to sharing with the whole organization when no principals are provided
+  ram_principals = toset(
+    local.enabled
+    ? (local.ram_principals_provided ? var.ram_principals : [data.aws_organizations_organization.default[0].arn])
+    : []
+  )
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
@@ -31,7 +32,7 @@ resource "aws_ram_sharing_with_organization" "default" {
 # Resource Access Manager (RAM) share for the Transit Gateway
 # https://docs.aws.amazon.com/ram/latest/userguide/what-is.html
 resource "aws_ram_resource_share" "default" {
-  name                      = var.ram_resource_share_name
+  name                      = local.name
   allow_external_principals = var.allow_external_principals
   permission_arns           = length(var.permission_arns) > 0 ? var.permission_arns : null
 

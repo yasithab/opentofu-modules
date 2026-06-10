@@ -59,10 +59,9 @@ resource "aws_grafana_workspace" "this" {
 resource "aws_grafana_license_association" "this" {
   workspace_id = aws_grafana_workspace.this.id
   license_type = var.license_type
-  region       = var.region
 
   lifecycle {
-    enabled = local.enabled && var.license_type == "ENTERPRISE"
+    enabled = local.enabled && var.create_license_association && var.license_type != null
   }
 }
 
@@ -73,16 +72,16 @@ resource "aws_grafana_license_association" "this" {
 resource "aws_grafana_workspace_saml_configuration" "this" {
   workspace_id       = aws_grafana_workspace.this.id
   editor_role_values = var.saml_editor_role_values
-  admin_role_values  = try(var.saml_admin_role_values, [])
-  idp_metadata_url   = try(var.saml_idp_metadata_url, null)
-  idp_metadata_xml   = try(var.saml_idp_metadata_xml, null)
+  admin_role_values  = var.saml_admin_role_values
+  idp_metadata_url   = var.saml_idp_metadata_url
+  idp_metadata_xml   = var.saml_idp_metadata_xml
 
-  login_assertion  = try(var.saml_login_assertion.login, null)
-  email_assertion  = try(var.saml_login_assertion.email, null)
-  groups_assertion = try(var.saml_login_assertion.groups, null)
-  name_assertion   = try(var.saml_login_assertion.name, null)
-  org_assertion    = try(var.saml_login_assertion.org, null)
-  role_assertion   = try(var.saml_login_assertion.role, null)
+  login_assertion  = var.saml_login_assertion != null ? var.saml_login_assertion.login : null
+  email_assertion  = var.saml_login_assertion != null ? var.saml_login_assertion.email : null
+  groups_assertion = var.saml_login_assertion != null ? var.saml_login_assertion.groups : null
+  name_assertion   = var.saml_login_assertion != null ? var.saml_login_assertion.name : null
+  org_assertion    = var.saml_login_assertion != null ? var.saml_login_assertion.org : null
+  role_assertion   = var.saml_login_assertion != null ? var.saml_login_assertion.role : null
 
   lifecycle {
     enabled = local.enabled && var.enable_saml_configuration
@@ -90,16 +89,32 @@ resource "aws_grafana_workspace_saml_configuration" "this" {
 }
 
 ################################################################################
-# API Keys
+# Service Accounts
 ################################################################################
 
-resource "aws_grafana_workspace_api_key" "this" {
-  for_each = local.enabled ? var.api_keys : {}
+resource "aws_grafana_workspace_service_account" "this" {
+  for_each = local.enabled ? var.service_accounts : {}
 
-  key_name        = each.key
-  key_role        = each.value.key_role
-  seconds_to_live = each.value.seconds_to_live
-  workspace_id    = aws_grafana_workspace.this.id
+  name         = each.key
+  grafana_role = each.value.grafana_role
+  workspace_id = aws_grafana_workspace.this.id
+}
+
+resource "aws_grafana_workspace_service_account_token" "this" {
+  for_each = local.enabled ? merge([
+    for sa_key, sa in var.service_accounts : {
+      for token_name, token in sa.tokens : "${sa_key}/${token_name}" => {
+        sa_key          = sa_key
+        name            = token_name
+        seconds_to_live = token.seconds_to_live
+      }
+    }
+  ]...) : {}
+
+  name               = each.value.name
+  service_account_id = aws_grafana_workspace_service_account.this[each.value.sa_key].service_account_id
+  seconds_to_live    = each.value.seconds_to_live
+  workspace_id       = aws_grafana_workspace.this.id
 }
 
 ################################################################################

@@ -94,6 +94,10 @@ All key types can be mixed in the same module. The `ssh_public_key` value is val
 
 Applies to `ha_mode = true` and `public = true` only. Enabled by default. Generates ED25519, RSA (4096-bit), and ECDSA (P-256) host keys, stored in a single SSM SecureString parameter at `/bastion/{name}/ssh-host-keys`. All 3 key types are installed on boot - clients negotiate the strongest available.
 
+The SSM parameter value is written via the **write-only** `value_wo` attribute, so the
+private host keys are never stored in OpenTofu state. The generated `tls_private_key`
+resources still hold key material in state, however - protect your state backend accordingly.
+
 **To rotate host keys:**
 
 ```bash
@@ -102,6 +106,13 @@ tofu taint tls_private_key.ssh_host_rsa
 tofu taint tls_private_key.ssh_host_ecdsa
 tofu apply
 ```
+
+After rotating, also increment `ssh_host_keys_wo_version` so the write-only SSM parameter
+value is rewritten.
+
+Set `kms_key_arn` to the ARN of the customer-managed KMS key encrypting the parameter to
+scope the bastion's `kms:Decrypt` permission to that single key (instead of all keys in the
+account, still gated by `kms:ViaService = ssm`).
 
 ## Security
 

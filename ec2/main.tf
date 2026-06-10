@@ -2,6 +2,9 @@ data "aws_partition" "current" {}
 
 locals {
   enabled = var.enabled
+  name    = var.name
+
+  create_iam_instance_profile = local.enabled && var.create_iam_instance_profile
 
   is_t_instance_type = replace(var.instance_type, "/^t(2|3|3a|4g){1}\\..*$/", "1") == "1" ? true : false
 
@@ -10,6 +13,9 @@ locals {
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
   })
+
+  # Omit the Name key entirely when name is not set
+  name_tag = local.name != null ? { Name = local.name } : {}
 }
 
 data "aws_ssm_parameter" "this" {
@@ -56,7 +62,7 @@ resource "aws_instance" "this" {
   placement_partition_number = var.placement_partition_number
 
   dynamic "cpu_options" {
-    for_each = length(var.cpu_options) > 0 ? [var.cpu_options] : []
+    for_each = var.cpu_options != null ? [var.cpu_options] : []
 
     content {
       core_count            = try(cpu_options.value.core_count, null)
@@ -67,13 +73,13 @@ resource "aws_instance" "this" {
   }
 
   dynamic "capacity_reservation_specification" {
-    for_each = length(var.capacity_reservation_specification) > 0 ? [var.capacity_reservation_specification] : []
+    for_each = var.capacity_reservation_specification != null ? [var.capacity_reservation_specification] : []
 
     content {
       capacity_reservation_preference = try(capacity_reservation_specification.value.capacity_reservation_preference, null)
 
       dynamic "capacity_reservation_target" {
-        for_each = try([capacity_reservation_specification.value.capacity_reservation_target], [])
+        for_each = capacity_reservation_specification.value.capacity_reservation_target != null ? [capacity_reservation_specification.value.capacity_reservation_target] : []
 
         content {
           capacity_reservation_id                 = try(capacity_reservation_target.value.capacity_reservation_id, null)
@@ -105,7 +111,7 @@ resource "aws_instance" "this" {
     content {
       delete_on_termination = try(ebs_block_device.value.delete_on_termination, null)
       device_name           = ebs_block_device.value.device_name
-      encrypted             = try(ebs_block_device.value.encrypted, null)
+      encrypted             = try(ebs_block_device.value.encrypted, true)
       iops                  = try(ebs_block_device.value.iops, null)
       kms_key_id            = lookup(ebs_block_device.value, "kms_key_id", null)
       snapshot_id           = lookup(ebs_block_device.value, "snapshot_id", null)
@@ -182,13 +188,13 @@ resource "aws_instance" "this" {
   }
 
   dynamic "instance_market_options" {
-    for_each = length(var.instance_market_options) > 0 ? [var.instance_market_options] : []
+    for_each = var.instance_market_options != null ? [var.instance_market_options] : []
 
     content {
       market_type = try(instance_market_options.value.market_type, null)
 
       dynamic "spot_options" {
-        for_each = try([instance_market_options.value.spot_options], [])
+        for_each = instance_market_options.value.spot_options != null ? [instance_market_options.value.spot_options] : []
 
         content {
           instance_interruption_behavior = try(spot_options.value.instance_interruption_behavior, null)
@@ -211,7 +217,7 @@ resource "aws_instance" "this" {
   }
 
   dynamic "maintenance_options" {
-    for_each = length(var.maintenance_options) > 0 ? [var.maintenance_options] : []
+    for_each = var.maintenance_options != null ? [var.maintenance_options] : []
 
     content {
       auto_recovery = try(maintenance_options.value.auto_recovery, null)
@@ -240,9 +246,9 @@ resource "aws_instance" "this" {
     delete = try(var.timeouts.delete, null)
   }
 
-  volume_tags = var.enable_volume_tags ? merge({ "Name" = var.instance_name }, var.volume_tags) : null
+  volume_tags = var.enable_volume_tags ? merge(local.name_tag, var.volume_tags) : null
 
-  tags = merge(local.tags, { "Name" = var.instance_name }, var.instance_tags)
+  tags = merge(local.tags, local.name_tag, var.instance_tags)
 
   lifecycle {
     enabled = local.enabled && !var.ignore_ami_changes && !var.create_spot_instance
@@ -287,7 +293,7 @@ resource "aws_instance" "ignore_ami" {
   placement_partition_number = var.placement_partition_number
 
   dynamic "cpu_options" {
-    for_each = length(var.cpu_options) > 0 ? [var.cpu_options] : []
+    for_each = var.cpu_options != null ? [var.cpu_options] : []
 
     content {
       core_count            = try(cpu_options.value.core_count, null)
@@ -298,13 +304,13 @@ resource "aws_instance" "ignore_ami" {
   }
 
   dynamic "capacity_reservation_specification" {
-    for_each = length(var.capacity_reservation_specification) > 0 ? [var.capacity_reservation_specification] : []
+    for_each = var.capacity_reservation_specification != null ? [var.capacity_reservation_specification] : []
 
     content {
       capacity_reservation_preference = try(capacity_reservation_specification.value.capacity_reservation_preference, null)
 
       dynamic "capacity_reservation_target" {
-        for_each = try([capacity_reservation_specification.value.capacity_reservation_target], [])
+        for_each = capacity_reservation_specification.value.capacity_reservation_target != null ? [capacity_reservation_specification.value.capacity_reservation_target] : []
 
         content {
           capacity_reservation_id                 = try(capacity_reservation_target.value.capacity_reservation_id, null)
@@ -336,7 +342,7 @@ resource "aws_instance" "ignore_ami" {
     content {
       delete_on_termination = try(ebs_block_device.value.delete_on_termination, null)
       device_name           = ebs_block_device.value.device_name
-      encrypted             = try(ebs_block_device.value.encrypted, null)
+      encrypted             = try(ebs_block_device.value.encrypted, true)
       iops                  = try(ebs_block_device.value.iops, null)
       kms_key_id            = lookup(ebs_block_device.value, "kms_key_id", null)
       snapshot_id           = lookup(ebs_block_device.value, "snapshot_id", null)
@@ -413,13 +419,13 @@ resource "aws_instance" "ignore_ami" {
   }
 
   dynamic "instance_market_options" {
-    for_each = length(var.instance_market_options) > 0 ? [var.instance_market_options] : []
+    for_each = var.instance_market_options != null ? [var.instance_market_options] : []
 
     content {
       market_type = try(instance_market_options.value.market_type, null)
 
       dynamic "spot_options" {
-        for_each = try([instance_market_options.value.spot_options], [])
+        for_each = instance_market_options.value.spot_options != null ? [instance_market_options.value.spot_options] : []
 
         content {
           instance_interruption_behavior = try(spot_options.value.instance_interruption_behavior, null)
@@ -442,7 +448,7 @@ resource "aws_instance" "ignore_ami" {
   }
 
   dynamic "maintenance_options" {
-    for_each = length(var.maintenance_options) > 0 ? [var.maintenance_options] : []
+    for_each = var.maintenance_options != null ? [var.maintenance_options] : []
 
     content {
       auto_recovery = try(maintenance_options.value.auto_recovery, null)
@@ -471,9 +477,9 @@ resource "aws_instance" "ignore_ami" {
     delete = try(var.timeouts.delete, null)
   }
 
-  volume_tags = var.enable_volume_tags ? merge({ "Name" = var.instance_name }, var.volume_tags) : null
+  volume_tags = var.enable_volume_tags ? merge(local.name_tag, var.volume_tags) : null
 
-  tags = merge(local.tags, { "Name" = var.instance_name }, var.instance_tags)
+  tags = merge(local.tags, local.name_tag, var.instance_tags)
 
   lifecycle {
     enabled = local.enabled && var.ignore_ami_changes && !var.create_spot_instance
@@ -530,7 +536,7 @@ resource "aws_spot_instance_request" "this" {
   # End spot request specific attributes
 
   dynamic "cpu_options" {
-    for_each = length(var.cpu_options) > 0 ? [var.cpu_options] : []
+    for_each = var.cpu_options != null ? [var.cpu_options] : []
 
     content {
       core_count            = try(cpu_options.value.core_count, null)
@@ -541,13 +547,13 @@ resource "aws_spot_instance_request" "this" {
   }
 
   dynamic "capacity_reservation_specification" {
-    for_each = length(var.capacity_reservation_specification) > 0 ? [var.capacity_reservation_specification] : []
+    for_each = var.capacity_reservation_specification != null ? [var.capacity_reservation_specification] : []
 
     content {
       capacity_reservation_preference = try(capacity_reservation_specification.value.capacity_reservation_preference, null)
 
       dynamic "capacity_reservation_target" {
-        for_each = try([capacity_reservation_specification.value.capacity_reservation_target], [])
+        for_each = capacity_reservation_specification.value.capacity_reservation_target != null ? [capacity_reservation_specification.value.capacity_reservation_target] : []
         content {
           capacity_reservation_id                 = try(capacity_reservation_target.value.capacity_reservation_id, null)
           capacity_reservation_resource_group_arn = try(capacity_reservation_target.value.capacity_reservation_resource_group_arn, null)
@@ -578,7 +584,7 @@ resource "aws_spot_instance_request" "this" {
     content {
       delete_on_termination = try(ebs_block_device.value.delete_on_termination, null)
       device_name           = ebs_block_device.value.device_name
-      encrypted             = try(ebs_block_device.value.encrypted, null)
+      encrypted             = try(ebs_block_device.value.encrypted, true)
       iops                  = try(ebs_block_device.value.iops, null)
       kms_key_id            = lookup(ebs_block_device.value, "kms_key_id", null)
       snapshot_id           = lookup(ebs_block_device.value, "snapshot_id", null)
@@ -657,7 +663,7 @@ resource "aws_spot_instance_request" "this" {
   }
 
   dynamic "maintenance_options" {
-    for_each = length(var.maintenance_options) > 0 ? [var.maintenance_options] : []
+    for_each = var.maintenance_options != null ? [var.maintenance_options] : []
 
     content {
       auto_recovery = try(maintenance_options.value.auto_recovery, null)
@@ -685,9 +691,9 @@ resource "aws_spot_instance_request" "this" {
     delete = try(var.timeouts.delete, null)
   }
 
-  volume_tags = var.enable_volume_tags ? merge({ "Name" = var.instance_name }, var.volume_tags) : null
+  volume_tags = var.enable_volume_tags ? merge(local.name_tag, var.volume_tags) : null
 
-  tags = merge(local.tags, { "Name" = var.instance_name }, var.instance_tags)
+  tags = merge(local.tags, local.name_tag, var.instance_tags)
 
   lifecycle {
     enabled = local.enabled && var.create_spot_instance
@@ -699,11 +705,11 @@ resource "aws_spot_instance_request" "this" {
 ################################################################################
 
 locals {
-  iam_role_name = try(coalesce(var.iam_role_name, var.instance_name), "")
+  iam_role_name = var.create_iam_instance_profile ? coalesce(var.iam_role_name, local.name) : null
 }
 
 data "aws_iam_policy_document" "assume_role_policy" {
-  count = var.enabled && var.create_iam_instance_profile ? 1 : 0
+  count = local.create_iam_instance_profile ? 1 : 0
 
   statement {
     sid     = "EC2AssumeRole"
@@ -727,15 +733,15 @@ resource "aws_iam_role" "this" {
   force_detach_policies = true
   max_session_duration  = var.iam_role_max_session_duration
 
-  tags = merge(local.tags, merge(var.tags, var.iam_role_tags))
+  tags = merge(local.tags, var.iam_role_tags)
 
   lifecycle {
-    enabled = var.enabled && var.create_iam_instance_profile
+    enabled = local.create_iam_instance_profile
   }
 }
 
 resource "aws_iam_role_policy_attachment" "this" {
-  for_each = { for k, v in var.iam_role_policies : k => v if var.enabled && var.create_iam_instance_profile }
+  for_each = { for k, v in var.iam_role_policies : k => v if local.create_iam_instance_profile }
 
   policy_arn = each.value
   role       = aws_iam_role.this.name
@@ -748,10 +754,10 @@ resource "aws_iam_instance_profile" "this" {
   name_prefix = var.iam_role_use_name_prefix ? "${local.iam_role_name}-" : null
   path        = var.iam_role_path
 
-  tags = merge(local.tags, merge(var.tags, var.iam_role_tags))
+  tags = merge(local.tags, var.iam_role_tags)
 
   lifecycle {
-    enabled               = var.enabled && var.create_iam_instance_profile
+    enabled               = local.create_iam_instance_profile
     create_before_destroy = true
   }
 }
@@ -775,7 +781,7 @@ resource "aws_eip" "this" {
   network_interface         = var.eip_network_interface
   public_ipv4_pool          = var.eip_public_ipv4_pool
 
-  tags = merge(local.tags, merge(var.tags, var.eip_tags))
+  tags = merge(local.tags, var.eip_tags)
 
   lifecycle {
     enabled = local.enabled && var.create_eip && !var.create_spot_instance

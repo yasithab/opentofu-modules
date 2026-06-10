@@ -3,7 +3,9 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  create_iam_role = var.enabled && var.create_iam_role
+  enabled = var.enabled
+
+  create_iam_role = local.enabled && var.create_iam_role
 
   iam_role_name          = coalesce(var.iam_role_name, var.name, "fargate-profile")
   iam_role_policy_prefix = "arn:${data.aws_partition.current.partition}:iam::aws:policy"
@@ -99,15 +101,15 @@ data "aws_iam_policy_document" "role" {
     for_each = var.iam_role_policy_statements
 
     content {
-      sid           = try(statement.value.sid, null)
-      actions       = try(statement.value.actions, null)
-      not_actions   = try(statement.value.not_actions, null)
-      effect        = try(statement.value.effect, null)
-      resources     = try(statement.value.resources, null)
-      not_resources = try(statement.value.not_resources, null)
+      sid           = statement.value.sid
+      actions       = statement.value.actions
+      not_actions   = statement.value.not_actions
+      effect        = statement.value.effect
+      resources     = statement.value.resources
+      not_resources = statement.value.not_resources
 
       dynamic "principals" {
-        for_each = try(statement.value.principals, [])
+        for_each = statement.value.principals
 
         content {
           type        = principals.value.type
@@ -116,7 +118,7 @@ data "aws_iam_policy_document" "role" {
       }
 
       dynamic "not_principals" {
-        for_each = try(statement.value.not_principals, [])
+        for_each = statement.value.not_principals
 
         content {
           type        = not_principals.value.type
@@ -125,7 +127,7 @@ data "aws_iam_policy_document" "role" {
       }
 
       dynamic "condition" {
-        for_each = try(statement.value.conditions, [])
+        for_each = statement.value.conditions
 
         content {
           test     = condition.value.test
@@ -163,7 +165,7 @@ resource "aws_eks_fargate_profile" "this" {
 
     content {
       namespace = selector.value.namespace
-      labels    = lookup(selector.value, "labels", {})
+      labels    = selector.value.labels
     }
   }
 
@@ -177,7 +179,14 @@ resource "aws_eks_fargate_profile" "this" {
 
   tags = local.tags
 
+  # Ensure IAM permissions are in place before (and removed after) the
+  # profile - pods fail to schedule if the execution role policies are not attached
+  depends_on = [
+    aws_iam_role_policy_attachment.this,
+    aws_iam_role_policy_attachment.additional,
+  ]
+
   lifecycle {
-    enabled = var.enabled
+    enabled = local.enabled
   }
 }

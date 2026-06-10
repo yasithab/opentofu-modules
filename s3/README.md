@@ -2,6 +2,12 @@
 
 Provisions Amazon S3 buckets with comprehensive support for access controls, encryption, versioning, lifecycle management, replication, logging, and security policies.
 
+## Notes
+
+- **TLS-only by default** (security): `attach_deny_insecure_transport_policy` defaults to `true`, so every bucket gets a TLS-only (deny non-SSL transport) bucket policy and non-TLS clients are denied. This means a bucket policy is attached by default; custom `policy` documents are merged with the deny statement. Set `attach_deny_insecure_transport_policy = false` to opt out.
+- `attach_deny_incorrect_kms_key_sse = true` requires `allowed_kms_key_arn`.
+- Replication requires a role: set `replication_configuration.role` or `create_bucket_replication_role = true`.
+
 ## Features
 
 - **Access Control** - Configure bucket ACLs, ownership controls, and public access blocks to enforce least-privilege access
@@ -27,7 +33,7 @@ Provisions Amazon S3 buckets with comprehensive support for access controls, enc
 module "s3_bucket" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//s3?depth=1&ref=master"
 
-  bucket = "my-app-assets-prod-eu-west-1"
+  name   = "my-app-assets-prod-eu-west-1"
 
   attach_deny_insecure_transport_policy = true
   attach_require_latest_tls_policy      = true
@@ -55,7 +61,7 @@ module "s3_bucket" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//s3?depth=1&ref=master"
 
   enabled = true
-  bucket  = "my-app-assets-prod-eu-west-1"
+  name    = "my-app-assets-prod-eu-west-1"
 
   attach_deny_insecure_transport_policy = true
   attach_require_latest_tls_policy      = true
@@ -81,7 +87,7 @@ module "s3_encrypted" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//s3?depth=1&ref=master"
 
   enabled = true
-  bucket  = "my-app-data-prod-eu-west-1"
+  name    = "my-app-data-prod-eu-west-1"
 
   versioning = {
     enabled = true
@@ -124,7 +130,7 @@ module "s3_alb_logs" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//s3?depth=1&ref=master"
 
   enabled = true
-  bucket  = "my-alb-access-logs-prod-eu-west-1"
+  name    = "my-alb-access-logs-prod-eu-west-1"
 
   attach_lb_log_delivery_policy = true
   attach_deny_insecure_transport_policy = true
@@ -167,7 +173,7 @@ module "s3_data_lake" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//s3?depth=1&ref=master"
 
   enabled = true
-  bucket  = "my-data-lake-primary-eu-west-1"
+  name    = "my-data-lake-primary-eu-west-1"
 
   versioning = {
     enabled = true
