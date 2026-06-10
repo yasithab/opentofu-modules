@@ -1,18 +1,28 @@
+data "aws_partition" "current" {}
+
 locals {
   enabled                                 = var.enabled
+  name                                    = var.name
   create_rest_api_policy                  = local.enabled && var.rest_api_policy != null
   create_log_group                        = local.enabled && var.logging_level != "OFF"
+  create_api_gateway_account              = local.enabled && var.create_api_gateway_account
   log_group_arn                           = try(aws_cloudwatch_log_group.this.arn, null)
   vpc_link_enabled                        = local.enabled && length(var.private_link_target_arns) > 0
   aws_api_gateway_method_settings_enabled = local.enabled && var.logging_level != "OFF"
+  create_domain_name                      = local.enabled && var.domain_name != null
+  create_waf_association                  = local.enabled && var.waf_web_acl_arn != null
+
+  # Custom domains only support EDGE and REGIONAL endpoint configurations.
+  domain_endpoint_type = var.endpoint_type == "EDGE" ? "EDGE" : "REGIONAL"
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
 resource "aws_api_gateway_rest_api" "this" {
-  name                         = var.name
+  name                         = local.name
   body                         = jsonencode(var.openapi_config)
   description                  = var.description
   binary_media_types           = var.binary_media_types
@@ -47,8 +57,9 @@ resource "aws_api_gateway_rest_api_policy" "this" {
 }
 
 resource "aws_cloudwatch_log_group" "this" {
-  name              = "/aws/apigateway/${var.name}"
+  name              = "/aws/apigateway/${local.name}"
   retention_in_days = var.log_group_retention_in_days
+  kms_key_id        = var.log_group_kms_key_id
   skip_destroy      = var.cloudwatch_log_group_skip_destroy
   log_group_class   = var.cloudwatch_log_group_class
 
@@ -64,8 +75,16 @@ resource "aws_api_gateway_deployment" "this" {
   description = var.deployment_description
   variables   = var.deployment_variables
 
+  # Redeploy whenever the API definition or anything affecting its behavior
+  # changes: body, deployment variables, resource policy, or import parameters.
   triggers = {
-    redeployment = sha1(jsonencode(aws_api_gateway_rest_api.this.body))
+    redeployment = sha1(jsonencode({
+      body                 = aws_api_gateway_rest_api.this.body
+      deployment_variables = var.deployment_variables
+      policy               = var.rest_api_policy
+      inline_policy        = var.rest_api_inline_policy
+      parameters           = var.parameters
+    }))
   }
 
   lifecycle {
@@ -143,8 +162,8 @@ resource "aws_api_gateway_method_settings" "all" {
 
 #Optionally create a VPC Link to allow the API Gateway to communicate with private resources (e.g. ALB)
 resource "aws_api_gateway_vpc_link" "this" {
-  name        = var.name
-  description = "VPC Link for ${var.name}"
+  name        = local.name
+  description = "VPC Link for ${local.name}"
   target_arns = var.private_link_target_arns
   tags        = local.tags
 
@@ -159,3 +178,162 @@ resource "aws_api_gateway_resource" "api_resources" {
   parent_id   = try(each.value.parent_id, aws_api_gateway_rest_api.this.root_resource_id)
   path_part   = each.value.path_part
 }
+
+################################################################################
+# API Gateway Account (region-wide CloudWatch logging role)
+################################################################################
+
+# API Gateway requires a region-wide account-level CloudWatch role before any
+# stage can push execution logs. This is a singleton per region/account -
+# enable it here only if it is not already managed elsewhere.
+resource "aws_iam_role" "api_gateway_account" {
+  name = "${local.name}-apigateway-cloudwatch"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = local.tags
+
+  lifecycle {
+    enabled = local.create_api_gateway_account
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "api_gateway_account" {
+  role       = aws_iam_role.api_gateway_account.name
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+
+  lifecycle {
+    enabled = local.create_api_gateway_account
+  }
+}
+
+resource "aws_api_gateway_account" "this" {
+  cloudwatch_role_arn = aws_iam_role.api_gateway_account.arn
+
+  depends_on = [aws_iam_role_policy_attachment.api_gateway_account]
+
+  lifecycle {
+    enabled = local.create_api_gateway_account
+  }
+}
+
+################################################################################
+# Usage Plans & API Keys
+################################################################################
+
+resource "aws_api_gateway_usage_plan" "this" {
+  for_each = { for k, v in var.usage_plans : k => v if local.enabled }
+
+  name         = "${local.name}-${each.key}"
+  description  = each.value.description
+  product_code = each.value.product_code
+  tags         = local.tags
+
+  api_stages {
+    api_id = aws_api_gateway_rest_api.this.id
+    stage  = aws_api_gateway_stage.this.stage_name
+
+    dynamic "throttle" {
+      for_each = each.value.method_throttle
+
+      content {
+        path        = throttle.value.path
+        burst_limit = throttle.value.burst_limit
+        rate_limit  = throttle.value.rate_limit
+      }
+    }
+  }
+
+  dynamic "quota_settings" {
+    for_each = each.value.quota_settings != null ? [each.value.quota_settings] : []
+
+    content {
+      limit  = quota_settings.value.limit
+      offset = quota_settings.value.offset
+      period = quota_settings.value.period
+    }
+  }
+
+  dynamic "throttle_settings" {
+    for_each = each.value.throttle_settings != null ? [each.value.throttle_settings] : []
+
+    content {
+      burst_limit = throttle_settings.value.burst_limit
+      rate_limit  = throttle_settings.value.rate_limit
+    }
+  }
+}
+
+resource "aws_api_gateway_api_key" "this" {
+  for_each = { for k, v in var.api_keys : k => v if local.enabled }
+
+  name        = "${local.name}-${each.key}"
+  description = each.value.description
+  enabled     = each.value.enabled
+  tags        = local.tags
+}
+
+resource "aws_api_gateway_usage_plan_key" "this" {
+  for_each = { for k, v in var.api_keys : k => v if local.enabled && v.usage_plan_key != null }
+
+  key_id        = aws_api_gateway_api_key.this[each.key].id
+  key_type      = "API_KEY"
+  usage_plan_id = aws_api_gateway_usage_plan.this[each.value.usage_plan_key].id
+}
+
+################################################################################
+# Custom Domain
+################################################################################
+
+resource "aws_api_gateway_domain_name" "this" {
+  domain_name              = var.domain_name
+  certificate_arn          = local.domain_endpoint_type == "EDGE" ? var.domain_certificate_arn : null
+  regional_certificate_arn = local.domain_endpoint_type == "REGIONAL" ? var.domain_certificate_arn : null
+  security_policy          = var.domain_security_policy
+  tags                     = local.tags
+
+  endpoint_configuration {
+    types = [local.domain_endpoint_type]
+  }
+
+  lifecycle {
+    enabled = local.create_domain_name
+  }
+}
+
+resource "aws_api_gateway_base_path_mapping" "this" {
+  api_id      = aws_api_gateway_rest_api.this.id
+  stage_name  = aws_api_gateway_stage.this.stage_name
+  domain_name = aws_api_gateway_domain_name.this.domain_name
+  base_path   = var.domain_base_path
+
+  lifecycle {
+    enabled = local.create_domain_name
+  }
+}
+
+################################################################################
+# WAF Web ACL Association
+################################################################################
+
+resource "aws_wafv2_web_acl_association" "this" {
+  resource_arn = aws_api_gateway_stage.this.arn
+  web_acl_arn  = var.waf_web_acl_arn
+
+  lifecycle {
+    enabled = local.create_waf_association
+  }
+}
+
+data "aws_region" "current" {}

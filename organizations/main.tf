@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   # Separate root-level OUs from child OUs for ordered creation
@@ -16,20 +17,28 @@ locals {
     if v.parent_key != null && local.enabled
   }
 
-  # Build a map of OU key -> OU ID for parent resolution (only root OUs, child OUs reference root directly)
-  ou_ids = { for k, v in aws_organizations_organizational_unit.root : k => v.id }
+  # Build a map of OU key -> OU ID for parent/target resolution (root and child OUs)
+  ou_ids = merge(
+    { for k, v in aws_organizations_organizational_unit.root : k => v.id },
+    { for k, v in aws_organizations_organizational_unit.child : k => v.id },
+  )
+
+  # Keys of root-level OUs (valid parents for child OUs - the module supports two OU levels)
+  root_ou_keys = [for k, v in var.organizational_units : k if v.parent_key == null]
 
   # Build policy attachment flattened map: policy_key/target_key -> { policy_id, target_id }
   policy_attachments = merge([
     for policy_key, policy in var.policies : {
-      for target_key in try(policy.target_keys, []) : "${policy_key}/${target_key}" => {
-        policy_id = aws_organizations_policy.this[policy_key].id
+      for target_key in policy.target_keys : "${policy_key}/${target_key}" => {
+        policy_id  = aws_organizations_policy.this[policy_key].id
+        target_key = target_key
         target_id = (
           target_key == "__root__"
           ? try(aws_organizations_organization.this.roots[0].id, "")
           : try(
             local.ou_ids[target_key],
-            try(aws_organizations_account.this[target_key].id, ""),
+            aws_organizations_account.this[target_key].id,
+            null,
           )
         )
       }
@@ -72,11 +81,18 @@ resource "aws_organizations_organizational_unit" "child" {
   for_each = local.child_ous
 
   name      = each.value.name
-  parent_id = try(aws_organizations_organizational_unit.root[each.value.parent_key].id, aws_organizations_organization.this.roots[0].id, "")
+  parent_id = try(aws_organizations_organizational_unit.root[each.value.parent_key].id, null)
 
   tags = merge(local.tags, each.value.tags)
 
   depends_on = [aws_organizations_organizational_unit.root]
+
+  lifecycle {
+    precondition {
+      condition     = contains(local.root_ou_keys, each.value.parent_key)
+      error_message = "Organizational unit '${each.key}': parent_key '${each.value.parent_key}' does not match any root-level organizational_units key. This module supports two OU levels - a child OU's parent_key must reference an OU whose parent_key is null."
+    }
+  }
 }
 
 ################################################################################
@@ -91,7 +107,7 @@ resource "aws_organizations_account" "this" {
 
   name      = each.value.name
   email     = each.value.email
-  parent_id = try(local.ou_ids[each.value.parent_key], aws_organizations_organization.this.roots[0].id, "")
+  parent_id = each.value.parent_key != null ? lookup(local.ou_ids, each.value.parent_key, null) : try(aws_organizations_organization.this.roots[0].id, "")
 
   iam_user_access_to_billing = each.value.iam_user_access_to_billing
   role_name                  = each.value.role_name
@@ -111,6 +127,11 @@ resource "aws_organizations_account" "this" {
       role_name,
       iam_user_access_to_billing,
     ]
+
+    precondition {
+      condition     = each.value.parent_key == null || contains(keys(var.organizational_units), coalesce(each.value.parent_key, "__none__"))
+      error_message = "Account '${each.key}': parent_key '${coalesce(each.value.parent_key, "null")}' does not match any organizational_units key. Previously this silently placed the account at the organization root."
+    }
   }
 }
 
@@ -144,6 +165,13 @@ resource "aws_organizations_policy_attachment" "this" {
 
   policy_id = each.value.policy_id
   target_id = each.value.target_id
+
+  lifecycle {
+    precondition {
+      condition     = each.value.target_key == "__root__" || contains(keys(var.organizational_units), each.value.target_key) || contains(keys(var.accounts), each.value.target_key)
+      error_message = "Policy attachment '${each.key}': target_key '${each.value.target_key}' is neither '__root__' nor a key of organizational_units or accounts."
+    }
+  }
 }
 
 ################################################################################
@@ -171,7 +199,9 @@ resource "aws_organizations_resource_policy" "this" {
     enabled = local.enabled && var.resource_policy != null
   }
 
-  content = try(var.resource_policy, "{}")
+  content = coalesce(var.resource_policy, "{}")
 
   tags = local.tags
 }
+
+data "aws_region" "current" {}

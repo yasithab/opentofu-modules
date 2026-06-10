@@ -11,6 +11,20 @@ Provisions AWS Chatbot channel configurations for Slack and Microsoft Teams, wit
 - **Configurable Logging** - Supports ERROR, INFO, or NONE logging levels, pushing log entries to Amazon CloudWatch Logs for audit and troubleshooting
 - **Feature Flag** - Toggle all resource creation on or off with the `enabled` variable for per-environment control
 
+## Notes
+
+- **Security / BREAKING-ish**: when `guardrail_policies` (or `teams_guardrail_policies`)
+  is not set, the module now applies the partition-aware AWS managed `ReadOnlyAccess`
+  policy as the channel guardrail. Previously no guardrail was sent, in which case AWS
+  Chatbot itself falls back to `AdministratorAccess`. If you relied on that implicit
+  admin guardrail, set `guardrail_policies` explicitly.
+- `logging_level` (and `teams_logging_level`) now default to `"ERROR"` instead of
+  `"NONE"` so misconfigurations surface in CloudWatch Logs.
+- `slack_channel_id`, `slack_workspace_id`, `teams_channel_id`, `teams_team_id`, and
+  `teams_tenant_id` are marked `sensitive`.
+- IAM managed-policy ARNs are built with the current AWS partition (`aws`, `aws-cn`,
+  `aws-us-gov`).
+
 ## Usage
 
 ```hcl

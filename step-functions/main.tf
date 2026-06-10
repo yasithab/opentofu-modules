@@ -1,9 +1,13 @@
 locals {
   enabled = var.enabled
+  name    = var.name
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
+
+  create_role = local.enabled && var.create_role
 
   role_arn       = var.create_role ? aws_iam_role.this.arn : var.role_arn
   log_group_name = coalesce(var.log_group_name, "/aws/states/${var.name}")
@@ -16,7 +20,7 @@ locals {
 ################################################################################
 
 resource "aws_sfn_state_machine" "this" {
-  name       = var.name
+  name       = local.name
   role_arn   = local.role_arn
   definition = var.definition
   type       = var.type
@@ -68,7 +72,7 @@ resource "aws_cloudwatch_log_group" "this" {
 ################################################################################
 
 data "aws_iam_policy_document" "assume_role" {
-  count = var.enabled && var.create_role ? 1 : 0
+  count = local.create_role ? 1 : 0
 
   statement {
     sid     = "StepFunctionsAssumeRole"
@@ -102,19 +106,19 @@ resource "aws_iam_role" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.enabled && var.create_role
+    enabled = local.create_role
   }
 }
 
 resource "aws_iam_role_policy_attachment" "this" {
-  for_each = { for k, v in var.role_policy_arns : k => v if local.enabled && var.create_role }
+  for_each = { for k, v in var.role_policy_arns : k => v if local.create_role }
 
   role       = aws_iam_role.this.name
   policy_arn = each.value
 }
 
 resource "aws_iam_role_policy" "this" {
-  for_each = { for k, v in var.role_inline_policies : k => v if local.enabled && var.create_role }
+  for_each = { for k, v in var.role_inline_policies : k => v if local.create_role }
 
   name   = each.key
   role   = aws_iam_role.this.id
@@ -123,8 +127,9 @@ resource "aws_iam_role_policy" "this" {
 
 # Logging policy - grant the state machine role permission to write logs
 data "aws_iam_policy_document" "logging" {
-  count = var.enabled && var.create_role && var.logging_enabled ? 1 : 0
+  count = local.create_role && var.logging_enabled ? 1 : 0
 
+  # Log delivery management APIs do not support resource-level permissions
   statement {
     sid    = "CloudWatchLogsDelivery"
     effect = "Allow"
@@ -138,11 +143,25 @@ data "aws_iam_policy_document" "logging" {
       "logs:PutResourcePolicy",
       "logs:DescribeResourcePolicies",
       "logs:DescribeLogGroups",
-      "logs:PutLogEvents",
-      "logs:CreateLogStream",
     ]
 
     resources = ["*"]
+  }
+
+  # Writing log events can be scoped to the state machine's log group
+  statement {
+    sid    = "CloudWatchLogsWrite"
+    effect = "Allow"
+
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+    ]
+
+    resources = [
+      local.log_group_arn,
+      "${local.log_group_arn}:*",
+    ]
   }
 }
 
@@ -152,13 +171,13 @@ resource "aws_iam_role_policy" "logging" {
   policy = data.aws_iam_policy_document.logging[0].json
 
   lifecycle {
-    enabled = local.enabled && var.create_role && var.logging_enabled
+    enabled = local.create_role && var.logging_enabled
   }
 }
 
 # X-Ray tracing policy
 data "aws_iam_policy_document" "tracing" {
-  count = var.enabled && var.create_role && var.tracing_enabled ? 1 : 0
+  count = local.create_role && var.tracing_enabled ? 1 : 0
 
   statement {
     sid    = "XRayTracing"
@@ -181,7 +200,7 @@ resource "aws_iam_role_policy" "tracing" {
   policy = data.aws_iam_policy_document.tracing[0].json
 
   lifecycle {
-    enabled = local.enabled && var.create_role && var.tracing_enabled
+    enabled = local.create_role && var.tracing_enabled
   }
 }
 
@@ -290,6 +309,23 @@ resource "aws_cloudwatch_event_target" "this" {
   arn      = aws_sfn_state_machine.this.arn
   role_arn = var.create_event_role ? aws_iam_role.events.arn : var.event_role_arn
   input    = try(each.value.input, null)
+
+  dynamic "dead_letter_config" {
+    for_each = try(each.value.dead_letter_arn, null) != null ? [1] : []
+
+    content {
+      arn = each.value.dead_letter_arn
+    }
+  }
+
+  dynamic "retry_policy" {
+    for_each = try(each.value.retry_policy, null) != null ? [each.value.retry_policy] : []
+
+    content {
+      maximum_event_age_in_seconds = try(retry_policy.value.maximum_event_age_in_seconds, null)
+      maximum_retry_attempts       = try(retry_policy.value.maximum_retry_attempts, null)
+    }
+  }
 }
 
 # EventBridge IAM Role
@@ -339,3 +375,25 @@ resource "aws_iam_role_policy" "events" {
     enabled = local.enabled && var.create_event_role
   }
 }
+
+################################################################################
+# Aliases
+################################################################################
+
+resource "aws_sfn_alias" "this" {
+  for_each = { for k, v in var.aliases : k => v if local.enabled }
+
+  name        = each.key
+  description = each.value.description
+
+  dynamic "routing_configuration" {
+    for_each = each.value.routing_configuration
+
+    content {
+      state_machine_version_arn = routing_configuration.value.state_machine_version_arn != null ? routing_configuration.value.state_machine_version_arn : aws_sfn_state_machine.this.state_machine_version_arn
+      weight                    = routing_configuration.value.weight
+    }
+  }
+}
+
+data "aws_region" "current" {}

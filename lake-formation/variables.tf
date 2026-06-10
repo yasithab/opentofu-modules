@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls if Lake Formation resources are created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -7,6 +7,17 @@ variable "enabled" {
 ################################################################################
 # Data Lake Settings
 ################################################################################
+
+variable "manage_data_lake_settings" {
+  description = "Whether this module manages the account-level Lake Formation data lake settings (administrators, default permissions, external data filtering). Defaults to `false` because applying these settings overwrites the entire account/catalog configuration, including admins configured elsewhere."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.manage_data_lake_settings || length(var.admin_arns) > 0
+    error_message = "admin_arns must contain at least one administrator ARN when manage_data_lake_settings is true; applying empty settings would remove all Lake Formation administrators."
+  }
+}
 
 variable "catalog_id" {
   description = "AWS account ID for the Glue Data Catalog. Defaults to the caller's account"

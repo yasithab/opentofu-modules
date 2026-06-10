@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Determines whether resources will be created (affects all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -11,7 +11,7 @@ variable "region" {
 }
 
 variable "tags" {
-  description = "A map of tags to add to all resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -69,9 +69,10 @@ variable "is_enabled" {
 }
 
 variable "key_material_base64" {
-  description = "Base64 encoded 256-bit symmetric encryption key material to import. The CMK is permanently associated with this key material. External key only"
+  description = "Base64 encoded 256-bit symmetric encryption key material to import. The CMK is permanently associated with this key material. External key only. Note: this value is stored in the OpenTofu state - protect your state accordingly"
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "key_usage" {
@@ -102,6 +103,29 @@ variable "enable_default_policy" {
   description = "Specifies whether to enable the default key policy. Defaults to `true`"
   type        = bool
   default     = true
+
+  validation {
+    condition = anytrue([
+      var.enable_default_policy,
+      var.policy != null,
+      length(var.source_policy_documents) > 0,
+      length(var.override_policy_documents) > 0,
+      length(var.key_statements) > 0,
+      var.enable_route53_dnssec,
+      length(concat(
+        var.key_owners,
+        var.key_administrators,
+        var.key_users,
+        var.key_service_users,
+        var.key_service_roles_for_autoscaling,
+        var.key_symmetric_encryption_users,
+        var.key_hmac_users,
+        var.key_asymmetric_public_encryption_users,
+        var.key_asymmetric_sign_verify_users,
+      )) > 0,
+    ])
+    error_message = "When `enable_default_policy` is false, at least one other policy source must be provided (`policy`, `source_policy_documents`, `override_policy_documents`, `key_statements`, one of the `key_*` principal lists, or `enable_route53_dnssec`). Otherwise the key would be created with an empty policy and become unmanageable."
+  }
 }
 
 variable "key_owners" {
@@ -159,9 +183,29 @@ variable "key_asymmetric_sign_verify_users" {
 }
 
 variable "key_statements" {
-  description = "A map of IAM policy [statements](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document#statement) for custom permission usage"
-  type        = any
-  default     = {}
+  description = "A list of IAM policy [statements](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document#statement) for custom permission usage"
+  type = list(object({
+    sid           = optional(string)
+    effect        = optional(string)
+    actions       = optional(list(string))
+    not_actions   = optional(list(string))
+    resources     = optional(list(string))
+    not_resources = optional(list(string))
+    principals = optional(list(object({
+      type        = string
+      identifiers = list(string)
+    })), [])
+    not_principals = optional(list(object({
+      type        = string
+      identifiers = list(string)
+    })), [])
+    conditions = optional(list(object({
+      test     = string
+      variable = string
+      values   = list(string)
+    })), [])
+  }))
+  default = []
 }
 
 variable "source_policy_documents" {
@@ -245,8 +289,10 @@ variable "aliases" {
 
 variable "computed_aliases" {
   description = "A map of aliases to create. Values provided via the `name` key of the map can be computed from upstream resources"
-  type        = any
-  default     = {}
+  type = map(object({
+    name = string
+  }))
+  default = {}
 }
 
 variable "aliases_use_name_prefix" {
@@ -260,7 +306,18 @@ variable "aliases_use_name_prefix" {
 ################################################################################
 
 variable "grants" {
-  description = "A map of grant definitions to create"
-  type        = any
-  default     = {}
+  description = "A map of grant definitions to create. The map key is used as the grant name when `name` is not set"
+  type = map(object({
+    name              = optional(string)
+    grantee_principal = string
+    operations        = list(string)
+    constraints = optional(object({
+      encryption_context_equals = optional(map(string))
+      encryption_context_subset = optional(map(string))
+    }))
+    retiring_principal    = optional(string)
+    grant_creation_tokens = optional(list(string))
+    retire_on_delete      = optional(bool)
+  }))
+  default = {}
 }

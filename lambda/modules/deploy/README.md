@@ -61,7 +61,13 @@ module "deploy" {
 | alarms | A list of CloudWatch alarm names configured for the deployment group (max 10) | `list(string)` | `[]` | no |
 | alarm_ignore_poll_alarm_failure | Whether a deployment should continue if alarm state cannot be retrieved from CloudWatch | `bool` | `false` | no |
 | create_codedeploy_role | Whether to create a new CodeDeploy IAM role | `bool` | `true` | no |
+| codedeploy_role_name | IAM role name to create or use by CodeDeploy. Required when `create_codedeploy_role = false` and a deployment group or deployment is created | `string` | `null` | no |
 | tags | A map of tags to assign to resources | `map(string)` | `{}` | no |
+
+## Notes
+
+- When `force_deploy = true`, the `null_resource.deploy` trigger uses `uuid()`, which produces a **perpetual diff**: every plan/apply will show the resource as changed and re-run the deployment. This is intentional - disable `force_deploy` to deploy only when the appspec changes.
+- User-provided values (versions, names, description, appspec revision) are passed to the deployment script through environment variables rather than shell interpolation, so they cannot inject shell commands. `aws_cli_command` is still interpolated as the command itself by design.
 
 ## Outputs
 

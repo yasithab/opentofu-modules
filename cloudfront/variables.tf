@@ -28,7 +28,13 @@ variable "tags" {
 }
 
 variable "enabled" {
-  description = "Controls if CloudFront distribution should be created"
+  description = "Set to false to prevent the module from creating any resources."
+  type        = bool
+  default     = true
+}
+
+variable "distribution_enabled" {
+  description = "Whether the CloudFront distribution accepts end user requests for content. Decoupled from `enabled` (which controls resource creation), so a distribution can be kept in state but disabled"
   type        = bool
   default     = true
 }
@@ -147,23 +153,67 @@ variable "staging" {
 }
 
 variable "origin" {
-  description = "One or more origins for this distribution (multiples allowed)."
-  type        = any
-  default     = null
+  description = "Map of origins for this distribution. The map key is used as `origin_id` unless overridden. Exactly one of `custom_origin_config`, `s3_origin_config` (legacy OAI), `vpc_origin_config`, or `origin_access_control_id`/`origin_access_control` should be used per origin. `origin_access_control` and `s3_origin_config.origin_access_identity`/`vpc_origin_config.vpc_origin` accept names of OAC/OAI/VPC-origin resources created inline by this module."
+  type = map(object({
+    domain_name                 = string
+    origin_id                   = optional(string)
+    origin_path                 = optional(string, "")
+    connection_attempts         = optional(number)
+    connection_timeout          = optional(number)
+    response_completion_timeout = optional(number)
+    origin_access_control_id    = optional(string)
+    origin_access_control       = optional(string)
+    custom_headers              = optional(map(string), {})
+    custom_origin_config = optional(object({
+      http_port                = optional(number, 80)
+      https_port               = optional(number, 443)
+      origin_protocol_policy   = optional(string, "https-only")
+      origin_ssl_protocols     = optional(list(string), ["TLSv1.2"])
+      origin_keepalive_timeout = optional(number)
+      origin_read_timeout      = optional(number)
+      ip_address_type          = optional(string)
+    }))
+    s3_origin_config = optional(object({
+      cloudfront_access_identity_path = optional(string)
+      origin_access_identity          = optional(string)
+    }))
+    origin_shield = optional(object({
+      enabled              = optional(bool, true)
+      origin_shield_region = string
+    }))
+    vpc_origin_config = optional(object({
+      vpc_origin_id            = optional(string)
+      vpc_origin               = optional(string)
+      origin_keepalive_timeout = optional(number)
+      origin_read_timeout      = optional(number)
+      owner_account_id         = optional(string)
+    }))
+  }))
+  default = {}
 }
 
 variable "origin_group" {
-  description = "One or more origin_group for this distribution (multiples allowed)."
-  type        = any
-  default     = {}
+  description = "Map of origin groups for this distribution. The map key is used as `origin_id` unless overridden."
+  type = map(object({
+    origin_id                  = optional(string)
+    failover_status_codes      = list(number)
+    primary_member_origin_id   = string
+    secondary_member_origin_id = string
+  }))
+  default = {}
 }
 
 variable "viewer_certificate" {
-  description = "The SSL configuration for this distribution"
-  type        = any
+  description = "The SSL configuration for this distribution. minimum_protocol_version defaults to TLSv1.2_2021; override only if legacy clients require an older protocol"
+  type = object({
+    acm_certificate_arn            = optional(string)
+    cloudfront_default_certificate = optional(bool)
+    iam_certificate_id             = optional(string)
+    minimum_protocol_version       = optional(string, "TLSv1.2_2021")
+    ssl_support_method             = optional(string)
+  })
   default = {
     cloudfront_default_certificate = true
-    minimum_protocol_version       = "TLSv1"
   }
 }
 
@@ -174,27 +224,139 @@ variable "geo_restriction" {
 }
 
 variable "logging_config" {
-  description = "The logging configuration that controls how logs are written to your distribution (maximum one)."
-  type        = any
-  default     = {}
+  description = "The logging configuration that controls how logs are written to your distribution (maximum one). Strongly recommended for production distributions. Set to null (default) to disable logging"
+  type = object({
+    bucket          = string
+    prefix          = optional(string)
+    include_cookies = optional(bool)
+  })
+  default = null
 }
 
 variable "custom_error_response" {
-  description = "One or more custom error response elements"
-  type        = any
-  default     = {}
+  description = "List of custom error response elements"
+  type = list(object({
+    error_code            = number
+    response_code         = optional(number)
+    response_page_path    = optional(string)
+    error_caching_min_ttl = optional(number)
+  }))
+  default = []
 }
 
 variable "default_cache_behavior" {
-  description = "The default cache behavior for this distribution"
-  type        = any
-  default     = null
+  description = "The default cache behavior for this distribution (required). A cache policy is mandatory: set `cache_policy_id` (e.g. an AWS managed policy ID) or `cache_policy_name` (inline policy from `cache_policies`, or an AWS/externally managed policy looked up by name). Legacy `forwarded_values` is not supported. The `*_name` variants of origin request, response headers and realtime log config follow the same resolution rules."
+  type = object({
+    target_origin_id          = string
+    viewer_protocol_policy    = optional(string, "redirect-to-https")
+    allowed_methods           = optional(list(string), ["GET", "HEAD", "OPTIONS"])
+    cached_methods            = optional(list(string), ["GET", "HEAD"])
+    compress                  = optional(bool, true)
+    field_level_encryption_id = optional(string)
+    smooth_streaming          = optional(bool)
+    trusted_signers           = optional(list(string))
+    trusted_key_groups        = optional(list(string))
+
+    cache_policy_id              = optional(string)
+    cache_policy_name            = optional(string)
+    origin_request_policy_id     = optional(string)
+    origin_request_policy_name   = optional(string)
+    response_headers_policy_id   = optional(string)
+    response_headers_policy_name = optional(string)
+
+    realtime_log_config_arn  = optional(string)
+    realtime_log_config_name = optional(string)
+
+    function_association = optional(list(object({
+      event_type    = string
+      function_arn  = optional(string)
+      function_name = optional(string)
+    })), [])
+
+    lambda_function_association = optional(list(object({
+      event_type   = string
+      lambda_arn   = string
+      include_body = optional(bool)
+    })), [])
+
+    grpc_config = optional(object({
+      enabled = bool
+    }))
+  })
+
+  validation {
+    condition     = var.default_cache_behavior.cache_policy_id != null || var.default_cache_behavior.cache_policy_name != null
+    error_message = "default_cache_behavior requires a cache policy: set cache_policy_id (e.g. AWS managed CachingOptimized: 658327ea-f89d-4fab-a63d-7e88639e58f6) or cache_policy_name. Legacy forwarded_values is no longer supported."
+  }
+
+  validation {
+    condition = alltrue([
+      for f in var.default_cache_behavior.function_association :
+      f.function_arn != null || f.function_name != null
+    ])
+    error_message = "Each function_association entry requires either function_arn or function_name."
+  }
 }
 
 variable "ordered_cache_behavior" {
-  description = "An ordered list of cache behaviors resource for this distribution. List from top to bottom in order of precedence. The topmost cache behavior will have precedence 0."
-  type        = any
-  default     = []
+  description = "An ordered list of cache behaviors for this distribution, evaluated top to bottom (the topmost behavior has precedence 0). Same shape as `default_cache_behavior` plus the required `path_pattern`. A cache policy (`cache_policy_id` or `cache_policy_name`) is mandatory per behavior; legacy `forwarded_values` is not supported."
+  type = list(object({
+    path_pattern              = string
+    target_origin_id          = string
+    viewer_protocol_policy    = optional(string, "redirect-to-https")
+    allowed_methods           = optional(list(string), ["GET", "HEAD", "OPTIONS"])
+    cached_methods            = optional(list(string), ["GET", "HEAD"])
+    compress                  = optional(bool, true)
+    field_level_encryption_id = optional(string)
+    smooth_streaming          = optional(bool)
+    trusted_signers           = optional(list(string))
+    trusted_key_groups        = optional(list(string))
+
+    cache_policy_id              = optional(string)
+    cache_policy_name            = optional(string)
+    origin_request_policy_id     = optional(string)
+    origin_request_policy_name   = optional(string)
+    response_headers_policy_id   = optional(string)
+    response_headers_policy_name = optional(string)
+
+    realtime_log_config_arn  = optional(string)
+    realtime_log_config_name = optional(string)
+
+    function_association = optional(list(object({
+      event_type    = string
+      function_arn  = optional(string)
+      function_name = optional(string)
+    })), [])
+
+    lambda_function_association = optional(list(object({
+      event_type   = string
+      lambda_arn   = string
+      include_body = optional(bool)
+    })), [])
+
+    grpc_config = optional(object({
+      enabled = bool
+    }))
+  }))
+  default = []
+
+  validation {
+    condition = alltrue([
+      for b in var.ordered_cache_behavior :
+      b.cache_policy_id != null || b.cache_policy_name != null
+    ])
+    error_message = "Every ordered_cache_behavior requires a cache policy: set cache_policy_id (e.g. AWS managed CachingOptimized: 658327ea-f89d-4fab-a63d-7e88639e58f6) or cache_policy_name. Legacy forwarded_values is no longer supported."
+  }
+
+  validation {
+    condition = alltrue([
+      for b in var.ordered_cache_behavior : alltrue([
+        for f in b.function_association :
+        f.function_arn != null || f.function_name != null
+      ])
+    ])
+    error_message = "Each function_association entry requires either function_arn or function_name."
+  }
 }
 
 variable "create_monitoring_subscription" {

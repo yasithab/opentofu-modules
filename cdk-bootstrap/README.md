@@ -12,6 +12,19 @@ Provisions the AWS CDK bootstrap resources natively in OpenTofu — S3 staging b
 - **Cross-Account Trust** — Configure trusted accounts for deployment and lookup roles
 - **Custom Execution Policies** — Override the default AdministratorAccess CloudFormation execution policy
 
+## Security Notes
+
+- **CloudFormation execution role defaults to `AdministratorAccess`** (matching the
+  upstream `cdk bootstrap` template). Anyone who can deploy through CDK effectively has
+  admin in the target account. Strongly consider passing a scoped-down policy via
+  `cloudformation_execution_policy_arns` instead of relying on the default.
+- **Deploy role stack scope**: the deploy role's CloudFormation permissions are scoped to
+  `stack/<stack_name_prefix>/*`. The default `stack_name_prefix = "*"` allows all stacks
+  (upstream CDK parity). Narrow it to your stack naming convention (e.g. `"myapp-*"`)
+  for least privilege. Note: earlier versions of this module hard-coded `stack/CDK*`;
+  the default is now broader for upstream parity - set `stack_name_prefix = "CDK*"`
+  to keep the old behaviour.
+
 ## Usage
 
 ```hcl
@@ -23,6 +36,9 @@ module "cdk_bootstrap" {
   ]
 
   trust_account_ids = ["123456789012"]
+
+  # Least privilege: only allow the deploy role to manage stacks named myapp-*
+  stack_name_prefix = "myapp-*"
 }
 ```
 

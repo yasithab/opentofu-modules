@@ -11,9 +11,9 @@ OpenTofu module for provisioning and managing AWS EMR Serverless applications wi
 - **VPC Networking** - Deploy applications within VPC subnets with security group controls
 - **Custom Images** - Use custom container images for application runtime environments
 - **Interactive Sessions** - Optional EMR Studio and Livy endpoint integration
-- **IAM Execution Role** - Automatically create an execution role with S3 and Glue access policies
+- **IAM Execution Role** - Automatically create an execution role (named with `name_prefix`) with optional S3 and Glue access policies. Glue access is opt-in via `execution_role_glue_access_enabled` and can be scoped with `execution_role_glue_catalog_arns`
 - **Architecture Selection** - Choose between ARM64 and X86_64 CPU architectures
-- **Production Defaults** - Auto-start/stop enabled, Glue access included, X86_64 architecture
+- **Production Defaults** - Auto-start/stop enabled, X86_64 architecture
 
 ## Usage
 
@@ -37,7 +37,7 @@ module "emr_serverless" {
 
 ### Basic Spark Application
 
-A simple Spark application with auto start/stop and an execution role with S3 and Glue access.
+A simple Spark application with auto start/stop and an execution role with S3 access.
 
 ```hcl
 module "emr_spark" {
@@ -60,6 +60,11 @@ module "emr_spark" {
 
   execution_role_s3_bucket_arns      = ["arn:aws:s3:::data-lake-raw", "arn:aws:s3:::data-lake-processed"]
   execution_role_glue_access_enabled = true
+  execution_role_glue_catalog_arns = [
+    "arn:aws:glue:eu-west-1:123456789012:catalog",
+    "arn:aws:glue:eu-west-1:123456789012:database/analytics",
+    "arn:aws:glue:eu-west-1:123456789012:table/analytics/*",
+  ]
 
   tags = {
     Environment = "production"

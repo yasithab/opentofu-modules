@@ -2,6 +2,8 @@
 
 OpenTofu module for provisioning and managing Amazon MSK clusters with support for provisioned and serverless modes, encryption, authentication, and comprehensive monitoring.
 
+> **Note — logging default:** `logging_enabled` defaults to `true`. When no `cloudwatch_log_group` is provided, the module creates a CloudWatch log group `/aws/msk/<name>` (retention configurable via `cloudwatch_log_group_retention_in_days`, default 90 days) and delivers broker logs there. Set `logging_enabled = false` to disable. Provisioned clusters require at least 2 `broker_subnets`.
+
 ## Features
 
 - **Provisioned Clusters** - Full Kafka cluster with configurable broker count, instance types, and storage
@@ -13,6 +15,7 @@ OpenTofu module for provisioning and managing Amazon MSK clusters with support f
 - **Custom Configuration** - Kafka server.properties managed as a versioned MSK configuration resource
 - **SCRAM Secrets** - Associate Secrets Manager secrets for SASL/SCRAM authentication
 - **VPC Connectivity** - Multi-VPC private connectivity and public access options
+- **Cluster Policy** - Optional IAM resource policy on the cluster (`cluster_policy`) for cross-account access
 - **Production Defaults** - TLS-only client-broker encryption, IAM auth, and PER_BROKER monitoring enabled by default
 
 ## Usage
@@ -145,6 +148,47 @@ module "msk_serverless" {
   tags = {
     Environment = "production"
     Team        = "platform"
+  }
+}
+```
+
+### Cluster with Cross-Account Cluster Policy
+
+Attach an IAM resource policy to the cluster to allow another account to connect via multi-VPC private connectivity. The policy applies to the provisioned cluster, or to the serverless cluster when `serverless_enabled = true`.
+
+```hcl
+module "msk_shared" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//msk?depth=1&ref=master"
+
+  name                   = "shared-kafka"
+  kafka_version          = "3.6.0"
+  number_of_broker_nodes = 3
+  broker_instance_type   = "kafka.m5.large"
+  broker_subnets         = ["subnet-aaa111", "subnet-bbb222", "subnet-ccc333"]
+  broker_security_groups = ["sg-kafka"]
+
+  cluster_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowConsumerAccount"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::210987654321:root"
+        }
+        Action = [
+          "kafka:CreateVpcConnection",
+          "kafka:GetBootstrapBrokers",
+          "kafka:DescribeCluster",
+          "kafka:DescribeClusterV2"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = {
+    Environment = "production"
   }
 }
 ```

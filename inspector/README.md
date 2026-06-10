@@ -10,6 +10,12 @@ OpenTofu module for provisioning and managing Amazon Inspector vulnerability sca
 - **Member Associations** - Associate member accounts for centralized vulnerability management and findings aggregation
 - **Suppression Rules** - Filter and suppress findings based on account ID, severity, vulnerability ID, resource type, and other criteria
 
+## Notes
+
+- `name` is optional (defaults to `null`); it is exposed via the `name` output for composition.
+- **BREAKING**: the `enabler_arn` output was removed. Amazon Inspector's enabler has no ARN —
+  the output was a duplicate of the composite ID. Use `enabler_id` instead.
+
 ## Usage
 
 ```hcl
@@ -68,6 +74,7 @@ module "inspector" {
   auto_enable_ec2                   = true
   auto_enable_ecr                   = true
   auto_enable_lambda                = true
+  auto_enable_lambda_code           = false # requires auto_enable_lambda = true when enabled
 
   member_account_ids = ["111111111111", "222222222222"]
 

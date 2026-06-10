@@ -43,6 +43,11 @@ output "cluster_master_username" {
   sensitive   = true
 }
 
+output "cluster_master_user_secret" {
+  description = "Details of the Secrets Manager secret containing the master user password when manage_master_user_password is true."
+  value       = try(aws_docdb_cluster.this.master_user_secret, [])
+}
+
 ################################################################################
 # Cluster Instances
 ################################################################################

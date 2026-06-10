@@ -1,3 +1,15 @@
+variable "enabled" {
+  description = "Set to false to prevent the module from creating any resources."
+  type        = bool
+  default     = true
+}
+
+variable "tags" {
+  description = "Map of tags to apply to all resources."
+  type        = map(string)
+  default     = {}
+}
+
 ################################################################################
 # Groups
 ################################################################################
@@ -45,13 +57,13 @@ variable "sso_users" {
     phone_number_type       = optional(string, null)
     is_primary_phone_number = optional(bool, true)
     # Address
-    country            = optional(string, " ")
-    locality           = optional(string, " ")
+    country            = optional(string)
+    locality           = optional(string)
     address_formatted  = optional(string)
-    postal_code        = optional(string, " ")
+    postal_code        = optional(string)
     is_primary_address = optional(bool, true)
-    region             = optional(string, " ")
-    street_address     = optional(string, " ")
+    region             = optional(string)
+    street_address     = optional(string)
     address_type       = optional(string, null)
     # Additional
     user_type          = optional(string, null)
@@ -93,9 +105,35 @@ variable "existing_google_sso_users" {
 ################################################################################
 
 variable "permission_sets" {
-  description = "Map of permission sets to create in IAM Identity Center. Keys are permission set names. Values support: description, relay_state, session_duration, tags, aws_managed_policies, customer_managed_policies, inline_policy, permissions_boundary."
-  type        = any
-  default     = {}
+  description = "Map of permission sets to create in IAM Identity Center. Keys are permission set names. Unknown attributes are rejected (previously silently dropped)."
+  type = map(object({
+    description               = optional(string)
+    relay_state               = optional(string)
+    session_duration          = optional(string)
+    tags                      = optional(map(string), {})
+    aws_managed_policies      = optional(list(string), [])
+    customer_managed_policies = optional(list(string), [])
+    inline_policy             = optional(string)
+    permissions_boundary = optional(object({
+      managed_policy_arn = optional(string)
+      customer_managed_policy_reference = optional(object({
+        name = string
+        path = optional(string, "/")
+      }))
+    }))
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for pset_name, pset in var.permission_sets :
+      pset.permissions_boundary == null || (
+        (pset.permissions_boundary.managed_policy_arn != null) !=
+        (pset.permissions_boundary.customer_managed_policy_reference != null)
+      )
+    ])
+    error_message = "Each `permissions_boundary` must set exactly one of `managed_policy_arn` or `customer_managed_policy_reference`."
+  }
 }
 
 variable "existing_permission_sets" {

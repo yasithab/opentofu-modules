@@ -3,103 +3,133 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
 locals {
   # Terragrunt users have to provide `records_jsonencoded` as jsonencode()'d string.
   # See details: https://github.com/gruntwork-io/terragrunt/issues/1211
-  records = concat(var.records, try(jsondecode(var.records_jsonencoded), []))
+  # Normalize JSON-decoded records to the same shape as the typed `records` variable.
+  records_json = [
+    for r in try(jsondecode(var.records_jsonencoded), []) : {
+      key                              = try(r.key, null)
+      name                             = r.name
+      type                             = r.type
+      ttl                              = try(r.ttl, null)
+      records                          = try(r.records, null)
+      set_identifier                   = try(r.set_identifier, null)
+      health_check_id                  = try(r.health_check_id, null)
+      multivalue_answer_routing_policy = try(r.multivalue_answer_routing_policy, null)
+      allow_overwrite                  = try(r.allow_overwrite, false)
+      full_name_override               = try(r.full_name_override, false)
+      alias                            = try(r.alias, null)
+      failover_routing_policy          = try(r.failover_routing_policy, null)
+      latency_routing_policy           = try(r.latency_routing_policy, null)
+      weighted_routing_policy          = try(r.weighted_routing_policy, null)
+      cidr_routing_policy              = try(r.cidr_routing_policy, null)
+      geolocation_routing_policy       = try(r.geolocation_routing_policy, null)
+      geoproximity_routing_policy      = try(r.geoproximity_routing_policy, null)
+    }
+  ]
+
+  records = concat(var.records, local.records_json)
 
   # Convert `records` from list to map with unique keys
-  recordsets = { for rs in local.records : try(rs.key, join(" ", compact(["${rs.name} ${rs.type}", try(rs.set_identifier, "")]))) => rs }
+  recordsets = { for rs in local.records : (rs.key != null ? rs.key : join(" ", compact(["${rs.name} ${rs.type}", rs.set_identifier]))) => rs }
 }
 
+# Zone lookup only when the caller gives a zone_name without a zone_id;
+# passing both (or zone_id plus FQDN records) avoids any API lookup at plan.
 data "aws_route53_zone" "default" {
-  count = local.enabled && (var.zone_id != null || var.zone_name != null) ? 1 : 0
+  count = local.enabled && var.zone_id == null && var.zone_name != null ? 1 : 0
 
-  zone_id      = var.zone_id
   name         = var.zone_name
   private_zone = var.private_zone
+}
+
+locals {
+  zone_id   = var.zone_id != null ? var.zone_id : try(data.aws_route53_zone.default[0].zone_id, null)
+  zone_name = var.zone_name != null ? var.zone_name : try(data.aws_route53_zone.default[0].name, null)
 }
 
 resource "aws_route53_record" "default" {
   for_each = { for k, v in local.recordsets : k => v if local.enabled && (var.zone_id != null || var.zone_name != null) }
 
-  zone_id = try(var.zone_id, data.aws_route53_zone.default[0].zone_id)
+  zone_id = local.zone_id
 
-  name                             = each.value.name != "" ? (lookup(each.value, "full_name_override", false) ? each.value.name : "${each.value.name}.${data.aws_route53_zone.default[0].name}") : data.aws_route53_zone.default[0].name
+  name                             = each.value.name != "" ? (each.value.full_name_override ? each.value.name : "${each.value.name}.${local.zone_name}") : local.zone_name
   type                             = each.value.type
-  ttl                              = lookup(each.value, "ttl", null)
-  records                          = try(each.value.records, null)
-  set_identifier                   = lookup(each.value, "set_identifier", null)
-  health_check_id                  = lookup(each.value, "health_check_id", null)
-  multivalue_answer_routing_policy = lookup(each.value, "multivalue_answer_routing_policy", null)
-  allow_overwrite                  = lookup(each.value, "allow_overwrite", false)
+  ttl                              = each.value.ttl
+  records                          = each.value.records
+  set_identifier                   = each.value.set_identifier
+  health_check_id                  = each.value.health_check_id
+  multivalue_answer_routing_policy = each.value.multivalue_answer_routing_policy
+  allow_overwrite                  = each.value.allow_overwrite
 
   dynamic "alias" {
-    for_each = length(keys(lookup(each.value, "alias", {}))) == 0 ? [] : [true]
+    for_each = each.value.alias != null ? [each.value.alias] : []
 
     content {
-      name                   = each.value.alias.name
-      zone_id                = try(each.value.alias.zone_id, data.aws_route53_zone.default[0].zone_id)
-      evaluate_target_health = lookup(each.value.alias, "evaluate_target_health", false)
+      name                   = alias.value.name
+      zone_id                = coalesce(try(alias.value.zone_id, null), local.zone_id)
+      evaluate_target_health = try(alias.value.evaluate_target_health, false)
     }
   }
 
   dynamic "failover_routing_policy" {
-    for_each = length(keys(lookup(each.value, "failover_routing_policy", {}))) == 0 ? [] : [true]
+    for_each = each.value.failover_routing_policy != null ? [each.value.failover_routing_policy] : []
 
     content {
-      type = each.value.failover_routing_policy.type
+      type = failover_routing_policy.value.type
     }
   }
 
   dynamic "latency_routing_policy" {
-    for_each = length(keys(lookup(each.value, "latency_routing_policy", {}))) == 0 ? [] : [true]
+    for_each = each.value.latency_routing_policy != null ? [each.value.latency_routing_policy] : []
 
     content {
-      region = each.value.latency_routing_policy.region
+      region = latency_routing_policy.value.region
     }
   }
 
   dynamic "weighted_routing_policy" {
-    for_each = length(keys(lookup(each.value, "weighted_routing_policy", {}))) == 0 ? [] : [true]
+    for_each = each.value.weighted_routing_policy != null ? [each.value.weighted_routing_policy] : []
 
     content {
-      weight = each.value.weighted_routing_policy.weight
+      weight = weighted_routing_policy.value.weight
     }
   }
 
   dynamic "cidr_routing_policy" {
-    for_each = length(keys(lookup(each.value, "cidr_routing_policy", {}))) == 0 ? [] : [true]
+    for_each = each.value.cidr_routing_policy != null ? [each.value.cidr_routing_policy] : []
 
     content {
-      collection_id = each.value.cidr_routing_policy.collection_id
-      location_name = each.value.cidr_routing_policy.location_name
+      collection_id = cidr_routing_policy.value.collection_id
+      location_name = cidr_routing_policy.value.location_name
     }
   }
 
   dynamic "geolocation_routing_policy" {
-    for_each = length(keys(lookup(each.value, "geolocation_routing_policy", {}))) == 0 ? [] : [true]
+    for_each = each.value.geolocation_routing_policy != null ? [each.value.geolocation_routing_policy] : []
 
     content {
-      continent   = lookup(each.value.geolocation_routing_policy, "continent", null)
-      country     = lookup(each.value.geolocation_routing_policy, "country", null)
-      subdivision = lookup(each.value.geolocation_routing_policy, "subdivision", null)
+      continent   = try(geolocation_routing_policy.value.continent, null)
+      country     = try(geolocation_routing_policy.value.country, null)
+      subdivision = try(geolocation_routing_policy.value.subdivision, null)
     }
   }
 
   dynamic "geoproximity_routing_policy" {
-    for_each = length(keys(lookup(each.value, "geoproximity_routing_policy", {}))) == 0 ? [] : [true]
+    for_each = each.value.geoproximity_routing_policy != null ? [each.value.geoproximity_routing_policy] : []
 
     content {
-      aws_region       = lookup(each.value.geoproximity_routing_policy, "aws_region", null)
-      bias             = lookup(each.value.geoproximity_routing_policy, "bias", null)
-      local_zone_group = lookup(each.value.geoproximity_routing_policy, "local_zone_group", null)
+      aws_region       = try(geoproximity_routing_policy.value.aws_region, null)
+      bias             = try(geoproximity_routing_policy.value.bias, null)
+      local_zone_group = try(geoproximity_routing_policy.value.local_zone_group, null)
 
       dynamic "coordinates" {
-        for_each = lookup(each.value.geoproximity_routing_policy, "coordinates", null) == null ? [] : [lookup(each.value.geoproximity_routing_policy, "coordinates", null)]
+        for_each = try(geoproximity_routing_policy.value.coordinates, null) != null ? [geoproximity_routing_policy.value.coordinates] : []
 
         content {
           latitude  = coordinates.value.latitude
@@ -146,3 +176,5 @@ resource "aws_route53_health_check" "default" {
 
   tags = merge(local.tags, try(each.value.tags, {}))
 }
+
+data "aws_region" "current" {}

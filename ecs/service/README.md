@@ -114,7 +114,7 @@ module "ecs_service" {
 | `create_task_exec_iam_role` | Whether to create the task execution IAM role | `bool` | `true` | no |
 | `create_tasks_iam_role` | Whether to create the tasks IAM role | `bool` | `true` | no |
 | `create_security_group` | Whether to create a security group | `bool` | `true` | no |
-| `deployment_circuit_breaker` | Configuration for deployment circuit breaker | `any` | `{}` | no |
+| `deployment_circuit_breaker` | Configuration for deployment circuit breaker | `any` | `{ enable = true, rollback = true }` | no |
 | `service_connect_configuration` | ECS Service Connect configuration | `object` | `null` | no |
 | `force_new_deployment` | Enable to force a new task deployment | `bool` | `true` | no |
 | `enabled` | Determines whether resources will be created | `bool` | `true` | no |
@@ -374,3 +374,19 @@ module "ecs_service_cms" {
   }
 }
 ```
+
+## Notes
+
+- **Deployment circuit breaker default**: `deployment_circuit_breaker` now defaults to `{ enable = true, rollback = true }` so failed deployments roll back automatically. Pass `deployment_circuit_breaker = {}` to opt out (required when using the `CODE_DEPLOY` or `EXTERNAL` deployment controller, where the circuit breaker is not supported).
+- **Module-created security group has no default rules**: when `create_security_group = true`, the security group is created with no ingress or egress rules. Tasks cannot pull images or reach AWS APIs without egress - define at least an egress rule via `security_group_rules`, for example:
+
+  ```hcl
+  security_group_rules = {
+    egress_all = {
+      type        = "egress"
+      ip_protocol = "-1"
+      cidr_ipv4   = "0.0.0.0/0"
+      description = "Allow all outbound"
+    }
+  }
+  ```

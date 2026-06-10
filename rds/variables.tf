@@ -196,7 +196,7 @@ variable "engine_lifecycle_support" {
 }
 
 variable "final_snapshot_identifier" {
-  description = "The name of your final DB snapshot when this DB instance is deleted. Must be provided if skip_final_snapshot is set to false"
+  description = "The name of your final DB snapshot when this DB instance is deleted. If skip_final_snapshot is false and this is not provided, defaults to `<name>-final`"
   type        = string
   default     = null
 }
@@ -258,6 +258,7 @@ variable "master_password_wo" {
   description = "Write-only password for the master DB user. Never stored in Terraform state. Required unless manage_master_user_password is set to true or unless snapshot_identifier is provided"
   type        = string
   default     = null
+  sensitive   = true
   ephemeral   = true
 }
 
@@ -434,8 +435,40 @@ variable "instance_timeouts" {
 
 variable "read_replicas" {
   description = "Map of read replicas and any specific/overriding attributes to be created. Each key becomes part of the identifier"
-  type        = any
-  default     = {}
+  type = map(object({
+    allocated_storage                     = optional(number)
+    allow_major_version_upgrade           = optional(bool)
+    apply_immediately                     = optional(bool)
+    auto_minor_version_upgrade            = optional(bool)
+    availability_zone                     = optional(string)
+    backup_retention_period               = optional(number, 0)
+    copy_tags_to_snapshot                 = optional(bool)
+    custom_iam_instance_profile           = optional(string)
+    database_insights_mode                = optional(string)
+    dedicated_log_volume                  = optional(bool)
+    deletion_protection                   = optional(bool)
+    enabled_cloudwatch_logs_exports       = optional(list(string))
+    identifier                            = optional(string)
+    identifier_prefix                     = optional(string)
+    instance_class                        = optional(string)
+    iops                                  = optional(number)
+    kms_key_id                            = optional(string)
+    max_allocated_storage                 = optional(number)
+    monitoring_interval                   = optional(number)
+    multi_az                              = optional(bool, false)
+    network_type                          = optional(string)
+    option_group_name                     = optional(string)
+    parameter_group_name                  = optional(string)
+    performance_insights_enabled          = optional(bool)
+    performance_insights_kms_key_id       = optional(string)
+    performance_insights_retention_period = optional(number)
+    publicly_accessible                   = optional(bool)
+    replica_mode                          = optional(string)
+    storage_throughput                    = optional(number)
+    storage_type                          = optional(string)
+    tags                                  = optional(map(string), {})
+  }))
+  default = {}
 }
 
 ################################################################################

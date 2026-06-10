@@ -7,7 +7,7 @@ locals {
   # attempting to plan if the role_name and bus_name are not set. This is a workaround
   # that will allow one to import resources without receiving an error from coalesce.
   # @see https://github.com/terraform-aws-modules/terraform-aws-lambda/issues/83
-  role_name = local.create_role ? coalesce(var.role_name, var.bus_name, "*") : null
+  role_name = local.create_role ? coalesce(var.role_name, local.name, "*") : null
 }
 
 ###########################
@@ -52,7 +52,7 @@ resource "aws_iam_role" "eventbridge" {
 data "aws_iam_policy" "tracing" {
   count = local.create_role && var.attach_tracing_policy ? 1 : 0
 
-  arn = "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+  arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AWSXrayWriteOnlyAccess"
 }
 
 resource "aws_iam_policy" "tracing" {
@@ -262,7 +262,7 @@ data "aws_iam_policy_document" "ecs" {
     sid       = "PassRole"
     effect    = "Allow"
     actions   = ["iam:PassRole"]
-    resources = coalescelist(var.ecs_pass_role_resources, ["*"])
+    resources = var.ecs_pass_role_resources
   }
 }
 

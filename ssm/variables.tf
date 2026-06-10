@@ -19,8 +19,9 @@ variable "parameter_read" {
 
 variable "parameter_write" {
   type        = list(map(string))
-  description = "List of maps with the parameter values to write to SSM Parameter Store"
+  description = "List of maps with the parameter values to write to SSM Parameter Store. Each map supports `name` (required), `value`, `type`, `description`, `tier`, `allowed_pattern`, `data_type`, and write-only `value_wo`/`value_wo_version` (preferred over `value` to keep values out of state)"
   default     = []
+  sensitive   = true
 }
 
 variable "kms_arn" {
@@ -38,12 +39,14 @@ variable "parameter_write_defaults" {
   type        = map(any)
   description = "Parameter write default settings"
   default = {
-    description     = null
-    type            = "SecureString"
-    tier            = "Standard"
-    overwrite       = null
-    allowed_pattern = null
-    data_type       = "text"
+    description      = null
+    type             = "SecureString"
+    tier             = "Standard"
+    allowed_pattern  = null
+    data_type        = "text"
+    value            = null
+    value_wo         = null
+    value_wo_version = null
   }
 }
 

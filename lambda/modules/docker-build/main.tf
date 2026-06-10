@@ -3,13 +3,20 @@ data "aws_region" "current" {}
 data "aws_caller_identity" "this" {}
 
 locals {
-  ecr_address    = coalesce(var.ecr_address, format("%v.dkr.ecr.%v.amazonaws.com", data.aws_caller_identity.this.account_id, data.aws_region.current.region))
-  ecr_repo       = var.create_ecr_repo ? aws_ecr_repository.this.id : var.ecr_repo
-  image_tag      = var.use_image_tag ? coalesce(var.image_tag, formatdate("YYYYMMDDhhmmss", timestamp())) : null
-  ecr_image_name = var.use_image_tag ? format("%v/%v:%v", local.ecr_address, local.ecr_repo, local.image_tag) : format("%v/%v", local.ecr_address, local.ecr_repo)
+  enabled     = var.enabled
+  ecr_address = coalesce(var.ecr_address, format("%v.dkr.ecr.%v.amazonaws.com", data.aws_caller_identity.this.account_id, data.aws_region.current.region))
+  ecr_repo    = var.create_ecr_repo ? aws_ecr_repository.this.id : var.ecr_repo
+
+  # When no explicit image_tag is given, derive a stable tag from a hash of the
+  # source_path contents. Fall back to a timestamp only when there is no
+  # source_path to hash (causes a rebuild on every run - see README).
+  source_path_hash = var.source_path != null ? substr(sha1(join("", [for f in sort(fileset(var.source_path, "**")) : filesha1("${var.source_path}/${f}")])), 0, 16) : null
+  image_tag        = var.use_image_tag ? coalesce(var.image_tag, local.source_path_hash, formatdate("YYYYMMDDhhmmss", timestamp())) : null
+  ecr_image_name   = var.use_image_tag ? format("%v/%v:%v", local.ecr_address, local.ecr_repo, local.image_tag) : format("%v/%v", local.ecr_address, local.ecr_repo)
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -26,6 +33,10 @@ resource "docker_image" "this" {
   force_remove = var.force_remove
   keep_locally = var.keep_locally
   triggers     = var.triggers
+
+  lifecycle {
+    enabled = local.enabled
+  }
 }
 
 resource "docker_registry_image" "this" {
@@ -34,6 +45,10 @@ resource "docker_registry_image" "this" {
   keep_remotely = var.keep_remotely
 
   triggers = length(var.triggers) == 0 ? { image_id = docker_image.this.image_id } : var.triggers
+
+  lifecycle {
+    enabled = local.enabled
+  }
 }
 
 resource "aws_ecr_repository" "this" {
@@ -66,7 +81,7 @@ resource "aws_ecr_repository" "this" {
   tags = merge(local.tags, var.ecr_repo_tags)
 
   lifecycle {
-    enabled = var.create_ecr_repo
+    enabled = local.enabled && var.create_ecr_repo
   }
 }
 
@@ -75,7 +90,7 @@ resource "aws_ecr_lifecycle_policy" "this" {
   repository = local.ecr_repo
 
   lifecycle {
-    enabled = var.ecr_repo_lifecycle_policy != null
+    enabled = local.enabled && var.ecr_repo_lifecycle_policy != null
   }
 }
 
@@ -95,6 +110,6 @@ resource "null_resource" "sam_metadata_docker_registry_image" {
   depends_on = [docker_registry_image.this]
 
   lifecycle {
-    enabled = var.create_sam_metadata
+    enabled = local.enabled && var.create_sam_metadata
   }
 }

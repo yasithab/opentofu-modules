@@ -5,7 +5,7 @@ Provisions AWS X-Ray sampling rules, encryption configuration, trace groups with
 ## Features
 
 - **Sampling Rules** - Create custom sampling rules with configurable rates, reservoir sizes, and service/path/host filters for fine-grained trace collection control
-- **KMS Encryption** - Configure encryption for X-Ray traces at rest using a customer-managed KMS key
+- **KMS Encryption** - Optionally configure encryption for X-Ray traces at rest using a customer-managed KMS key (`create_encryption_config = true` + `kms_key_id`)
 - **Groups** - Define trace groups with filter expressions and optional X-Ray Insights for anomaly detection and notifications
 - **Resource Policies** - Manage X-Ray resource policies for cross-account trace access and service integrations
 
@@ -14,8 +14,6 @@ Provisions AWS X-Ray sampling rules, encryption configuration, trace groups with
 ```hcl
 module "xray" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//xray?depth=1&ref=master"
-
-  name = "platform-xray"
 
   sampling_rules = {
     default_low_rate = {
@@ -43,8 +41,6 @@ module "xray_basic" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//xray?depth=1&ref=master"
 
   enabled = true
-
-  name = "microservices-xray"
 
   sampling_rules = {
     health_checks = {
@@ -87,8 +83,8 @@ module "xray_encrypted" {
 
   enabled = true
 
-  name       = "platform-xray"
-  kms_key_id = "arn:aws:kms:us-east-1:123456789012:key/mrk-1234abcd-12ab-34cd-56ef-1234567890ab"
+  create_encryption_config = true
+  kms_key_id               = "arn:aws:kms:us-east-1:123456789012:key/mrk-1234abcd-12ab-34cd-56ef-1234567890ab"
 
   sampling_rules = {
     production_services = {
@@ -136,8 +132,8 @@ module "xray_cross_account" {
 
   enabled = true
 
-  name       = "central-xray"
-  kms_key_id = "arn:aws:kms:us-east-1:123456789012:key/mrk-1234abcd-12ab-34cd-56ef-1234567890ab"
+  create_encryption_config = true
+  kms_key_id               = "arn:aws:kms:us-east-1:123456789012:key/mrk-1234abcd-12ab-34cd-56ef-1234567890ab"
 
   sampling_rules = {
     default = {

@@ -27,13 +27,13 @@ variable "create_group" {
 }
 
 variable "engine" {
-  description = "The current supported value is `REDIS`"
+  description = "The engine the user group applies to. Valid values are `REDIS` and `VALKEY`"
   type        = string
   default     = "REDIS"
 
   validation {
-    condition     = contains(["REDIS"], var.engine)
-    error_message = "The engine must be 'REDIS'."
+    condition     = contains(["REDIS", "VALKEY"], upper(var.engine))
+    error_message = "The engine must be 'REDIS' or 'VALKEY'."
   }
 }
 
@@ -48,9 +48,10 @@ variable "user_group_id" {
 ################################################################################
 
 variable "users" {
-  description = "A map of users to create"
+  description = "A map of users to create. May contain plaintext passwords - prefer authentication_mode type `iam`"
   type        = any
   default     = {}
+  sensitive   = true
 }
 
 variable "create_default_user" {
@@ -63,6 +64,7 @@ variable "default_user" {
   description = "A map of default user attributes"
   type        = any
   default     = {}
+  sensitive   = true
 }
 
 variable "default_user_id" {

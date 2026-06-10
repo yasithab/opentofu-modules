@@ -7,6 +7,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -90,3 +91,5 @@ resource "aws_vpc_security_group_egress_rule" "all" {
     enabled = local.enabled && var.create_security_group
   }
 }
+
+data "aws_region" "current" {}

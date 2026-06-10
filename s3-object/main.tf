@@ -2,6 +2,7 @@ locals {
   enabled = var.enabled
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   create_object       = local.enabled && var.create_object
@@ -158,3 +159,5 @@ resource "aws_s3_bucket_notification" "this" {
     enabled = local.create_notification
   }
 }
+
+data "aws_region" "current" {}

@@ -151,3 +151,36 @@ module "secret_with_rotation" {
   }
 }
 ```
+
+## Secret Value Precedence and State Safety
+
+The initial secret value written by this module is resolved with the same precedence in both
+secret version resources (`this` and `ignore_changes`):
+
+1. `random_password` result — when `create_random_password = true` (wins over `secret_string`)
+2. `secret_string`
+3. `secret_binary` / `secret_string_wo` (provider-level attributes, mutually handled by the provider)
+
+`secret_string` and `secret_string_wo` are mutually exclusive — validation fails if both are set.
+
+State-safety notes:
+
+- **Prefer `secret_string_wo`** (write-only, requires OpenTofu >= 1.11): the value is never
+  persisted to state. Bump `secret_string_wo_version` to push a new value.
+- `secret_string` and `secret_binary` are stored (encrypted at rest only if your state backend
+  encrypts) in the OpenTofu state.
+- `create_random_password` generates the value with the `random_password` resource, whose result
+  **is stored in state**. Treat state access as secret access, or prefer `secret_string_wo` with
+  an externally generated value.
+
+## Rotation Requirements
+
+When `enable_rotation = true`:
+
+- `rotation_lambda_arn` is required (validation enforced).
+- An initial secret value must be provided via `create_random_password`, `secret_string`,
+  `secret_string_wo` or `secret_binary`. Earlier versions of this module silently wrote the
+  placeholder string `"default"` as the live secret value when no source was given; this now
+  fails validation instead.
+
+The same initial-value requirement applies when `ignore_secret_changes = true`.

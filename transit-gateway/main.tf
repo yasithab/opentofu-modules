@@ -3,10 +3,14 @@
 ################################################################################
 
 locals {
+  enabled = var.enabled
+  name    = var.name
+
   tgw_tags = merge(
     var.tags,
-    { Name = var.name },
-    { ManagedBy = "opentofu" },
+    { Name = local.name },
+    { ManagedBy = "opentofu"
+    Region = data.aws_region.current.region },
     var.tgw_tags,
   )
 
@@ -37,12 +41,12 @@ resource "aws_ec2_transit_gateway" "this" {
   tags = local.tgw_tags
 
   lifecycle {
-    enabled = var.enabled
+    enabled = local.enabled
   }
 }
 
 resource "aws_ec2_tag" "this" {
-  for_each = { for k, v in local.tgw_tags : k => v if var.enabled && var.default_route_table_association }
+  for_each = { for k, v in local.tgw_tags : k => v if local.enabled && var.default_route_table_association }
 
   resource_id = aws_ec2_transit_gateway.this.association_default_route_table_id
   key         = each.key
@@ -54,7 +58,7 @@ resource "aws_ec2_tag" "this" {
 ################################################################################
 
 resource "aws_ec2_transit_gateway_vpc_attachment" "this" {
-  for_each = { for k, v in var.vpc_attachments : k => v if var.enabled }
+  for_each = { for k, v in var.vpc_attachments : k => v if local.enabled }
 
   appliance_mode_support                          = each.value.appliance_mode_support ? "enable" : "disable"
   dns_support                                     = each.value.dns_support ? "enable" : "disable"
@@ -66,11 +70,11 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "this" {
   transit_gateway_id                              = aws_ec2_transit_gateway.this.id
   vpc_id                                          = each.value.vpc_id
 
-  tags = merge(local.tags, { Name = "${var.name}-${each.key}" }, each.value.tags)
+  tags = merge(local.tags, { Name = "${local.name}-${each.key}" }, each.value.tags)
 }
 
 resource "aws_ec2_transit_gateway_vpc_attachment_accepter" "this" {
-  for_each = { for k, v in var.vpc_attachments : k => v if var.enabled && v.accept_peering_attachment }
+  for_each = { for k, v in var.vpc_attachments : k => v if local.enabled && v.accept_peering_attachment }
 
   transit_gateway_attachment_id                   = aws_ec2_transit_gateway_vpc_attachment.this[each.key].id
   transit_gateway_default_route_table_association = each.value.transit_gateway_default_route_table_association
@@ -84,7 +88,7 @@ resource "aws_ec2_transit_gateway_vpc_attachment_accepter" "this" {
 ################################################################################
 
 resource "aws_ec2_transit_gateway_peering_attachment" "this" {
-  for_each = { for k, v in var.peering_attachments : k => v if var.enabled }
+  for_each = { for k, v in var.peering_attachments : k => v if local.enabled }
 
   peer_account_id         = each.value.peer_account_id
   peer_region             = each.value.peer_region
@@ -98,11 +102,11 @@ resource "aws_ec2_transit_gateway_peering_attachment" "this" {
     }
   }
 
-  tags = merge(local.tags, { Name = "${var.name}-${each.key}" }, each.value.tags)
+  tags = merge(local.tags, { Name = "${local.name}-${each.key}" }, each.value.tags)
 }
 
 resource "aws_ec2_transit_gateway_peering_attachment_accepter" "this" {
-  for_each = { for k, v in var.peering_attachments : k => v if var.enabled && v.accept_peering_attachment }
+  for_each = { for k, v in var.peering_attachments : k => v if local.enabled && v.accept_peering_attachment }
 
   transit_gateway_attachment_id = aws_ec2_transit_gateway_peering_attachment.this[each.key].id
 
@@ -114,7 +118,7 @@ resource "aws_ec2_transit_gateway_peering_attachment_accepter" "this" {
 ################################################################################
 
 locals {
-  ram_name = try(coalesce(var.ram_name, var.name), "")
+  ram_name = try(coalesce(var.ram_name, local.name), "")
 }
 
 resource "aws_ram_resource_share" "this" {
@@ -124,7 +128,7 @@ resource "aws_ram_resource_share" "this" {
   tags = merge(local.tags, { Name = local.ram_name }, var.ram_tags)
 
   lifecycle {
-    enabled = var.enabled && var.enable_ram_share
+    enabled = local.enabled && var.enable_ram_share
   }
 }
 
@@ -133,12 +137,12 @@ resource "aws_ram_resource_association" "this" {
   resource_share_arn = aws_ram_resource_share.this.id
 
   lifecycle {
-    enabled = var.enabled && var.enable_ram_share
+    enabled = local.enabled && var.enable_ram_share
   }
 }
 
 resource "aws_ram_principal_association" "this" {
-  for_each = { for k, v in var.ram_principals : k => v if var.enabled && var.enable_ram_share }
+  for_each = { for k, v in var.ram_principals : k => v if local.enabled && var.enable_ram_share }
 
   principal          = each.value
   resource_share_arn = aws_ram_resource_share.this.arn
@@ -149,7 +153,7 @@ resource "aws_ram_principal_association" "this" {
 ################################################################################
 
 resource "aws_flow_log" "this" {
-  for_each = { for k, v in var.flow_logs : k => v if var.enabled && var.create_flow_log }
+  for_each = { for k, v in var.flow_logs : k => v if local.enabled && var.create_flow_log }
 
   deliver_cross_account_role = each.value.deliver_cross_account_role
 
@@ -168,7 +172,7 @@ resource "aws_flow_log" "this" {
   log_destination          = each.value.log_destination
   log_destination_type     = each.value.log_destination_type
   log_format               = each.value.log_format
-  max_aggregation_interval = max(each.value.max_aggregation_interval, 60)
+  max_aggregation_interval = each.value.max_aggregation_interval
   regional_nat_gateway_id  = each.value.regional_nat_gateway_id
   subnet_id                = each.value.subnet_id
 
@@ -182,3 +186,5 @@ resource "aws_flow_log" "this" {
 
   tags = merge(local.tags, each.value.tags)
 }
+
+data "aws_region" "current" {}

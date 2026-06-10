@@ -2,6 +2,10 @@
 
 OpenTofu module for provisioning and managing AWS Lake Formation with support for data lake settings, resource registration, fine-grained permissions, LF-Tags, and row/cell-level security.
 
+> **Note — data lake settings are opt-in:** `aws_lakeformation_data_lake_settings` is **account/catalog-wide** — applying it overwrites the *entire* settings object, including administrators configured outside this module. The resource is therefore gated behind `manage_data_lake_settings` (default `false`), and when it is `true` the module requires a non-empty `admin_arns`. If you only use this module for permissions/LF-Tags/resource registration, leave the default — account settings stay unmanaged.
+
+> **Note — no `tags` input:** this module is exempt from the repository-wide `tags`/`ManagedBy` convention. Lake Formation settings, permissions, LF-Tags, and data cells filters do not support AWS resource tags (LF-Tags are an access-control construct, not resource tags), so there is nothing to tag.
+
 ## Features
 
 - **Data Lake Settings** - Configure Lake Formation administrators, default permissions, and external data filtering controls
@@ -21,12 +25,8 @@ OpenTofu module for provisioning and managing AWS Lake Formation with support fo
 module "lake_formation" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//lake-formation?depth=1&ref=master"
 
-  name       = "data-lake"
-  admin_arns = ["arn:aws:iam::123456789012:role/DataLakeAdmin"]
-
-  tags = {
-    Environment = "production"
-  }
+  manage_data_lake_settings = true
+  admin_arns                = ["arn:aws:iam::123456789012:role/DataLakeAdmin"]
 }
 ```
 
@@ -41,8 +41,8 @@ module "lake_formation_basic" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//lake-formation?depth=1&ref=master"
 
   enabled = true
-  name    = "analytics-lake"
 
+  manage_data_lake_settings = true
   admin_arns = [
     "arn:aws:iam::123456789012:role/DataLakeAdmin",
     "arn:aws:iam::123456789012:role/DataEngineer"
@@ -66,11 +66,6 @@ module "lake_formation_basic" {
       use_service_linked_role = true
     }
   }
-
-  tags = {
-    Environment = "production"
-    Team        = "data-platform"
-  }
 }
 ```
 
@@ -83,9 +78,9 @@ module "lake_formation_tbac" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//lake-formation?depth=1&ref=master"
 
   enabled = true
-  name    = "governed-lake"
 
-  admin_arns = ["arn:aws:iam::123456789012:role/DataLakeAdmin"]
+  manage_data_lake_settings = true
+  admin_arns                = ["arn:aws:iam::123456789012:role/DataLakeAdmin"]
 
   lf_tags = {
     environment = ["production", "staging", "development"]
@@ -114,11 +109,6 @@ module "lake_formation_tbac" {
       ]
     }
   }
-
-  tags = {
-    Environment = "production"
-    Team        = "governance"
-  }
 }
 ```
 
@@ -131,9 +121,9 @@ module "lake_formation_security" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//lake-formation?depth=1&ref=master"
 
   enabled = true
-  name    = "secure-lake"
 
-  admin_arns = ["arn:aws:iam::123456789012:role/DataLakeAdmin"]
+  manage_data_lake_settings = true
+  admin_arns                = ["arn:aws:iam::123456789012:role/DataLakeAdmin"]
 
   database_permissions = {
     analyst_read = {
@@ -158,7 +148,9 @@ module "lake_formation_security" {
       database_name = "customer_data"
       table_name    = "customers"
       column_names  = ["customer_id", "name", "region", "signup_date"]
-      row_filter    = "region = 'US'"
+      row_filter = {
+        filter_expression = "region = 'US'"
+      }
     }
     exclude_pii = {
       database_name = "customer_data"
@@ -166,12 +158,10 @@ module "lake_formation_security" {
       column_wildcard = {
         excluded_column_names = ["ssn", "email", "phone_number"]
       }
+      row_filter = {
+        all_rows_wildcard = true
+      }
     }
-  }
-
-  tags = {
-    Environment = "production"
-    Team        = "security"
   }
 }
 ```

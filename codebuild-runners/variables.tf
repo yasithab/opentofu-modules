@@ -1,6 +1,6 @@
 
 variable "enabled" {
-  description = "Determines whether resources will be created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -12,8 +12,13 @@ variable "tags" {
 }
 
 variable "vpc_id" {
-  type    = string
-  default = null
+  description = "ID of the VPC the CodeBuild runners run in."
+  type        = string
+
+  validation {
+    condition     = can(regex("^vpc-", var.vpc_id))
+    error_message = "vpc_id must be a valid VPC ID starting with 'vpc-'."
+  }
 }
 
 variable "build_runner_build_timeout" {
@@ -70,16 +75,35 @@ variable "create_security_group" {
   default     = false
 }
 
+variable "security_group_ids" {
+  description = "List of existing security group IDs to attach to the CodeBuild projects when create_security_group is false. When empty, the module falls back to looking up a security group tagged Name=codebuild-runners-<env_name>-security-group in the VPC (legacy behaviour)."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for s in var.security_group_ids : can(regex("^sg-", s))])
+    error_message = "security_group_ids entries must be valid security group IDs starting with 'sg-'."
+  }
+}
+
 variable "github_organization_name" {
   description = "The GitHub organization name"
   type        = string
-  default     = null
+
+  validation {
+    condition     = length(var.github_organization_name) > 0
+    error_message = "github_organization_name must not be empty."
+  }
 }
 
 variable "repository_name" {
   description = "Name of the Github repository"
   type        = string
-  default     = null
+
+  validation {
+    condition     = length(var.repository_name) > 0
+    error_message = "repository_name must not be empty."
+  }
 }
 
 variable "codebuild_iam_policy" {
@@ -143,14 +167,23 @@ variable "codebuild_runner_image_tag" {
 }
 
 variable "env_name" {
-  description = "Environment name (e.g., development, staging, production). If not set, falls back to terraform.workspace."
+  description = "Environment name (e.g., development, staging, production). Used in resource names. BREAKING: this is now required; the previous fallback to terraform.workspace was removed."
   type        = string
-  default     = null
+
+  validation {
+    condition     = length(var.env_name) > 0
+    error_message = "env_name must not be empty."
+  }
 }
 
 variable "codebuild_subnets" {
-  description = "The list of IDs of the codebuild subnets"
-  type        = list(any)
+  description = "The list of IDs of the subnets the CodeBuild runners run in."
+  type        = list(string)
+
+  validation {
+    condition     = length(var.codebuild_subnets) > 0 && alltrue([for s in var.codebuild_subnets : can(regex("^subnet-", s))])
+    error_message = "codebuild_subnets must contain at least one valid subnet ID starting with 'subnet-'."
+  }
 }
 
 variable "cache_type" {
@@ -253,6 +286,12 @@ variable "file_system_locations" {
   default = []
 }
 
+variable "privileged_mode" {
+  description = "Whether to run the CodeBuild build container in privileged mode (required for Docker-in-Docker builds). Set to false when builds do not need to build container images."
+  type        = bool
+  default     = true
+}
+
 variable "environment_variables" {
   description = "List of environment variables to set for the build runner. Each entry supports: name, value, type (PLAINTEXT, PARAMETER_STORE, SECRETS_MANAGER)."
   type = list(object({
@@ -287,9 +326,9 @@ variable "cloudwatch_log_group_kms_key_id" {
 }
 
 variable "create_cloudwatch_log_group" {
-  description = "Whether to create a CloudWatch log group for CodeBuild logs."
+  description = "Whether to create a CloudWatch log group for CodeBuild logs. BREAKING: defaults to true (was false) so log retention is enforced instead of CodeBuild creating a never-expiring group implicitly."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "cloudwatch_logs_status" {
@@ -357,14 +396,20 @@ variable "auto_retry_limit" {
 
 variable "docker_server" {
   description = "Configuration for a Docker build environment server"
-  type        = any
-  default     = null
+  type = object({
+    compute_type       = string
+    security_group_ids = optional(list(string))
+  })
+  default = null
 }
 
 variable "registry_credential" {
   description = "Information about credentials for a private Docker registry to access during the build. Contains credential (ARN or name of AWS Secrets Manager credential) and credential_provider (must be SECRETS_MANAGER)."
-  type        = any
-  default     = null
+  type = object({
+    credential          = string
+    credential_provider = string
+  })
+  default = null
 }
 
 variable "cache_namespace" {

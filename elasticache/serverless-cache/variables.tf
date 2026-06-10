@@ -6,7 +6,7 @@ variable "tags" {
 }
 
 variable "enabled" {
-  description = "Determines whether serverless resource will be created."
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -17,7 +17,7 @@ variable "region" {
   default     = null
 }
 
-variable "cache_name" {
+variable "name" {
   description = "The name which serves as a unique identifier to the serverless cache."
   type        = string
   default     = null
@@ -42,13 +42,13 @@ variable "description" {
 }
 
 variable "engine" {
-  description = "Name of the cache engine to be used for this cache cluster. Valid values are `memcached` or `redis`."
+  description = "Name of the cache engine to be used for this cache cluster. Valid values are `memcached`, `redis` or `valkey`."
   type        = string
   default     = "redis"
 
   validation {
-    condition     = contains(["memcached", "redis"], var.engine)
-    error_message = "The engine must be 'memcached' or 'redis'."
+    condition     = contains(["memcached", "redis", "valkey"], var.engine)
+    error_message = "The engine must be 'memcached', 'redis' or 'valkey'."
   }
 }
 

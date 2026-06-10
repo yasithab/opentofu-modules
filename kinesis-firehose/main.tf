@@ -1,12 +1,18 @@
 locals {
+  enabled = var.enabled
+  name    = var.name
+
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
 data "aws_caller_identity" "current" {}
 
 data "aws_region" "current" {}
+
+data "aws_partition" "current" {}
 
 data "aws_subnet" "subnet" {
   count = local.search_destination_vpc_create_firehose_sg && var.enable_vpc ? 1 : 0
@@ -16,7 +22,7 @@ data "aws_subnet" "subnet" {
 resource "aws_kinesis_firehose_delivery_stream" "this" {
   region = var.region
 
-  name        = local.is_waf_source ? "aws-waf-logs-${var.name}" : var.name
+  name        = local.is_waf_source ? "aws-waf-logs-${local.name}" : local.name
   destination = local.destination
 
   dynamic "kinesis_source_configuration" {
@@ -40,8 +46,9 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
     }
   }
 
+  # Server-side encryption is only applicable to Direct PUT sources
   dynamic "server_side_encryption" {
-    for_each = !local.is_kinesis_source && var.enable_sse ? [1] : []
+    for_each = !local.is_kinesis_source && !local.is_msk_source && var.enable_sse ? [1] : []
     content {
       enabled  = var.enable_sse
       key_arn  = var.sse_kms_key_arn
@@ -763,7 +770,12 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = var.enabled
+    enabled = local.enabled
+
+    precondition {
+      condition     = local.is_search_destination || !(local.vpc_create_destination_group || local.vpc_configure_destination_group) || contains(keys(lookup(local.firehose_cidr_blocks, local.destination, {})), data.aws_region.current.region)
+      error_message = "Firehose CIDR blocks for the ${local.destination} destination are not known for region ${data.aws_region.current.region}; destination security group rules cannot be created. Use a supported region or manage the rules outside this module."
+    }
   }
 }
 
@@ -806,7 +818,7 @@ resource "aws_cloudwatch_log_stream" "destination" {
 # Security Group
 ##################
 resource "aws_security_group" "firehose" {
-  name        = "${var.name}-sg"
+  name        = "${local.name}-sg"
   description = !var.vpc_security_group_same_as_destination ? "Security group to kinesis firehose" : "Security Group to kinesis firehose and destination"
   vpc_id      = var.enable_vpc ? data.aws_subnet.subnet[0].vpc_id : var.vpc_security_group_destination_vpc_id
 
@@ -833,7 +845,8 @@ resource "aws_vpc_security_group_ingress_rule" "firehose_self" {
 
 # Allow outbound HTTPS to destination SG when firehose and destination are separate
 resource "aws_vpc_security_group_egress_rule" "firehose_egress_rule" {
-  for_each = local.search_destination_vpc_create_firehose_sg && !var.vpc_security_group_same_as_destination ? (local.vpc_create_destination_group ? { for key, value in [aws_security_group.destination.id] : key => value } : { for key, value in var.vpc_security_group_destination_ids : key => value }) : tomap({})
+  # Keyed by SG id (or the static "destination" key for the module-created destination SG)
+  for_each = local.search_destination_vpc_create_firehose_sg && !var.vpc_security_group_same_as_destination ? (local.vpc_create_destination_group ? { destination = aws_security_group.destination.id } : { for sg in var.vpc_security_group_destination_ids : sg => sg }) : tomap({})
 
   security_group_id            = aws_security_group.firehose.id
   ip_protocol                  = "tcp"
@@ -846,7 +859,7 @@ resource "aws_vpc_security_group_egress_rule" "firehose_egress_rule" {
 }
 
 resource "aws_security_group" "destination" {
-  name        = "${var.name}-destination-sg"
+  name        = "${local.name}-destination-sg"
   description = "Allow Inbound traffic from kinesis firehose stream"
   vpc_id      = local.is_search_destination && var.enable_vpc ? data.aws_subnet.subnet[0].vpc_id : var.vpc_security_group_destination_vpc_id
 
@@ -927,13 +940,14 @@ resource "aws_vpc_security_group_ingress_rule" "destination_existing_from_sg" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "destination_existing_from_cidr" {
-  for_each = { for k, v in var.vpc_security_group_destination_ids : k => v if local.vpc_configure_destination_group && !local.is_search_destination }
+  # One rule per (security group, Firehose CIDR) pair; all published CIDRs for the region are allowed
+  for_each = { for pair in setproduct(var.vpc_security_group_destination_ids, try(local.firehose_cidr_blocks[local.destination][data.aws_region.current.region], [])) : "${pair[0]}_${pair[1]}" => pair if local.vpc_configure_destination_group && !local.is_search_destination }
 
-  security_group_id = each.value
+  security_group_id = each.value[0]
   ip_protocol       = "tcp"
   from_port         = 443
   to_port           = 443
-  cidr_ipv4         = try(local.firehose_cidr_blocks[local.destination][data.aws_region.current.region][0], "0.0.0.0/32")
+  cidr_ipv4         = each.value[1]
   description       = "Allow Inbound HTTPS Traffic from Firehose"
 
   tags = local.tags

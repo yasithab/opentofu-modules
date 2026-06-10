@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls if fck-nat resources should be created."
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -55,6 +55,12 @@ variable "ami_id" {
   description = "Custom AMI ID. When null the latest fck-nat AL2023 AMI is auto-detected."
   type        = string
   default     = null
+}
+
+variable "ami_owner" {
+  description = "AWS account ID that owns the fck-nat AMI. Defaults to the upstream fck-nat project account."
+  type        = string
+  default     = "568608671756"
 }
 
 variable "ebs_root_volume_size" {
@@ -160,7 +166,7 @@ variable "attach_ssm_session_policy" {
 }
 
 variable "attach_ssm_patch_policy" {
-  description = "Attach SSM Patch Manager permissions to the IAM role (allows automated patching, no interactive access)."
+  description = "Attach the AmazonSSMManagedInstanceCore managed policy to the IAM role (enables the SSM agent for inventory and automated patching)."
   type        = bool
   default     = true
 }

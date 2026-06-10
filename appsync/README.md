@@ -11,9 +11,16 @@ OpenTofu module for provisioning AWS AppSync GraphQL APIs with multiple authenti
 - **Functions** - Pipeline functions with configurable runtime, batching, and conflict resolution
 - **API Cache** - Configurable caching with per-resolver or full-request behavior and encryption at rest and in transit enabled by default
 - **Domain Name** - Custom domain name with ACM certificate and automatic API association
-- **Logging** - CloudWatch logging with configurable field-level log level and automatic IAM role creation
+- **Logging** - CloudWatch logging with configurable field-level log level, automatic IAM role creation, and a managed log group (`/aws/appsync/apis/<api_id>`) with configurable retention (`log_group_retention_in_days`) and KMS encryption (`log_group_kms_key_id`)
 - **WAF Integration** - WAFv2 Web ACL association for API protection
 - **API Keys** - Multiple API key management with configurable expiration
+
+> **Warning:** the default `authentication_type` is `API_KEY`, which is only suitable for development and public read-only APIs. API keys are long-lived bearer credentials with no per-user identity - anyone holding the key can call the API. For production workloads use `AWS_IAM`, `AMAZON_COGNITO_USER_POOLS`, `OPENID_CONNECT`, or `AWS_LAMBDA` authorization.
+
+## Notes
+
+- The AppSync logging IAM role trust policy is scoped with an `aws:SourceAccount` condition so the role can only be assumed by AppSync on behalf of this account (confused-deputy protection).
+- When `logging_enabled = true` (default), the module manages the `/aws/appsync/apis/<api_id>` CloudWatch log group with a 30-day retention default. Set `create_log_group = false` if the log group is managed elsewhere.
 
 ## Usage
 

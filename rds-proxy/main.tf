@@ -6,11 +6,13 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
 data "aws_region" "current" {}
 data "aws_partition" "current" {}
+data "aws_caller_identity" "current" {}
 
 ################################################################################
 # RDS Proxy
@@ -21,12 +23,12 @@ resource "aws_db_proxy" "this" {
     for_each = var.auth
 
     content {
-      auth_scheme               = try(auth.value.auth_scheme, "SECRETS")
-      client_password_auth_type = try(auth.value.client_password_auth_type, null)
-      description               = try(auth.value.description, null)
-      iam_auth                  = try(auth.value.iam_auth, null)
-      secret_arn                = try(auth.value.secret_arn, null)
-      username                  = try(auth.value.username, null)
+      auth_scheme               = auth.value.auth_scheme
+      client_password_auth_type = auth.value.client_password_auth_type
+      description               = auth.value.description
+      iam_auth                  = auth.value.iam_auth
+      secret_arn                = auth.value.secret_arn
+      username                  = auth.value.username
     }
   }
 
@@ -102,7 +104,7 @@ resource "aws_db_proxy_endpoint" "this" {
   vpc_security_group_ids = lookup(each.value, "vpc_security_group_ids", null)
   target_role            = lookup(each.value, "target_role", null)
 
-  tags = lookup(each.value, "tags", local.tags)
+  tags = merge(local.tags, lookup(each.value, "tags", {}))
 }
 
 ################################################################################
@@ -169,7 +171,7 @@ data "aws_iam_policy_document" "this" {
     actions = ["kms:Decrypt"]
     resources = coalescelist(
       var.kms_key_arns,
-      ["arn:${data.aws_partition.current.partition}:kms:*:*:key/*"]
+      ["arn:${data.aws_partition.current.partition}:kms:*:${data.aws_caller_identity.current.account_id}:key/*"]
     )
 
     condition {
@@ -201,7 +203,7 @@ data "aws_iam_policy_document" "this" {
       "secretsmanager:ListSecretVersionIds",
     ]
 
-    resources = distinct([for auth in var.auth : auth.secret_arn])
+    resources = distinct([for auth in var.auth : auth.secret_arn if auth.secret_arn != null])
   }
 }
 

@@ -8,6 +8,11 @@ variable "name" {
   description = "Name for the codeconnections connection. Defaults to '<github_organization_name>-github' when not set."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.name != null || var.github_organization_name != null
+    error_message = "One of name or github_organization_name must be set to derive the connection name."
+  }
 }
 
 variable "tags" {

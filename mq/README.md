@@ -2,6 +2,8 @@
 
 OpenTofu module for provisioning Amazon MQ brokers supporting both RabbitMQ and ActiveMQ engines with configurable deployment modes, security groups, and encryption.
 
+> **Note — logging default:** `logs` defaults to `{ general = true }`, so general broker logging to CloudWatch Logs is enabled by default. Set `logs = null` to disable logging.
+
 ## Features
 
 - **RabbitMQ and ActiveMQ** - supports both broker engine types with engine-specific default ingress rules
@@ -19,7 +21,7 @@ OpenTofu module for provisioning Amazon MQ brokers supporting both RabbitMQ and 
 module "mq" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//mq?depth=1&ref=master"
 
-  broker_name        = "my-rabbitmq"
+  name               = "my-rabbitmq"
   engine_type        = "RabbitMQ"
   engine_version     = "3.13"
   host_instance_type = "mq.m5.large"
@@ -50,7 +52,7 @@ module "rabbitmq" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//mq?depth=1&ref=master"
 
   enabled            = true
-  broker_name        = "payments-rabbitmq"
+  name               = "payments-rabbitmq"
   engine_type        = "RabbitMQ"
   engine_version     = "3.13"
   host_instance_type = "mq.m5.large"
@@ -84,7 +86,7 @@ module "activemq_ha" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//mq?depth=1&ref=master"
 
   enabled            = true
-  broker_name        = "orders-activemq"
+  name               = "orders-activemq"
   engine_type        = "ActiveMQ"
   engine_version     = "5.18"
   host_instance_type = "mq.m5.large"
@@ -139,7 +141,7 @@ module "rabbitmq_cluster" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//mq?depth=1&ref=master"
 
   enabled            = true
-  broker_name        = "notifications-rmq-cluster"
+  name               = "notifications-rmq-cluster"
   engine_type        = "RabbitMQ"
   engine_version     = "3.13"
   host_instance_type = "mq.m5.xlarge"

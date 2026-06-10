@@ -7,6 +7,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -22,7 +23,7 @@ resource "aws_cloudwatch_metric_stream" "this" {
 
     content {
       namespace    = exclude_filter.key
-      metric_names = try(exclude_filter.value.metric_names, [])
+      metric_names = exclude_filter.value.metric_names
     }
   }
 
@@ -31,7 +32,7 @@ resource "aws_cloudwatch_metric_stream" "this" {
 
     content {
       namespace    = include_filter.key
-      metric_names = try(include_filter.value.metric_names, [])
+      metric_names = include_filter.value.metric_names
     }
   }
 
@@ -42,7 +43,7 @@ resource "aws_cloudwatch_metric_stream" "this" {
       additional_statistics = statistics_configuration.value.additional_statistics
 
       dynamic "include_metric" {
-        for_each = try(statistics_configuration.value.include_metric, [])
+        for_each = statistics_configuration.value.include_metric
 
         content {
           metric_name = include_metric.value.metric_name
@@ -68,3 +69,5 @@ resource "aws_cloudwatch_metric_stream" "this" {
     }
   }
 }
+
+data "aws_region" "current" {}

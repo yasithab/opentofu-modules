@@ -1,9 +1,11 @@
 
 locals {
   enabled = var.enabled
+  name    = var.name
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -12,7 +14,7 @@ locals {
 ################################################################################
 
 resource "aws_globalaccelerator_accelerator" "this" {
-  name            = var.name
+  name            = local.name
   ip_address_type = var.ip_address_type
   ip_addresses    = var.ip_addresses
   enabled         = var.accelerator_enabled
@@ -42,15 +44,15 @@ resource "aws_globalaccelerator_listener" "this" {
   for_each = { for k, v in var.listeners : k => v if local.enabled && !var.create_custom_routing_accelerator }
 
   accelerator_arn = aws_globalaccelerator_accelerator.this.id
-  client_affinity = try(each.value.client_affinity, "NONE")
-  protocol        = try(each.value.protocol, "TCP")
+  client_affinity = each.value.client_affinity
+  protocol        = each.value.protocol
 
   dynamic "port_range" {
-    for_each = try(each.value.port_ranges, [{ from_port = 80, to_port = 80 }])
+    for_each = each.value.port_ranges
 
     content {
       from_port = port_range.value.from_port
-      to_port   = try(port_range.value.to_port, port_range.value.from_port)
+      to_port   = coalesce(port_range.value.to_port, port_range.value.from_port)
     }
   }
 }
@@ -62,31 +64,28 @@ resource "aws_globalaccelerator_listener" "this" {
 resource "aws_globalaccelerator_endpoint_group" "this" {
   for_each = { for k, v in var.endpoint_groups : k => v if local.enabled && !var.create_custom_routing_accelerator }
 
-  listener_arn = try(
-    aws_globalaccelerator_listener.this[each.value.listener_key].id,
-    each.value.listener_arn
-  )
+  listener_arn = each.value.listener_key != null ? aws_globalaccelerator_listener.this[each.value.listener_key].id : each.value.listener_arn
 
-  endpoint_group_region         = try(each.value.endpoint_group_region, var.region)
-  health_check_interval_seconds = try(each.value.health_check_interval_seconds, 30)
-  health_check_path             = try(each.value.health_check_path, "/")
-  health_check_port             = try(each.value.health_check_port, 80)
-  health_check_protocol         = try(each.value.health_check_protocol, "HTTP")
-  threshold_count               = try(each.value.threshold_count, 3)
-  traffic_dial_percentage       = try(each.value.traffic_dial_percentage, 100)
+  endpoint_group_region         = each.value.endpoint_group_region != null ? each.value.endpoint_group_region : var.region
+  health_check_interval_seconds = each.value.health_check_interval_seconds
+  health_check_path             = each.value.health_check_path
+  health_check_port             = each.value.health_check_port
+  health_check_protocol         = each.value.health_check_protocol
+  threshold_count               = each.value.threshold_count
+  traffic_dial_percentage       = each.value.traffic_dial_percentage
 
   dynamic "endpoint_configuration" {
-    for_each = try(each.value.endpoint_configurations, [])
+    for_each = each.value.endpoint_configurations
 
     content {
-      client_ip_preservation_enabled = try(endpoint_configuration.value.client_ip_preservation_enabled, true)
+      client_ip_preservation_enabled = endpoint_configuration.value.client_ip_preservation_enabled
       endpoint_id                    = endpoint_configuration.value.endpoint_id
-      weight                         = try(endpoint_configuration.value.weight, 128)
+      weight                         = endpoint_configuration.value.weight
     }
   }
 
   dynamic "port_override" {
-    for_each = try(each.value.port_overrides, [])
+    for_each = each.value.port_overrides
 
     content {
       endpoint_port = port_override.value.endpoint_port
@@ -100,7 +99,7 @@ resource "aws_globalaccelerator_endpoint_group" "this" {
 ################################################################################
 
 resource "aws_globalaccelerator_custom_routing_accelerator" "this" {
-  name            = var.name
+  name            = local.name
   ip_address_type = var.ip_address_type
   ip_addresses    = var.ip_addresses
   enabled         = var.accelerator_enabled
@@ -132,11 +131,11 @@ resource "aws_globalaccelerator_custom_routing_listener" "this" {
   accelerator_arn = aws_globalaccelerator_custom_routing_accelerator.this.id
 
   dynamic "port_range" {
-    for_each = try(each.value.port_ranges, [{ from_port = 80, to_port = 80 }])
+    for_each = each.value.port_ranges
 
     content {
       from_port = port_range.value.from_port
-      to_port   = try(port_range.value.to_port, port_range.value.from_port)
+      to_port   = coalesce(port_range.value.to_port, port_range.value.from_port)
     }
   }
 }
@@ -148,15 +147,12 @@ resource "aws_globalaccelerator_custom_routing_listener" "this" {
 resource "aws_globalaccelerator_custom_routing_endpoint_group" "this" {
   for_each = { for k, v in var.custom_routing_endpoint_groups : k => v if local.enabled && var.create_custom_routing_accelerator }
 
-  listener_arn = try(
-    aws_globalaccelerator_custom_routing_listener.this[each.value.listener_key].id,
-    each.value.listener_arn
-  )
+  listener_arn = each.value.listener_key != null ? aws_globalaccelerator_custom_routing_listener.this[each.value.listener_key].id : each.value.listener_arn
 
-  endpoint_group_region = try(each.value.endpoint_group_region, var.region)
+  endpoint_group_region = each.value.endpoint_group_region != null ? each.value.endpoint_group_region : var.region
 
   dynamic "destination_configuration" {
-    for_each = try(each.value.destination_configurations, [])
+    for_each = each.value.destination_configurations
 
     content {
       from_port = destination_configuration.value.from_port
@@ -166,7 +162,7 @@ resource "aws_globalaccelerator_custom_routing_endpoint_group" "this" {
   }
 
   dynamic "endpoint_configuration" {
-    for_each = try(each.value.endpoint_configurations, [])
+    for_each = each.value.endpoint_configurations
 
     content {
       endpoint_id = endpoint_configuration.value.endpoint_id
@@ -183,16 +179,18 @@ resource "aws_globalaccelerator_cross_account_attachment" "this" {
 
   name = each.value.name
 
-  principals = try(each.value.principals, [])
+  principals = each.value.principals
 
   dynamic "resource" {
-    for_each = try(each.value.resources, [])
+    for_each = each.value.resources
 
     content {
       endpoint_id = resource.value.endpoint_id
-      region      = try(resource.value.region, null)
+      region      = resource.value.region
     }
   }
 
   tags = local.tags
 }
+
+data "aws_region" "current" {}

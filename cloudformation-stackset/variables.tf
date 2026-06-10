@@ -42,6 +42,11 @@ variable "template_body" {
   description = "CloudFormation template body (mutually exclusive with template_url)"
   type        = string
   default     = null
+
+  validation {
+    condition     = (var.template_body != null) != (var.template_url != null)
+    error_message = "Exactly one of template_body or template_url must be provided."
+  }
 }
 
 variable "template_url" {
@@ -111,7 +116,9 @@ variable "execution_role_name" {
 
 variable "deployments" {
   description = <<-EOT
-    List of deployment configurations. For SERVICE_MANAGED:
+    Map of deployment configurations keyed by a stable, user-chosen identifier
+    (e.g. "prod-us-east-1"). The key is used as the stack instance resource key,
+    so renaming a key replaces that instance. For SERVICE_MANAGED:
     - organizational_unit_ids: List of OU IDs to deploy to
     - account_filter_type: DIFFERENCE, INTERSECTION, UNION, or NONE
     - accounts: Account IDs for filtering
@@ -126,7 +133,7 @@ variable "deployments" {
     - parameter_overrides: Map of parameter key-value pairs to override StackSet-level parameters for this instance
     - retain_stack: If true, retains the stack when the instance is removed (default false)
   EOT
-  type = list(object({
+  type = map(object({
     region                  = string
     organizational_unit_ids = optional(list(string), [])
     account_filter_type     = optional(string, "NONE")
@@ -136,11 +143,11 @@ variable "deployments" {
     parameter_overrides     = optional(map(string))
     retain_stack            = optional(bool, false)
   }))
-  default = []
+  default = {}
 
   validation {
     condition = alltrue([
-      for d in var.deployments : contains(["NONE", "DIFFERENCE", "INTERSECTION", "UNION"], d.account_filter_type)
+      for d in values(var.deployments) : contains(["NONE", "DIFFERENCE", "INTERSECTION", "UNION"], d.account_filter_type)
     ])
     error_message = "account_filter_type must be NONE, DIFFERENCE, INTERSECTION, or UNION."
   }
@@ -225,7 +232,7 @@ variable "stackset_update_timeout" {
 }
 
 variable "tags" {
-  description = "Tags to apply to the StackSet"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }

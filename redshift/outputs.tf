@@ -217,6 +217,7 @@ output "usage_limits" {
 output "authentication_profiles" {
   description = "Map of authentication profiles created and their associated attributes"
   value       = aws_redshift_authentication_profile.this
+  sensitive   = true
 }
 
 ################################################################################

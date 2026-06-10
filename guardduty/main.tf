@@ -1,8 +1,13 @@
 locals {
   enabled = var.enabled
+  name    = var.name
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
+
+  create_organization_admin_account = local.enabled && var.create_organization_admin_account
+  create_organization_configuration = local.enabled && var.create_organization_configuration
 }
 
 ################################################################################
@@ -189,6 +194,56 @@ resource "aws_guardduty_filter" "this" {
 }
 
 ################################################################################
+# Organization Support
+################################################################################
+
+# Designates a member account as the GuardDuty delegated administrator for the
+# organization. Must be applied from the organization management account.
+resource "aws_guardduty_organization_admin_account" "this" {
+  admin_account_id = coalesce(var.admin_account_id, "000000000000")
+
+  lifecycle {
+    enabled = local.create_organization_admin_account
+
+    precondition {
+      condition     = !local.create_organization_admin_account || var.admin_account_id != null
+      error_message = "admin_account_id must be set when create_organization_admin_account is true."
+    }
+  }
+}
+
+# Organization-wide auto-enable behaviour. Must be applied from the delegated
+# administrator account.
+resource "aws_guardduty_organization_configuration" "this" {
+  detector_id                      = aws_guardduty_detector.this.id
+  auto_enable_organization_members = var.auto_enable_organization_members
+
+  lifecycle {
+    enabled = local.create_organization_configuration
+  }
+}
+
+# Per-feature auto-enable configuration for organization member accounts.
+resource "aws_guardduty_organization_configuration_feature" "this" {
+  for_each = { for k, v in var.organization_configuration_features : k => v if local.create_organization_configuration }
+
+  detector_id = aws_guardduty_detector.this.id
+  name        = each.key
+  auto_enable = each.value.auto_enable
+
+  dynamic "additional_configuration" {
+    for_each = each.value.additional_configuration
+
+    content {
+      name        = additional_configuration.value.name
+      auto_enable = additional_configuration.value.auto_enable
+    }
+  }
+
+  depends_on = [aws_guardduty_organization_configuration.this]
+}
+
+################################################################################
 # Member Accounts
 ################################################################################
 
@@ -202,3 +257,5 @@ resource "aws_guardduty_member" "this" {
   invitation_message         = try(each.value.invitation_message, "GuardDuty member invitation")
   disable_email_notification = try(each.value.disable_email_notification, true)
 }
+
+data "aws_region" "current" {}

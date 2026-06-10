@@ -2,7 +2,16 @@
 # Cluster
 ################################################################################
 
+data "aws_partition" "current" {
+  count = var.enabled ? 1 : 0
+}
+
 locals {
+  enabled = var.enabled
+  name    = var.name
+
+  partition = try(data.aws_partition.current[0].partition, "aws")
+
   execute_command_configuration = {
     logging = "OVERRIDE"
     log_configuration = {
@@ -12,11 +21,12 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
 resource "aws_ecs_cluster" "this" {
-  name = var.cluster_name
+  name = local.name
 
   dynamic "configuration" {
     for_each = length(var.cluster_configuration) > 0 || var.create_cloudwatch_log_group ? [var.cluster_configuration] : []
@@ -74,7 +84,7 @@ resource "aws_ecs_cluster" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = var.enabled
+    enabled = local.enabled
   }
 }
 
@@ -82,7 +92,7 @@ resource "aws_ecs_cluster" "this" {
 # CloudWatch Log Group
 ################################################################################
 resource "aws_cloudwatch_log_group" "this" {
-  name              = try(coalesce(var.cloudwatch_log_group_name, "/aws/ecs/${var.cluster_name}"), "")
+  name              = try(coalesce(var.cloudwatch_log_group_name, "/aws/ecs/${var.name}"), "")
   retention_in_days = var.cloudwatch_log_group_retention_in_days
   kms_key_id        = var.cloudwatch_log_group_kms_key_id
   log_group_class   = var.cloudwatch_log_group_class
@@ -93,7 +103,7 @@ resource "aws_cloudwatch_log_group" "this" {
   tags = merge(local.tags, var.cloudwatch_log_group_tags)
 
   lifecycle {
-    enabled = var.enabled && var.create_cloudwatch_log_group
+    enabled = local.enabled && var.create_cloudwatch_log_group
   }
 }
 
@@ -132,7 +142,7 @@ resource "aws_ecs_cluster_capacity_providers" "this" {
   ]
 
   lifecycle {
-    enabled = var.enabled && length(merge(var.fargate_capacity_providers, var.autoscaling_capacity_providers)) > 0
+    enabled = local.enabled && length(merge(var.fargate_capacity_providers, var.autoscaling_capacity_providers)) > 0
   }
 }
 
@@ -141,7 +151,7 @@ resource "aws_ecs_cluster_capacity_providers" "this" {
 ################################################################################
 
 resource "aws_ecs_capacity_provider" "this" {
-  for_each = { for k, v in var.autoscaling_capacity_providers : k => v if var.enabled }
+  for_each = { for k, v in var.autoscaling_capacity_providers : k => v if local.enabled }
 
   name = try(each.value.name, each.key)
 
@@ -313,9 +323,9 @@ resource "aws_ecs_capacity_provider" "this" {
 ################################################################################
 
 locals {
-  task_exec_iam_role_name = try(coalesce(var.task_exec_iam_role_name, var.cluster_name), "")
+  task_exec_iam_role_name = try(coalesce(var.task_exec_iam_role_name, var.name), "")
 
-  create_task_exec_iam_role = var.enabled && var.create_task_exec_iam_role
+  create_task_exec_iam_role = local.enabled && var.create_task_exec_iam_role
   create_task_exec_policy   = local.create_task_exec_iam_role && var.create_task_exec_policy
 }
 
@@ -337,7 +347,7 @@ resource "aws_iam_role" "task_exec" {
   name        = var.task_exec_iam_role_use_name_prefix ? null : local.task_exec_iam_role_name
   name_prefix = var.task_exec_iam_role_use_name_prefix ? "${local.task_exec_iam_role_name}-" : null
   path        = var.task_exec_iam_role_path
-  description = coalesce(var.task_exec_iam_role_description, "Task execution role for ${var.cluster_name}")
+  description = coalesce(var.task_exec_iam_role_description, "Task execution role for ${var.name}")
 
   assume_role_policy    = data.aws_iam_policy_document.task_exec_assume[0].json
   permissions_boundary  = var.task_exec_iam_role_permissions_boundary
@@ -473,8 +483,8 @@ resource "aws_iam_role_policy_attachment" "task_exec" {
 ################################################################################
 
 locals {
-  node_iam_role_name = try(coalesce(var.node_iam_role_name, "${var.cluster_name}-node"), "")
-  create_node_role   = var.enabled && var.create_node_iam_role
+  node_iam_role_name = try(coalesce(var.node_iam_role_name, "${var.name}-node"), "")
+  create_node_role   = local.enabled && var.create_node_iam_role
 }
 
 data "aws_iam_policy_document" "node_assume" {
@@ -495,7 +505,7 @@ resource "aws_iam_role" "node" {
   name        = var.node_iam_role_use_name_prefix ? null : local.node_iam_role_name
   name_prefix = var.node_iam_role_use_name_prefix ? "${local.node_iam_role_name}-" : null
   path        = var.node_iam_role_path
-  description = coalesce(var.node_iam_role_description, "ECS node role for ${var.cluster_name}")
+  description = coalesce(var.node_iam_role_description, "ECS node role for ${var.name}")
 
   assume_role_policy    = data.aws_iam_policy_document.node_assume[0].json
   permissions_boundary  = var.node_iam_role_permissions_boundary
@@ -511,7 +521,7 @@ resource "aws_iam_role" "node" {
 # Core ECS agent + ECR + CloudWatch permissions
 resource "aws_iam_role_policy_attachment" "node_ecs" {
   role       = aws_iam_role.node.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+  policy_arn = "arn:${local.partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
 
   lifecycle {
     enabled = local.create_node_role
@@ -521,7 +531,7 @@ resource "aws_iam_role_policy_attachment" "node_ecs" {
 # Optional: SSM Session Manager access on EC2 nodes
 resource "aws_iam_role_policy_attachment" "node_ssm" {
   role       = aws_iam_role.node.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  policy_arn = "arn:${local.partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
 
   lifecycle {
     enabled = local.create_node_role && var.node_iam_role_attach_ssm_policy
@@ -554,8 +564,8 @@ resource "aws_iam_instance_profile" "node" {
 ################################################################################
 
 locals {
-  create_security_group = var.enabled && var.create_security_group
-  security_group_name   = try(coalesce(var.security_group_name, var.cluster_name), "")
+  create_security_group = local.enabled && var.create_security_group
+  security_group_name   = try(coalesce(var.security_group_name, var.name), "")
 }
 
 resource "aws_security_group" "this" {
@@ -607,3 +617,5 @@ resource "aws_vpc_security_group_egress_rule" "this" {
 
   tags = merge(local.tags, var.security_group_tags)
 }
+
+data "aws_region" "current" {}

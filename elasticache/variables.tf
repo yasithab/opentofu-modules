@@ -16,6 +16,16 @@ variable "tags" {
   default     = {}
 }
 
+variable "name" {
+  description = "Name of the cache. Used as the default cluster ID and replication group ID, and to derive default names for the parameter group, subnet group, security group, and CloudWatch log groups"
+  type        = string
+
+  validation {
+    condition     = length(trimspace(var.name)) > 0
+    error_message = "name must be a non-empty string."
+  }
+}
+
 ################################################################################
 # Cluster
 ################################################################################
@@ -57,7 +67,7 @@ variable "az_mode" {
 }
 
 variable "cluster_id" {
-  description = "Group identifier. ElastiCache converts this name to lowercase. Changing this value will re-create the resource"
+  description = "Group identifier. Defaults to `name` when not set. ElastiCache converts this name to lowercase. Changing this value will re-create the resource"
   type        = string
   default     = null
 }
@@ -185,9 +195,9 @@ variable "snapshot_name" {
 }
 
 variable "snapshot_retention_limit" {
-  description = "(Redis only) Number of days for which ElastiCache will retain automatic cache cluster snapshots before deleting them"
+  description = "(Redis only) Number of days for which ElastiCache will retain automatic cache cluster snapshots before deleting them. Defaults to 7; set to 0 to disable automatic snapshots"
   type        = number
-  default     = null
+  default     = 7
 }
 
 variable "snapshot_window" {
@@ -304,7 +314,7 @@ variable "cluster_mode" {
 }
 
 variable "replication_group_id" {
-  description = "Replication group identifier. When `create_replication_group` is set to `true`, this is the ID assigned to the replication group created. When `create_replication_group` is set to `false`, this is the ID of an externally created replication group"
+  description = "Replication group identifier. Defaults to `name` when not set. When `create_replication_group` is set to `true`, this is the ID assigned to the replication group created. When `create_replication_group` is set to `false`, this is the ID of an externally created replication group"
   type        = string
   default     = null
 }

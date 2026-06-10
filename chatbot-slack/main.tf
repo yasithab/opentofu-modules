@@ -1,19 +1,23 @@
-locals {
-  enabled            = var.enabled
-  _chatbot_role_id   = var.name != null ? "${var.name}-chatbot" : "chatbot-role"
-  configuration_name = var.slack_channel_configuration_name
-  slack_channel_id   = var.slack_channel_id
-  slack_workspace_id = var.slack_workspace_id
-  sns_topic_arns     = var.sns_topic_arns
-  guardrail_policies = var.guardrail_policies
-  user_role_required = var.user_role_required
-  logging_level      = var.logging_level
+data "aws_partition" "current" {}
 
-  chatbot_role_name = local.enabled ? coalesce(var.chatbot_role_name, local._chatbot_role_id) : null
+locals {
+  enabled = var.enabled
+  name    = var.name
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
+
+  partition = data.aws_partition.current.partition
+
+  chatbot_role_name = coalesce(var.chatbot_role_name, local.name != null ? "${local.name}-chatbot" : "chatbot-role")
+
+  # Default guardrail is ReadOnlyAccess. AWS Chatbot itself falls back to
+  # AdministratorAccess when no guardrail is supplied, which is far too broad
+  # for a chat integration.
+  guardrail_policies       = var.guardrail_policies != null ? var.guardrail_policies : ["arn:${local.partition}:iam::aws:policy/ReadOnlyAccess"]
+  teams_guardrail_policies = var.teams_guardrail_policies != null ? var.teams_guardrail_policies : ["arn:${local.partition}:iam::aws:policy/ReadOnlyAccess"]
 }
 
 # managed_policy_arns was removed from aws_iam_role in favour of an explicit
@@ -49,7 +53,7 @@ resource "aws_iam_role" "chatbot" {
 
 resource "aws_iam_role_policy_attachment" "chatbot" {
   role       = aws_iam_role.chatbot.name
-  policy_arn = "arn:aws:iam::aws:policy/AWSResourceExplorerReadOnlyAccess"
+  policy_arn = "arn:${local.partition}:iam::aws:policy/AWSResourceExplorerReadOnlyAccess"
 
   lifecycle {
     enabled = local.enabled
@@ -57,20 +61,35 @@ resource "aws_iam_role_policy_attachment" "chatbot" {
 }
 
 resource "aws_chatbot_slack_channel_configuration" "this" {
-  configuration_name    = local.configuration_name
-  slack_channel_id      = local.slack_channel_id
-  slack_team_id         = local.slack_workspace_id
+  configuration_name    = var.slack_channel_configuration_name
+  slack_channel_id      = var.slack_channel_id
+  slack_team_id         = var.slack_workspace_id
   iam_role_arn          = aws_iam_role.chatbot.arn
-  sns_topic_arns        = local.sns_topic_arns
+  sns_topic_arns        = var.sns_topic_arns
   guardrail_policy_arns = local.guardrail_policies
-  logging_level         = local.logging_level
+  logging_level         = var.logging_level
 
-  user_authorization_required = local.user_role_required
+  user_authorization_required = var.user_role_required
 
   tags = local.tags
 
   lifecycle {
     enabled = local.enabled
+
+    precondition {
+      condition     = !local.enabled || var.slack_channel_configuration_name != null
+      error_message = "slack_channel_configuration_name must be set when enabled is true."
+    }
+
+    precondition {
+      condition     = !local.enabled || var.slack_channel_id != null
+      error_message = "slack_channel_id must be set when enabled is true."
+    }
+
+    precondition {
+      condition     = !local.enabled || var.slack_workspace_id != null
+      error_message = "slack_workspace_id must be set when enabled is true."
+    }
   }
 }
 
@@ -84,7 +103,7 @@ resource "aws_chatbot_teams_channel_configuration" "this" {
   tenant_id          = var.teams_tenant_id
   sns_topic_arns     = var.teams_sns_topic_arns
 
-  guardrail_policy_arns       = var.teams_guardrail_policies
+  guardrail_policy_arns       = local.teams_guardrail_policies
   logging_level               = var.teams_logging_level
   user_authorization_required = var.teams_user_role_required
 
@@ -92,5 +111,27 @@ resource "aws_chatbot_teams_channel_configuration" "this" {
 
   lifecycle {
     enabled = local.enabled && var.create_teams_configuration
+
+    precondition {
+      condition     = !var.create_teams_configuration || var.teams_channel_id != null
+      error_message = "teams_channel_id must be set when create_teams_configuration is true."
+    }
+
+    precondition {
+      condition     = !var.create_teams_configuration || var.teams_configuration_name != null
+      error_message = "teams_configuration_name must be set when create_teams_configuration is true."
+    }
+
+    precondition {
+      condition     = !var.create_teams_configuration || var.teams_team_id != null
+      error_message = "teams_team_id must be set when create_teams_configuration is true."
+    }
+
+    precondition {
+      condition     = !var.create_teams_configuration || var.teams_tenant_id != null
+      error_message = "teams_tenant_id must be set when create_teams_configuration is true."
+    }
   }
 }
+
+data "aws_region" "current" {}

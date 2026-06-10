@@ -9,6 +9,7 @@ OpenTofu module for provisioning Amazon Kinesis Data Streams with optional enhan
 - **Enhanced fan-out consumers** - register dedicated consumers for low-latency, high-throughput reads via `consumer_count`
 - **Shard-level CloudWatch metrics** - configurable shard-level metrics for operational visibility
 - **Configurable retention** - retain data records from 24 hours up to 7 days (168 hours)
+- **Resource policy** - optionally attach an IAM resource policy to the stream via `resource_policy` for cross-account access
 
 ## Usage
 
@@ -119,6 +120,45 @@ module "kinesis_stream_with_consumers" {
   tags = {
     Environment = "production"
     Domain      = "orders"
+  }
+}
+```
+
+## With Cross-Account Resource Policy
+
+Attach a resource policy to the stream so a consumer in another account can read from it.
+
+```hcl
+module "kinesis_stream_shared" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//kinesis-stream?depth=1&ref=master"
+
+  enabled = true
+  name    = "shared-events"
+
+  stream_mode = "ON_DEMAND"
+
+  resource_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowCrossAccountRead"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::210987654321:root"
+        }
+        Action = [
+          "kinesis:DescribeStreamSummary",
+          "kinesis:GetRecords",
+          "kinesis:GetShardIterator",
+          "kinesis:ListShards"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = {
+    Environment = "production"
   }
 }
 ```

@@ -7,6 +7,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.this.region
   })
 
   account_id = data.aws_caller_identity.this.account_id
@@ -280,7 +281,7 @@ resource "aws_iam_role" "cfn_exec" {
 }
 
 resource "aws_iam_role_policy_attachment" "cfn_exec" {
-  for_each = { for idx, arn in local.cfn_execution_policies : idx => arn if local.enabled }
+  for_each = { for arn in local.cfn_execution_policies : arn => arn if local.enabled }
 
   role       = aws_iam_role.cfn_exec.name
   policy_arn = each.value
@@ -332,7 +333,7 @@ resource "aws_iam_role_policy" "deploy" {
           "cloudformation:RollbackStack",
           "cloudformation:ContinueUpdateRollback",
         ]
-        Resource = "arn:${local.partition}:cloudformation:${local.region}:${local.account_id}:stack/CDK*"
+        Resource = "arn:${local.partition}:cloudformation:${local.region}:${local.account_id}:stack/${var.stack_name_prefix}/*"
       },
       {
         Sid      = "S3Access"
@@ -574,7 +575,25 @@ resource "aws_ssm_parameter" "version" {
 
 check "bucket_encryption_enabled" {
   assert {
-    condition     = !var.enabled || aws_s3_bucket_public_access_block.staging.block_public_acls
+    condition = !var.enabled || (
+      length(try(aws_s3_bucket_server_side_encryption_configuration.staging.rule, [])) > 0 &&
+      alltrue([
+        for r in try(aws_s3_bucket_server_side_encryption_configuration.staging.rule, []) :
+        contains(["AES256", "aws:kms"], r.apply_server_side_encryption_by_default[0].sse_algorithm)
+      ])
+    )
+    error_message = "CDK staging bucket must have server-side encryption (AES256 or aws:kms) configured."
+  }
+}
+
+check "bucket_public_access_blocked" {
+  assert {
+    condition = !var.enabled || (
+      try(aws_s3_bucket_public_access_block.staging.block_public_acls, false) &&
+      try(aws_s3_bucket_public_access_block.staging.block_public_policy, false) &&
+      try(aws_s3_bucket_public_access_block.staging.ignore_public_acls, false) &&
+      try(aws_s3_bucket_public_access_block.staging.restrict_public_buckets, false)
+    )
     error_message = "CDK staging bucket must have public access blocked."
   }
 }

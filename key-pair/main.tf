@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   public_key = var.create_private_key ? trimspace(tls_private_key.this.public_key_openssh) : var.public_key
@@ -36,3 +37,5 @@ resource "aws_key_pair" "this" {
     enabled = local.enabled
   }
 }
+
+data "aws_region" "current" {}

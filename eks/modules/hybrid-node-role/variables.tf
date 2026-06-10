@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls if resources should be created (affects nearly all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -60,8 +60,8 @@ variable "permissions_boundary_arn" {
 }
 
 variable "tags" {
-  description = "A map of additional tags to add the the IAM role"
-  type        = map(any)
+  description = "Map of tags to apply to all resources."
+  type        = map(string)
   default     = {}
 }
 
@@ -123,7 +123,7 @@ variable "policies" {
 }
 
 variable "cluster_arns" {
-  description = "List of EKS cluster ARNs to allow the node to describe"
+  description = "List of EKS cluster ARNs the node is allowed to call `eks:DescribeCluster` on. Defaults to `[\"*\"]` (all clusters in the account) for convenience - scope this down to specific cluster ARNs in production"
   type        = list(string)
   default     = ["*"]
 }

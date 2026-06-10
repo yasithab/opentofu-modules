@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls if DynamoDB table and associated resources are created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -19,10 +19,9 @@ variable "attributes" {
 variable "hash_key" {
   description = "The attribute to use as the hash (partition) key. Must also be defined as an attribute"
   type        = string
-  default     = null
 
   validation {
-    condition     = var.hash_key != null && var.hash_key != ""
+    condition     = var.hash_key != ""
     error_message = "hash_key is required and cannot be empty."
   }
 }
@@ -128,7 +127,7 @@ variable "server_side_encryption_kms_key_arn" {
 }
 
 variable "tags" {
-  description = "A map of tags to add to all resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -160,15 +159,25 @@ variable "autoscaling_defaults" {
 }
 
 variable "autoscaling_read" {
-  description = "A map of read autoscaling settings. `max_capacity` is the only required key. See example in examples/autoscaling"
+  description = "A map of read autoscaling settings. `max_capacity` is the only required key. `min_capacity` is used when `read_capacity` is not set. See example in examples/autoscaling"
   type        = map(string)
   default     = {}
+
+  validation {
+    condition     = !(var.autoscaling_enabled && length(var.autoscaling_read) > 0) || var.read_capacity != null || lookup(var.autoscaling_read, "min_capacity", null) != null
+    error_message = "When read autoscaling is enabled, either read_capacity or autoscaling_read.min_capacity must be set."
+  }
 }
 
 variable "autoscaling_write" {
-  description = "A map of write autoscaling settings. `max_capacity` is the only required key. See example in examples/autoscaling"
+  description = "A map of write autoscaling settings. `max_capacity` is the only required key. `min_capacity` is used when `write_capacity` is not set. See example in examples/autoscaling"
   type        = map(string)
   default     = {}
+
+  validation {
+    condition     = !(var.autoscaling_enabled && length(var.autoscaling_write) > 0) || var.write_capacity != null || lookup(var.autoscaling_write, "min_capacity", null) != null
+    error_message = "When write autoscaling is enabled, either write_capacity or autoscaling_write.min_capacity must be set."
+  }
 }
 
 variable "autoscaling_indexes" {

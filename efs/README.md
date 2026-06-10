@@ -32,7 +32,7 @@ module "efs" {
   security_group_rules = {
     vpc_ingress = {
       description = "NFS ingress from VPC"
-      cidr_blocks = "10.0.0.0/16"
+      cidr_ipv4   = "10.0.0.0/16"
     }
   }
 
@@ -70,7 +70,7 @@ module "efs" {
   security_group_rules = {
     ingress_ecs = {
       description              = "NFS from ECS tasks"
-      cidr_blocks              = "10.0.0.0/16"
+      cidr_ipv4                = "10.0.0.0/16"
     }
   }
 

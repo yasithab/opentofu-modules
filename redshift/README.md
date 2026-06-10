@@ -19,6 +19,10 @@ Provisions Amazon Redshift clusters with support for single-node and multi-node 
 - **Multi-AZ** - Support for multi-AZ deployments with RA3 instance families
 - **Encryption** - Enable at-rest encryption with KMS customer-managed keys
 
+## Notes
+
+- **`master_password` changes are ignored after creation** - the cluster resource has `lifecycle { ignore_changes = [master_password] }`, so changing `master_password` (or the generated random password) after the cluster exists will *not* update the actual password. Rotate credentials via `manage_master_password` (Secrets Manager rotation) or the write-only path (`use_master_password_wo` + incrementing `master_password_wo_version`).
+
 ## Usage
 
 ```hcl
@@ -32,7 +36,8 @@ module "redshift" {
   database_name      = "analyticsdb"
   master_username    = "awsuser"
 
-  create_random_password = true
+  # Admin password is managed in Secrets Manager by default
+  # (manage_master_password = true)
 
   subnet_ids = ["subnet-aaa", "subnet-bbb"]
   vpc_id     = "vpc-0abc123def456789"
@@ -57,7 +62,7 @@ module "redshift" {
 
 ## Basic Usage
 
-Single-node Redshift cluster with a randomly generated password and auto-created subnet and parameter groups.
+Single-node Redshift cluster with a randomly generated password (instead of the default Secrets Manager-managed password) and auto-created subnet and parameter groups.
 
 ```hcl
 module "redshift" {
@@ -72,6 +77,7 @@ module "redshift" {
   database_name      = "analyticsdb"
   master_username    = "awsuser"
 
+  manage_master_password = false
   create_random_password = true
 
   subnet_ids = ["subnet-0aa111bbb222", "subnet-0cc333ddd444"]
@@ -111,6 +117,7 @@ module "redshift_multi_node" {
   database_name      = "warehouse"
   master_username    = "dwadmin"
 
+  manage_master_password = false
   create_random_password = true
 
   encrypted   = true
@@ -218,7 +225,8 @@ module "redshift_advanced" {
   number_of_nodes                      = 4
   database_name                        = "etldb"
   master_username                      = "etladmin"
-  create_random_password                = true
+  manage_master_password               = false
+  create_random_password               = true
   encrypted                            = true
   kms_key_arn                          = "arn:aws:kms:us-east-1:123456789012:key/mrk-abc123def456789012345678901234ab"
   multi_az                             = true

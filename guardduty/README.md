@@ -15,6 +15,7 @@ OpenTofu module for provisioning and managing Amazon GuardDuty threat detection 
 - **IPSet and ThreatIntelSet** - Custom trusted IP lists and threat intelligence feeds for enhanced detection accuracy
 - **Finding Filters** - Auto-archive or suppress findings based on custom criteria to reduce alert noise
 - **Multi-Account Support** - Invite and manage member accounts for centralized threat detection across an organization
+- **Organization Support** - Designate a delegated GuardDuty administrator and auto-enable GuardDuty (and individual features) for AWS Organizations member accounts
 
 ## Usage
 
@@ -91,6 +92,51 @@ module "guardduty" {
   tags = {
     Environment = "production"
     Team        = "security"
+  }
+}
+```
+
+### Organization Management
+
+Designate a delegated administrator from the organization management account, then manage
+organization-wide auto-enable settings from the delegated administrator account.
+
+```hcl
+# In the organization management account
+module "guardduty_mgmt" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//guardduty?depth=1&ref=master"
+
+  name = "guardduty-org"
+
+  create_organization_admin_account = true
+  admin_account_id                  = "111111111111" # security/audit account
+}
+
+# In the delegated administrator (security) account
+module "guardduty_admin" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//guardduty?depth=1&ref=master"
+
+  name = "guardduty-org-admin"
+
+  create_organization_configuration = true
+  auto_enable_organization_members  = "ALL" # ALL, NEW, or NONE
+
+  organization_configuration_features = {
+    S3_DATA_EVENTS = {
+      auto_enable = "ALL"
+    }
+    EKS_AUDIT_LOGS = {
+      auto_enable = "NEW"
+    }
+    RUNTIME_MONITORING = {
+      auto_enable = "NEW"
+      additional_configuration = [
+        {
+          name        = "EKS_ADDON_MANAGEMENT"
+          auto_enable = "NEW"
+        }
+      ]
+    }
   }
 }
 ```

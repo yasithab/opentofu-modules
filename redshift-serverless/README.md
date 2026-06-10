@@ -15,7 +15,7 @@ Amazon Redshift Serverless module for on-demand analytics without cluster manage
 - **Custom domain** - associate a custom domain with ACM certificate
 - **IAM role** - optional dedicated IAM role with inline or managed policies for S3/data access
 - **CloudWatch logging** - export connection, user, and user activity logs
-- **Random password generation** - automatically generates a random admin password when `create_random_password` is enabled (default: true)
+- **Random password generation** - optionally generates a random admin password when `create_random_password` is enabled (default: false; the Secrets Manager-managed admin password is the default)
 - **Internal KMS key creation** - optionally create a module-managed KMS key for namespace encryption via `kms_enabled`
 - **VPC endpoint by default** - a managed VPC endpoint is created by default (`endpoint_enabled` defaults to true) for private connectivity
 - **Private by default** - `publicly_accessible` defaults to false, ensuring the workgroup is not reachable from public networks

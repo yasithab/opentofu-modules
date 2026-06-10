@@ -206,3 +206,18 @@ module "iam_identity_center_token_issuer" {
   }
 }
 ```
+
+## Notes
+
+### `permission_sets` is strictly typed
+
+`permission_sets` is a typed `map(object)` with optional attributes: `description`,
+`relay_state`, `session_duration`, `tags`, `aws_managed_policies`,
+`customer_managed_policies`, `inline_policy`, `permissions_boundary`. Unknown attribute
+names fail at plan time instead of being silently dropped.
+
+### Account name resolution
+
+`account_assignments.account_ids` entries must be either 12-digit account IDs
+(`^[0-9]{12}$`) or names of ACTIVE accounts in the organization. Unresolvable names fail
+the plan with a precondition error.

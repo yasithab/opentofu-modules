@@ -119,6 +119,23 @@ variable "deadletter_queue_count" {
   default     = 5
 }
 
+variable "deadletter_message_retention_seconds" {
+  description = "The number of seconds the dead letter queue retains a message (60 to 1209600). Defaults to the maximum of 14 days so failed messages are kept as long as possible."
+  type        = number
+  default     = 1209600
+
+  validation {
+    condition     = var.deadletter_message_retention_seconds >= 60 && var.deadletter_message_retention_seconds <= 1209600
+    error_message = "deadletter_message_retention_seconds must be between 60 and 1209600."
+  }
+}
+
+variable "deadletter_redrive_allow_policy_enabled" {
+  description = "Whether to attach a redrive allow policy to the module-created dead letter queue, restricting redrive permission to the main queue (`byQueue`)."
+  type        = bool
+  default     = false
+}
+
 variable "fifo_queue" {
   description = "Boolean designating a FIFO queue"
   type        = bool

@@ -1,7 +1,12 @@
 locals {
   enabled = var.enabled
+  name    = var.name
+
+  create_execution_role = local.enabled && var.create_execution_role
+
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -10,7 +15,7 @@ locals {
 ################################################################################
 
 resource "aws_emrserverless_application" "this" {
-  name          = var.name
+  name          = local.name
   release_label = var.release_label
   type          = var.application_type
 
@@ -91,7 +96,7 @@ resource "aws_emrserverless_application" "this" {
     }
   }
 
-  tags = merge(local.tags, { Name = var.name })
+  tags = merge(local.tags, { Name = local.name })
 
   lifecycle {
     enabled = local.enabled
@@ -103,14 +108,14 @@ resource "aws_emrserverless_application" "this" {
 ################################################################################
 
 resource "aws_iam_role" "execution" {
-  name               = "${var.name}-execution-role"
-  description        = "Execution role for EMR Serverless application ${var.name}"
+  name_prefix        = "${local.name}-execution-"
+  description        = "Execution role for EMR Serverless application ${local.name}"
   assume_role_policy = data.aws_iam_policy_document.execution_assume_role.json
 
-  tags = merge(local.tags, { Name = "${var.name}-execution-role" })
+  tags = merge(local.tags, { Name = "${local.name}-execution-role" })
 
   lifecycle {
-    enabled = local.enabled && var.create_execution_role
+    enabled = local.create_execution_role
   }
 }
 
@@ -137,12 +142,12 @@ data "aws_iam_policy_document" "execution_assume_role" {
 }
 
 resource "aws_iam_role_policy" "execution_s3" {
-  name   = "${var.name}-s3-access"
+  name   = "${local.name}-s3-access"
   role   = aws_iam_role.execution.id
   policy = data.aws_iam_policy_document.execution_s3.json
 
   lifecycle {
-    enabled = local.enabled && var.create_execution_role && length(var.execution_role_s3_bucket_arns) > 0
+    enabled = local.create_execution_role && length(var.execution_role_s3_bucket_arns) > 0
   }
 }
 
@@ -163,15 +168,16 @@ data "aws_iam_policy_document" "execution_s3" {
 }
 
 resource "aws_iam_role_policy" "execution_glue" {
-  name   = "${var.name}-glue-access"
+  name   = "${local.name}-glue-access"
   role   = aws_iam_role.execution.id
   policy = data.aws_iam_policy_document.execution_glue.json
 
   lifecycle {
-    enabled = local.enabled && var.create_execution_role && var.execution_role_glue_access_enabled
+    enabled = local.create_execution_role && var.execution_role_glue_access_enabled
   }
 }
 
+# trivy:ignore:AVD-AWS-0057 - falls back to "*" only when execution_role_glue_catalog_arns is not set
 data "aws_iam_policy_document" "execution_glue" {
   statement {
     effect = "Allow"
@@ -188,13 +194,15 @@ data "aws_iam_policy_document" "execution_glue" {
       "glue:BatchCreatePartition",
       "glue:BatchDeletePartition"
     ]
-    resources = ["*"]
+    resources = length(var.execution_role_glue_catalog_arns) > 0 ? var.execution_role_glue_catalog_arns : ["*"]
   }
 }
 
 resource "aws_iam_role_policy_attachment" "execution_additional" {
-  for_each = local.enabled && var.create_execution_role ? toset(var.execution_role_additional_policy_arns) : toset([])
+  for_each = local.create_execution_role ? toset(var.execution_role_additional_policy_arns) : toset([])
 
   role       = aws_iam_role.execution.name
   policy_arn = each.value
 }
+
+data "aws_region" "current" {}

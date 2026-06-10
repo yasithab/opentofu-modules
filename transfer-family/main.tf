@@ -6,6 +6,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   account_id = data.aws_caller_identity.current.account_id
@@ -110,12 +111,12 @@ resource "aws_transfer_user" "this" {
   user_name = each.value.user_name
   role      = each.value.role
 
-  home_directory      = try(each.value.home_directory, null)
-  home_directory_type = try(each.value.home_directory_type, null)
-  policy              = try(each.value.policy, null)
+  home_directory      = each.value.home_directory
+  home_directory_type = each.value.home_directory_type
+  policy              = each.value.policy
 
   dynamic "home_directory_mappings" {
-    for_each = try(each.value.home_directory_mappings, [])
+    for_each = each.value.home_directory_mappings
 
     content {
       entry  = home_directory_mappings.value.entry
@@ -124,12 +125,12 @@ resource "aws_transfer_user" "this" {
   }
 
   dynamic "posix_profile" {
-    for_each = try(each.value.posix_profile, null) != null ? [each.value.posix_profile] : []
+    for_each = each.value.posix_profile != null ? [each.value.posix_profile] : []
 
     content {
       gid            = posix_profile.value.gid
       uid            = posix_profile.value.uid
-      secondary_gids = try(posix_profile.value.secondary_gids, null)
+      secondary_gids = posix_profile.value.secondary_gids
     }
   }
 
@@ -141,7 +142,7 @@ resource "aws_transfer_user" "this" {
 ################################################################################
 
 resource "aws_transfer_ssh_key" "this" {
-  for_each = { for k, v in var.users : k => v if local.enabled && try(v.ssh_public_key, null) != null }
+  for_each = { for k, v in var.users : k => v if local.enabled && v.ssh_public_key != null }
 
   server_id = aws_transfer_server.this.id
   user_name = aws_transfer_user.this[each.key].user_name
@@ -257,6 +258,28 @@ resource "aws_transfer_workflow" "this" {
 }
 
 ################################################################################
+# SFTP Connectors
+################################################################################
+
+resource "aws_transfer_connector" "this" {
+  for_each = { for k, v in var.connectors : k => v if local.enabled }
+
+  url                  = each.value.url
+  access_role          = each.value.access_role
+  logging_role         = each.value.logging_role
+  security_policy_name = each.value.security_policy_name
+
+  sftp_config {
+    trusted_host_keys = each.value.trusted_host_keys
+    user_secret_id    = each.value.user_secret_id
+  }
+
+  tags = merge(local.tags, {
+    Name = "${var.name}-${each.key}"
+  })
+}
+
+################################################################################
 # Route53 Custom Hostname
 ################################################################################
 
@@ -321,3 +344,5 @@ resource "aws_iam_role_policy" "logging" {
     enabled = local.enabled && var.create_logging_role
   }
 }
+
+data "aws_region" "current" {}

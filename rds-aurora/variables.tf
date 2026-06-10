@@ -434,8 +434,27 @@ variable "cluster_timeouts" {
 
 variable "instances" {
   description = "Map of cluster instances and any specific/overriding attributes to be created"
-  type        = any
-  default     = {}
+  type = map(object({
+    apply_immediately                     = optional(bool)
+    auto_minor_version_upgrade            = optional(bool)
+    availability_zone                     = optional(string)
+    copy_tags_to_snapshot                 = optional(bool)
+    custom_iam_instance_profile           = optional(string)
+    db_parameter_group_name               = optional(string)
+    force_destroy                         = optional(bool)
+    identifier                            = optional(string)
+    identifier_prefix                     = optional(string)
+    instance_class                        = optional(string)
+    monitoring_interval                   = optional(number)
+    performance_insights_enabled          = optional(bool)
+    performance_insights_kms_key_id       = optional(string)
+    performance_insights_retention_period = optional(number)
+    preferred_maintenance_window          = optional(string)
+    promotion_tier                        = optional(number)
+    publicly_accessible                   = optional(bool)
+    tags                                  = optional(map(string), {})
+  }))
+  default = {}
 }
 
 variable "auto_minor_version_upgrade" {
@@ -522,8 +541,14 @@ variable "instance_timeouts" {
 
 variable "endpoints" {
   description = "Map of additional cluster endpoints and their attributes to be created"
-  type        = any
-  default     = {}
+  type = map(object({
+    identifier       = string
+    type             = string
+    excluded_members = optional(list(string))
+    static_members   = optional(list(string))
+    tags             = optional(map(string), {})
+  }))
+  default = {}
 }
 
 ################################################################################

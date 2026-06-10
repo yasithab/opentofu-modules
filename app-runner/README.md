@@ -7,7 +7,7 @@ Deploys an AWS App Runner service with full lifecycle management including IAM r
 - **Image and Code Sources** - Deploy from ECR images or source code repositories with auto-deployments
 - **IAM Role Management** - Automatic creation of access and instance IAM roles with configurable policies and permissions boundaries
 - **VPC Networking** - Built-in VPC connector and VPC ingress connection support for private workloads
-- **Custom Domains** - Automatic custom domain association with Route 53 DNS validation records
+- **Custom Domains** - Automatic custom domain association with Route 53 DNS validation records, keyed by DNS record name
 - **Auto-Scaling** - Create and associate auto-scaling configurations with concurrency and size limits
 - **Observability** - AWS X-Ray tracing integration via observability configuration
 - **Private ECR Access** - Automatic IAM policy generation for pulling images from private ECR repositories
@@ -20,7 +20,7 @@ Deploys an AWS App Runner service with full lifecycle management including IAM r
 module "app_runner" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//app-runner?depth=1&ref=master"
 
-  service_name           = "my-service"
+  name                   = "my-service"
   create_access_iam_role = true
   private_ecr_arn        = "arn:aws:ecr:us-east-1:123456789012:repository/my-app"
 
@@ -59,7 +59,7 @@ module "app_runner" {
 
   enabled = true
 
-  service_name = "hello-world"
+  name         = "hello-world"
 
   source_configuration = {
     auto_deployments_enabled = false
@@ -94,7 +94,7 @@ module "app_runner_private_ecr" {
 
   enabled = true
 
-  service_name = "api-service"
+  name         = "api-service"
 
   create_access_iam_role = true
   private_ecr_arn        = "arn:aws:ecr:us-east-1:123456789012:repository/api-service"
@@ -151,7 +151,7 @@ module "app_runner_vpc" {
 
   enabled = true
 
-  service_name = "internal-api"
+  name         = "internal-api"
 
   create_access_iam_role = true
   private_ecr_arn        = "arn:aws:ecr:us-east-1:123456789012:repository/internal-api"
@@ -203,7 +203,7 @@ module "app_runner_custom_domain" {
 
   enabled = true
 
-  service_name = "storefront"
+  name         = "storefront"
 
   create_access_iam_role = true
   private_ecr_arn        = "arn:aws:ecr:us-east-1:123456789012:repository/storefront"

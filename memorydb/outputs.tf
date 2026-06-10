@@ -81,4 +81,5 @@ output "acl_id" {
 output "users" {
   description = "Map of created MemoryDB users and their attributes."
   value       = aws_memorydb_user.this
+  sensitive   = true
 }

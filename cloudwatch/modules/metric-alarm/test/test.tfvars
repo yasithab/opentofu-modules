@@ -1,4 +1,4 @@
-alarm_name          = "terratest-alarm"
+name                = "terratest-alarm"
 comparison_operator = "GreaterThanThreshold"
 evaluation_periods  = 1
 metric_name         = "CPUUtilization"

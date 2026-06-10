@@ -2,6 +2,10 @@
 
 OpenTofu module to create and manage AWS SNS topics with subscriptions, topic policies, and data protection policies.
 
+> **Note — encryption by default:** `kms_master_key_id` now defaults to `alias/aws/sns`, so topics are created with server-side encryption (SSE-SNS) using the AWS managed key. AWS service event publishers (e.g. CloudWatch alarms, S3 event notifications) cannot use the AWS managed key for cross-service publishing in some cases and may need a customer-managed KMS key with appropriate key policy (`kms:GenerateDataKey*`, `kms:Decrypt` for the publishing service principal). Set `kms_master_key_id = null` to opt out of encryption (previous behaviour).
+
+> **Note:** `name` is now required and must be non-empty.
+
 ## Features
 
 - **SNS Topic** - Creates standard or FIFO topics with configurable name or name prefix, display name, delivery policy, and tracing
@@ -20,7 +24,7 @@ OpenTofu module to create and manage AWS SNS topics with subscriptions, topic po
 module "sns" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//sns?depth=1&ref=master"
 
-  topic_name   = "my-notifications"
+  name         = "my-notifications"
   display_name = "My Notifications"
 
   create_topic_policy        = true
@@ -50,8 +54,8 @@ Create a standard SNS topic with a default topic policy and an email subscriptio
 module "sns_alerts" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//sns?depth=1&ref=master"
 
-  enabled    = true
-  topic_name = "application-alerts"
+  enabled = true
+  name    = "application-alerts"
 
   subscriptions = {
     ops_email = {
@@ -75,8 +79,8 @@ Create a KMS-encrypted SNS topic that delivers messages to an SQS queue for asyn
 module "sns_events" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//sns?depth=1&ref=master"
 
-  enabled    = true
-  topic_name = "order-events"
+  enabled = true
+  name    = "order-events"
 
   kms_master_key_id = "arn:aws:kms:eu-west-1:123456789012:key/mrk-00000000000000000000000000000000"
   tracing_config    = "Active"
@@ -105,8 +109,8 @@ Create a FIFO SNS topic for ordered, exactly-once event delivery to a FIFO SQS q
 module "sns_fifo" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//sns?depth=1&ref=master"
 
-  enabled    = true
-  topic_name = "inventory-updates.fifo"
+  enabled = true
+  name    = "inventory-updates.fifo"
 
   fifo_topic                  = true
   content_based_deduplication = true
@@ -147,8 +151,8 @@ data "aws_iam_policy_document" "sns_cross_account" {
 module "sns_cross_account" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//sns?depth=1&ref=master"
 
-  enabled    = true
-  topic_name = "partner-events"
+  enabled = true
+  name    = "partner-events"
 
   enable_default_topic_policy  = true
   source_topic_policy_documents = [data.aws_iam_policy_document.sns_cross_account.json]

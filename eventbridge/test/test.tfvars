@@ -1,1 +1,1 @@
-bus_name = "terratest-plan"
+name = "terratest-plan"

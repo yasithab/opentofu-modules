@@ -18,7 +18,7 @@ General-purpose IAM role module that creates a role with a flexible trust policy
 module "role" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//iam/role?depth=1&ref=master"
 
-  role_name        = "my-service-role"
+  name             = "my-service-role"
   role_description = "Role for the backend service"
 
   principals = {
@@ -46,7 +46,7 @@ module "lambda_role" {
 
   enabled = true
 
-  role_name        = "my-lambda-execution-role"
+  name             = "my-lambda-execution-role"
   role_description = "Execution role for my Lambda function"
 
   principals = {
@@ -74,7 +74,7 @@ module "ecs_task_role" {
 
   enabled = true
 
-  role_name        = "my-ecs-task-role"
+  name             = "my-ecs-task-role"
   role_description = "ECS task execution role"
 
   principals = {
@@ -103,7 +103,7 @@ module "ec2_instance_role" {
 
   enabled = true
 
-  role_name                = "my-ec2-app-role"
+  name                     = "my-ec2-app-role"
   role_description         = "Role for application EC2 instances"
   instance_profile_enabled = true
   instance_profile_name    = "my-ec2-app-profile"
@@ -140,7 +140,7 @@ module "cross_account_role" {
 
   enabled = true
 
-  role_name             = "cross-account-readonly"
+  name                  = "cross-account-readonly"
   role_description      = "Cross-account read-only role for auditing"
   max_session_duration  = 7200
   permissions_boundary  = "arn:aws:iam::123456789012:policy/ReadOnlyBoundary"
@@ -161,3 +161,39 @@ module "cross_account_role" {
   }
 }
 ```
+
+## Per-Principal Assume-Role Conditions
+
+Each `principals` entry can optionally carry its own conditions, applied only to that
+principal's statement. Global `assume_role_conditions` continue to apply to all statements.
+The legacy shape (`map of type => list of identifiers`) remains fully supported.
+
+```hcl
+module "role" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//iam/role?depth=1&ref=master"
+
+  name             = "cross-account-deployer"
+  role_description = "Role assumable by CI with an external ID"
+
+  principals = {
+    # legacy shape - no per-principal conditions
+    Service = ["ec2.amazonaws.com"]
+
+    # object shape - conditions apply only to the AWS principal statement
+    AWS = {
+      identifiers = ["arn:aws:iam::123456789012:role/ci"]
+      conditions = [
+        {
+          test     = "StringEquals"
+          variable = "sts:ExternalId"
+          values   = ["my-external-id"]
+        }
+      ]
+    }
+  }
+}
+```
+
+## Notes
+
+The inline policy and its attachment are only created when `policy_documents` is non-empty.

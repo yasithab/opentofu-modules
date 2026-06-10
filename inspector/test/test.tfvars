@@ -1,3 +1,3 @@
 name           = "terratest-plan"
 resource_types = ["EC2", "ECR", "LAMBDA"]
-account_ids    = ["928430096450"]
+account_ids    = ["123456789012"]

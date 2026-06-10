@@ -19,6 +19,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -179,31 +180,31 @@ resource "aws_rds_cluster" "this" {
 resource "aws_rds_cluster_instance" "this" {
   for_each = { for k, v in var.instances : k => v if local.enabled && !local.is_serverless }
 
-  apply_immediately                     = try(each.value.apply_immediately, var.apply_immediately)
-  auto_minor_version_upgrade            = try(each.value.auto_minor_version_upgrade, var.auto_minor_version_upgrade)
-  availability_zone                     = try(each.value.availability_zone, null)
+  apply_immediately                     = each.value.apply_immediately != null ? each.value.apply_immediately : var.apply_immediately
+  auto_minor_version_upgrade            = each.value.auto_minor_version_upgrade != null ? each.value.auto_minor_version_upgrade : var.auto_minor_version_upgrade
+  availability_zone                     = each.value.availability_zone
   ca_cert_identifier                    = var.ca_cert_identifier
   cluster_identifier                    = aws_rds_cluster.this.id
-  custom_iam_instance_profile           = try(each.value.custom_iam_instance_profile, var.custom_iam_instance_profile)
-  copy_tags_to_snapshot                 = try(each.value.copy_tags_to_snapshot, var.copy_tags_to_snapshot)
-  db_parameter_group_name               = var.create_db_parameter_group ? aws_db_parameter_group.this.id : try(each.value.db_parameter_group_name, var.db_parameter_group_name)
+  custom_iam_instance_profile           = each.value.custom_iam_instance_profile != null ? each.value.custom_iam_instance_profile : var.custom_iam_instance_profile
+  copy_tags_to_snapshot                 = each.value.copy_tags_to_snapshot != null ? each.value.copy_tags_to_snapshot : var.copy_tags_to_snapshot
+  db_parameter_group_name               = var.create_db_parameter_group ? aws_db_parameter_group.this.id : (each.value.db_parameter_group_name != null ? each.value.db_parameter_group_name : var.db_parameter_group_name)
   db_subnet_group_name                  = local.db_subnet_group_name
   engine                                = var.engine
   engine_version                        = var.engine_version
-  force_destroy                         = try(each.value.force_destroy, var.instance_force_destroy)
-  identifier                            = var.instances_use_identifier_prefix ? null : try(each.value.identifier, "${var.name}-${each.key}")
-  identifier_prefix                     = var.instances_use_identifier_prefix ? try(each.value.identifier_prefix, "${var.name}-${each.key}-") : null
-  instance_class                        = try(each.value.instance_class, var.instance_class)
-  monitoring_interval                   = var.cluster_monitoring_interval > 0 ? var.cluster_monitoring_interval : try(each.value.monitoring_interval, var.monitoring_interval)
-  monitoring_role_arn                   = var.create_monitoring_role ? try(aws_iam_role.rds_enhanced_monitoring.arn, null) : var.monitoring_role_arn
-  performance_insights_enabled          = try(each.value.performance_insights_enabled, var.performance_insights_enabled)
-  performance_insights_kms_key_id       = try(each.value.performance_insights_kms_key_id, var.performance_insights_kms_key_id)
-  performance_insights_retention_period = try(each.value.performance_insights_retention_period, var.performance_insights_retention_period)
+  force_destroy                         = each.value.force_destroy != null ? each.value.force_destroy : var.instance_force_destroy
+  identifier                            = var.instances_use_identifier_prefix ? null : coalesce(each.value.identifier, "${var.name}-${each.key}")
+  identifier_prefix                     = var.instances_use_identifier_prefix ? coalesce(each.value.identifier_prefix, "${var.name}-${each.key}-") : null
+  instance_class                        = each.value.instance_class != null ? each.value.instance_class : var.instance_class
+  monitoring_interval                   = var.cluster_monitoring_interval > 0 ? var.cluster_monitoring_interval : coalesce(each.value.monitoring_interval, var.monitoring_interval)
+  monitoring_role_arn                   = local.create_monitoring_role ? try(aws_iam_role.rds_enhanced_monitoring.arn, null) : var.monitoring_role_arn
+  performance_insights_enabled          = each.value.performance_insights_enabled != null ? each.value.performance_insights_enabled : var.performance_insights_enabled
+  performance_insights_kms_key_id       = each.value.performance_insights_kms_key_id != null ? each.value.performance_insights_kms_key_id : var.performance_insights_kms_key_id
+  performance_insights_retention_period = each.value.performance_insights_retention_period != null ? each.value.performance_insights_retention_period : var.performance_insights_retention_period
   # preferred_backup_window - is set at the cluster level and will error if provided here
-  preferred_maintenance_window = try(each.value.preferred_maintenance_window, var.preferred_maintenance_window)
-  promotion_tier               = try(each.value.promotion_tier, null)
-  publicly_accessible          = try(each.value.publicly_accessible, var.publicly_accessible)
-  tags                         = merge(local.tags, try(each.value.tags, {}))
+  preferred_maintenance_window = each.value.preferred_maintenance_window != null ? each.value.preferred_maintenance_window : var.preferred_maintenance_window
+  promotion_tier               = each.value.promotion_tier
+  publicly_accessible          = each.value.publicly_accessible != null ? each.value.publicly_accessible : var.publicly_accessible
+  tags                         = merge(local.tags, each.value.tags)
 
   timeouts {
     create = try(var.instance_timeouts.create, null)
@@ -222,9 +223,9 @@ resource "aws_rds_cluster_endpoint" "this" {
   cluster_endpoint_identifier = each.value.identifier
   cluster_identifier          = aws_rds_cluster.this.id
   custom_endpoint_type        = each.value.type
-  excluded_members            = try(each.value.excluded_members, null)
-  static_members              = try(each.value.static_members, null)
-  tags                        = merge(local.tags, try(each.value.tags, {}))
+  excluded_members            = each.value.excluded_members
+  static_members              = each.value.static_members
+  tags                        = merge(local.tags, each.value.tags)
 
   depends_on = [
     aws_rds_cluster_instance.this
@@ -248,7 +249,13 @@ resource "aws_rds_cluster_role_association" "this" {
 ################################################################################
 
 locals {
-  create_monitoring_role = local.enabled && var.create_monitoring_role && (var.monitoring_interval > 0 || var.cluster_monitoring_interval > 0)
+  # Role is required when enhanced monitoring is enabled at the cluster level,
+  # the module-wide instance level, or via any per-instance override
+  create_monitoring_role = local.enabled && var.create_monitoring_role && (
+    var.monitoring_interval > 0 ||
+    var.cluster_monitoring_interval > 0 ||
+    anytrue([for v in values(var.instances) : coalesce(v.monitoring_interval, var.monitoring_interval) > 0])
+  )
 }
 
 data "aws_iam_policy_document" "monitoring_rds_assume_role" {
@@ -550,3 +557,5 @@ check "encryption_enabled" {
     error_message = "RDS cluster must have storage encryption enabled."
   }
 }
+
+data "aws_region" "current" {}

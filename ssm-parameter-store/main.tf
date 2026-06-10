@@ -1,10 +1,10 @@
 locals {
   enabled = var.enabled
+  name    = var.name
 
   type = var.type != null ? var.type : (
-    length(var.parameter_values) > 0 ? "StringList" : (
-      can(tostring(var.parameter_value)) ? (try(tobool(var.secure_type) == true, false) ? "SecureString" : "String") : "StringList"
-  ))
+    length(var.parameter_values) > 0 ? "StringList" : (var.secure_type ? "SecureString" : "String")
+  )
   secure_type = local.type == "SecureString"
   list_type   = local.type == "StringList"
   string_type = local.type == "String"
@@ -12,11 +12,12 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
 resource "aws_ssm_parameter" "this" {
-  name        = var.parameter_name
+  name        = local.name
   type        = local.type
   description = var.parameter_description
 
@@ -38,7 +39,7 @@ resource "aws_ssm_parameter" "this" {
 }
 
 resource "aws_ssm_parameter" "ignore_value" {
-  name        = var.parameter_name
+  name        = local.name
   type        = local.type
   description = var.parameter_description
 
@@ -62,3 +63,5 @@ resource "aws_ssm_parameter" "ignore_value" {
     ]
   }
 }
+
+data "aws_region" "current" {}

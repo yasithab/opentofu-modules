@@ -54,6 +54,12 @@ variable "create_security_group" {
   default     = true
 }
 
+variable "security_group_use_name_prefix" {
+  description = "Whether the security group name (`<name>-neptune`) is used as a name prefix. Enabled by default so create_before_destroy replacements do not collide on the fixed name."
+  type        = bool
+  default     = true
+}
+
 variable "vpc_id" {
   description = "ID of the VPC where the security group will be created."
   type        = string

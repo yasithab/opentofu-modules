@@ -20,7 +20,7 @@ OpenTofu module for provisioning and managing Amazon Elastic Container Registry 
 module "ecr" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ecr?depth=1&ref=master"
 
-  repository_name = "my-app"
+  name            = "my-app"
 
   repository_lifecycle_policy = jsonencode({
     rules = [
@@ -55,7 +55,7 @@ module "ecr_api" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ecr?depth=1&ref=master"
 
   enabled         = true
-  repository_name = "myapp/api"
+  name            = "myapp/api"
 
   repository_lifecycle_policy = jsonencode({
     rules = [
@@ -88,7 +88,7 @@ module "ecr_backend" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ecr?depth=1&ref=master"
 
   enabled         = true
-  repository_name = "myapp/backend"
+  name            = "myapp/backend"
 
   repository_encryption_type = "KMS"
   repository_kms_key         = "arn:aws:kms:ap-southeast-1:123456789012:key/mrk-abc123def456"
@@ -133,7 +133,7 @@ module "ecr_with_cache" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ecr?depth=1&ref=master"
 
   enabled         = true
-  repository_name = "myapp/frontend"
+  name            = "myapp/frontend"
 
   registry_pull_through_cache_rules = {
     ecr_public = {
@@ -164,7 +164,7 @@ module "ecr_public_tools" {
 
   enabled          = true
   repository_type  = "public"
-  repository_name  = "myorg/tools"
+  name             = "myorg/tools"
 
   public_repository_catalog_data = {
     description       = "Internal CLI tools published for public use"
@@ -180,3 +180,8 @@ module "ecr_public_tools" {
   }
 }
 ```
+
+## Notes
+
+- **Default lifecycle policy**: `create_lifecycle_policy` defaults to `true`. When `repository_lifecycle_policy` is not supplied, the module applies a default policy that expires untagged images after 14 days and keeps only the last 100 tagged images. Supply your own `repository_lifecycle_policy` to override these rules, or set `create_lifecycle_policy = false` to skip lifecycle management entirely (images then accumulate indefinitely).
+- **KMS encryption**: when `repository_encryption_type = "KMS"` and `repository_kms_key` is not set, ECR uses the AWS managed key (`aws/ecr`). Supply a customer-managed key ARN via `repository_kms_key` if you need cross-account image pulls, custom key policies, or control over key rotation. The key must exist before the repository is created, and changing the encryption configuration forces repository replacement.

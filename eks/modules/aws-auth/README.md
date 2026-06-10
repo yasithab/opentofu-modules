@@ -1,5 +1,7 @@
 # EKS aws-auth ConfigMap
 
+> **DEPRECATED**: The `aws-auth` ConfigMap is a legacy authentication mechanism. Prefer [EKS access entries](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html) via the parent `eks` module's `access_entries` input (with `authentication_mode = "API"` or `"API_AND_CONFIG_MAP"`). This submodule is retained for clusters still using `CONFIG_MAP` authentication and may be removed in a future major version.
+
 Submodule for managing the `aws-auth` ConfigMap in an EKS cluster. This ConfigMap controls IAM-to-Kubernetes RBAC mappings, allowing IAM roles, users, and accounts to authenticate with the cluster.
 
 ## Features

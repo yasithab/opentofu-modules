@@ -3,12 +3,16 @@ data "aws_partition" "current" {}
 data "aws_caller_identity" "current" {}
 
 locals {
+  enabled = var.enabled
+  name    = var.name
+
   account_id = data.aws_caller_identity.current.account_id
   partition  = data.aws_partition.current.partition
   region     = data.aws_region.current.region
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -29,7 +33,7 @@ locals {
     subnets          = var.subnet_ids
   }
 
-  create_service = var.enabled && var.create_service
+  create_service = local.enabled && var.create_service
 }
 
 resource "aws_ecs_service" "this" {
@@ -146,7 +150,7 @@ resource "aws_ecs_service" "this" {
     }
   }
 
-  name = var.name
+  name = local.name
 
   dynamic "network_configuration" {
     # Set by task set if deployment controller is external
@@ -486,7 +490,7 @@ resource "aws_ecs_service" "ignore_task_definition" {
     }
   }
 
-  name = var.name
+  name = local.name
 
   dynamic "network_configuration" {
     # Set by task set if deployment controller is external
@@ -717,13 +721,13 @@ resource "aws_ecs_service" "ignore_task_definition" {
 locals {
   # Role is not required if task definition uses `awsvpc` network mode or if a load balancer is not used
   needs_iam_role  = var.network_mode != "awsvpc" && length(var.load_balancer) > 0
-  create_iam_role = var.enabled && var.create_iam_role && local.needs_iam_role
+  create_iam_role = local.enabled && var.create_iam_role && local.needs_iam_role
   iam_role_arn    = local.needs_iam_role ? try(aws_iam_role.service.arn, var.iam_role_arn) : null
 
   iam_role_name = try(coalesce(var.iam_role_name, var.name), "")
 
   # Infrastructure IAM role - required for managed EBS volumes (volume_configuration)
-  create_infrastructure_iam_role = var.enabled && var.create_infrastructure_iam_role
+  create_infrastructure_iam_role = local.enabled && var.create_infrastructure_iam_role
   infrastructure_iam_role_name   = try(coalesce(var.infrastructure_iam_role_name, "${var.name}-infrastructure"), "")
   infrastructure_iam_role_arn    = local.create_infrastructure_iam_role ? aws_iam_role.infrastructure.arn : var.infrastructure_iam_role_arn
 }
@@ -889,7 +893,7 @@ module "container_definition" {
   stop_timeout             = try(each.value.stop_timeout, var.container_definition_defaults.stop_timeout, 120)
   system_controls          = try(each.value.system_controls, var.container_definition_defaults.system_controls, [])
   ulimits                  = try(each.value.ulimits, var.container_definition_defaults.ulimits, [])
-  user                     = try(each.value.user, var.container_definition_defaults.user, 0)
+  user                     = try(each.value.user, var.container_definition_defaults.user, null)
   volumes_from             = try(each.value.volumes_from, var.container_definition_defaults.volumes_from, [])
   working_directory        = try(each.value.working_directory, var.container_definition_defaults.working_directory, null)
 
@@ -913,7 +917,7 @@ module "container_definition" {
 ################################################################################
 
 locals {
-  create_task_definition = var.enabled && var.create_task_definition
+  create_task_definition = local.enabled && var.create_task_definition
 
   # This allows us to query both the existing as well as Terraform's state and get
   # and get the max version of either source, useful for when external resources
@@ -1877,7 +1881,7 @@ resource "aws_appautoscaling_scheduled_action" "this" {
 ################################################################################
 
 locals {
-  create_security_group = var.enabled && var.create_security_group && var.network_mode == "awsvpc"
+  create_security_group = local.enabled && var.create_security_group && var.network_mode == "awsvpc"
   security_group_name   = try(coalesce(var.security_group_name, var.name), "")
 }
 

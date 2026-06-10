@@ -63,6 +63,11 @@ variable "metric_transformation_default_value" {
   description = "The value to emit when a filter pattern does not match a log event. Conflicts with `metric_transformation_dimensions`."
   type        = string
   default     = null
+
+  validation {
+    condition     = !(var.metric_transformation_default_value != null && var.metric_transformation_dimensions != null)
+    error_message = "metric_transformation_default_value and metric_transformation_dimensions cannot both be set."
+  }
 }
 
 variable "metric_transformation_unit" {

@@ -11,7 +11,7 @@ variable "tags" {
 }
 
 variable "enabled" {
-  description = "Controls if resources should be created (affects nearly all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -150,9 +150,9 @@ variable "idle_timeout" {
 }
 
 variable "internal" {
-  description = "If true, the LB will be internal. Defaults to `false`"
+  description = "If true, the LB will be internal. Defaults to `true` so load balancers are not internet-facing unless explicitly requested; set to `false` for a public load balancer"
   type        = bool
-  default     = null
+  default     = true
 }
 
 variable "ip_address_type" {
@@ -263,9 +263,285 @@ variable "default_protocol" {
 }
 
 variable "listeners" {
-  description = "Map of listener configurations to create"
-  type        = any
+  description = "Map of listener configurations to create. Each listener defines exactly one default action (`forward`, `weighted_forward`, `redirect`, `fixed_response`, `authenticate_cognito`, `authenticate_oidc`, or `jwt_validation`) and an optional map of `rules`. OIDC client secrets must be provided via `listener_auth_oidc_client_secrets` - inline `client_secret` values are rejected"
+  type = map(object({
+    alpn_policy                 = optional(string)
+    certificate_arn             = optional(string)
+    additional_certificate_arns = optional(list(string), [])
+    port                        = optional(number)
+    protocol                    = optional(string)
+    ssl_policy                  = optional(string)
+    tcp_idle_timeout_seconds    = optional(number)
+    tags                        = optional(map(string), {})
+
+    # Default action - exactly one of the following must be set
+    forward = optional(object({
+      arn              = optional(string)
+      target_group_key = optional(string)
+      order            = optional(number)
+    }))
+    weighted_forward = optional(object({
+      target_groups = list(object({
+        arn              = optional(string)
+        target_group_key = optional(string)
+        weight           = optional(number)
+      }))
+      stickiness = optional(object({
+        duration = optional(number, 60)
+        enabled  = optional(bool)
+      }))
+      order = optional(number)
+    }))
+    redirect = optional(object({
+      host        = optional(string)
+      path        = optional(string)
+      port        = optional(string)
+      protocol    = optional(string)
+      query       = optional(string)
+      status_code = string
+      order       = optional(number)
+    }))
+    fixed_response = optional(object({
+      content_type = string
+      message_body = optional(string)
+      status_code  = optional(string)
+      order        = optional(number)
+    }))
+    authenticate_cognito = optional(object({
+      authentication_request_extra_params = optional(map(string))
+      on_unauthenticated_request          = optional(string)
+      scope                               = optional(string)
+      session_cookie_name                 = optional(string)
+      session_timeout                     = optional(number)
+      user_pool_arn                       = string
+      user_pool_client_id                 = string
+      user_pool_domain                    = string
+      order                               = optional(number)
+    }))
+    authenticate_oidc = optional(object({
+      authentication_request_extra_params = optional(map(string))
+      authorization_endpoint              = string
+      client_id                           = string
+      client_secret                       = optional(string) # rejected by validation - use listener_auth_oidc_client_secrets
+      issuer                              = string
+      on_unauthenticated_request          = optional(string)
+      scope                               = optional(string)
+      session_cookie_name                 = optional(string)
+      session_timeout                     = optional(number)
+      token_endpoint                      = string
+      user_info_endpoint                  = string
+      order                               = optional(number)
+    }))
+    jwt_validation = optional(object({
+      issuer        = string
+      jwks_endpoint = string
+      additional_claims = optional(list(object({
+        format = string
+        name   = string
+        values = list(string)
+      })), [])
+      order = optional(number)
+    }))
+
+    mutual_authentication = optional(object({
+      mode                             = string
+      trust_store_arn                  = optional(string)
+      trust_store_key                  = optional(string)
+      advertise_trust_store_ca_names   = optional(string)
+      ignore_client_certificate_expiry = optional(bool)
+    }))
+
+    routing_http_request_x_amzn_mtls_clientcert_header_name               = optional(string)
+    routing_http_request_x_amzn_mtls_clientcert_issuer_header_name        = optional(string)
+    routing_http_request_x_amzn_mtls_clientcert_leaf_header_name          = optional(string)
+    routing_http_request_x_amzn_mtls_clientcert_serial_number_header_name = optional(string)
+    routing_http_request_x_amzn_mtls_clientcert_subject_header_name       = optional(string)
+    routing_http_request_x_amzn_mtls_clientcert_validity_header_name      = optional(string)
+    routing_http_request_x_amzn_tls_cipher_suite_header_name              = optional(string)
+    routing_http_request_x_amzn_tls_version_header_name                   = optional(string)
+    routing_http_response_access_control_allow_credentials_header_value   = optional(string)
+    routing_http_response_access_control_allow_headers_header_value       = optional(string)
+    routing_http_response_access_control_allow_methods_header_value       = optional(string)
+    routing_http_response_access_control_allow_origin_header_value        = optional(string)
+    routing_http_response_access_control_expose_headers_header_value      = optional(string)
+    routing_http_response_access_control_max_age_header_value             = optional(string)
+    routing_http_response_content_security_policy_header_value            = optional(string)
+    routing_http_response_server_enabled                                  = optional(bool)
+    routing_http_response_strict_transport_security_header_value          = optional(string)
+    routing_http_response_x_content_type_options_header_value             = optional(string)
+    routing_http_response_x_frame_options_header_value                    = optional(string)
+
+    rules = optional(map(object({
+      listener_arn = optional(string)
+      priority     = optional(number)
+      tags         = optional(map(string), {})
+
+      actions = list(object({
+        type  = string
+        order = optional(number)
+
+        # forward
+        target_group_arn = optional(string)
+        target_group_key = optional(string)
+
+        # weighted-forward
+        target_groups = optional(list(object({
+          arn              = optional(string)
+          target_group_key = optional(string)
+          weight           = optional(number)
+        })))
+        stickiness = optional(object({
+          duration = optional(number, 60)
+          enabled  = optional(bool)
+        }))
+
+        # redirect
+        host        = optional(string)
+        path        = optional(string)
+        port        = optional(string)
+        protocol    = optional(string)
+        query       = optional(string)
+        status_code = optional(string)
+
+        # fixed-response
+        content_type = optional(string)
+        message_body = optional(string)
+
+        # authenticate-cognito
+        authentication_request_extra_params = optional(map(string))
+        on_unauthenticated_request          = optional(string)
+        scope                               = optional(string)
+        session_cookie_name                 = optional(string)
+        session_timeout                     = optional(number)
+        user_pool_arn                       = optional(string)
+        user_pool_client_id                 = optional(string)
+        user_pool_domain                    = optional(string)
+
+        # authenticate-oidc
+        authorization_endpoint = optional(string)
+        client_id              = optional(string)
+        client_secret          = optional(string) # rejected by validation - use listener_auth_oidc_client_secrets
+        issuer                 = optional(string)
+        token_endpoint         = optional(string)
+        user_info_endpoint     = optional(string)
+
+        # jwt-validation
+        jwks_endpoint = optional(string)
+        additional_claims = optional(list(object({
+          format = string
+          name   = string
+          values = list(string)
+        })))
+      }))
+
+      conditions = optional(list(object({
+        host_header = optional(object({
+          values       = optional(list(string))
+          regex_values = optional(list(string))
+        }))
+        http_header = optional(object({
+          http_header_name = string
+          values           = optional(list(string))
+          regex_values     = optional(list(string))
+        }))
+        http_request_method = optional(object({
+          values = list(string)
+        }))
+        path_pattern = optional(object({
+          values       = optional(list(string))
+          regex_values = optional(list(string))
+        }))
+        query_string = optional(object({
+          key   = optional(string)
+          value = string
+        }))
+        source_ip = optional(object({
+          values = list(string)
+        }))
+      })), [])
+
+      transforms = optional(list(object({
+        type = string
+        url_rewrite_config = optional(object({
+          rewrite = optional(object({
+            regex   = string
+            replace = string
+          }))
+        }))
+        host_header_rewrite_config = optional(object({
+          rewrite = optional(object({
+            regex   = string
+            replace = string
+          }))
+        }))
+      })), [])
+    })), {})
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for listener in values(var.listeners) :
+      length(compact([
+        listener.forward != null ? "forward" : "",
+        listener.weighted_forward != null ? "weighted_forward" : "",
+        listener.redirect != null ? "redirect" : "",
+        listener.fixed_response != null ? "fixed_response" : "",
+        listener.authenticate_cognito != null ? "authenticate_cognito" : "",
+        listener.authenticate_oidc != null ? "authenticate_oidc" : "",
+        listener.jwt_validation != null ? "jwt_validation" : "",
+      ])) == 1
+    ])
+    error_message = "Each listener must define exactly one default action: forward, weighted_forward, redirect, fixed_response, authenticate_cognito, authenticate_oidc, or jwt_validation."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for listener in values(var.listeners) : concat(
+        [listener.authenticate_oidc == null || try(listener.authenticate_oidc.client_secret, null) == null],
+        [
+          for rule in values(listener.rules) : [
+            for action in rule.actions : action.client_secret == null
+          ]
+        ]
+      )
+    ]))
+    error_message = "Inline `client_secret` is not supported in `listeners` (default actions or rule actions). Provide OIDC client secrets via the sensitive `listener_auth_oidc_client_secrets` map, keyed by listener key (default actions) or \"<listener_key>/<rule_key>\" (rule actions)."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for rules in [for listener in values(var.listeners) : listener.rules] : [
+        for rule in values(rules) : [
+          for action in rule.actions :
+          contains(["forward", "weighted-forward", "redirect", "fixed-response", "authenticate-cognito", "authenticate-oidc", "jwt-validation"], action.type)
+        ]
+      ]
+    ]))
+    error_message = "Each listener rule action `type` must be one of: forward, weighted-forward, redirect, fixed-response, authenticate-cognito, authenticate-oidc, jwt-validation."
+  }
+
+  validation {
+    condition = alltrue(flatten([
+      for listener_key, listener in var.listeners : concat(
+        [listener.authenticate_oidc == null || contains(nonsensitive(keys(var.listener_auth_oidc_client_secrets)), listener_key)],
+        [
+          for rule_key, rule in listener.rules : alltrue([
+            for action in rule.actions :
+            action.type != "authenticate-oidc" || contains(nonsensitive(keys(var.listener_auth_oidc_client_secrets)), "${listener_key}/${rule_key}")
+          ])
+        ]
+      )
+    ]))
+    error_message = "Every `authenticate-oidc` action requires a matching entry in `listener_auth_oidc_client_secrets`, keyed by the listener key (default actions) or \"<listener_key>/<rule_key>\" (rule actions)."
+  }
+}
+
+variable "listener_auth_oidc_client_secrets" {
+  description = "Map of OIDC client secrets for `authenticate-oidc` actions, keyed by listener key (for listener default actions) or `<listener_key>/<rule_key>` (for listener rule actions). This is the only way to supply OIDC client secrets - inline `client_secret` values in `listeners` are rejected. Every `authenticate-oidc` action must have a matching entry here"
+  type        = map(string)
   default     = {}
+  sensitive   = true
 }
 
 ################################################################################
@@ -273,15 +549,105 @@ variable "listeners" {
 ################################################################################
 
 variable "target_groups" {
-  description = "Map of target group configurations to create"
-  type        = any
-  default     = {}
+  description = "Map of target group configurations to create. Set `create_attachment = false` to skip the target group attachment (e.g. when targets register themselves via autoscaling)"
+  type = map(object({
+    connection_termination             = optional(bool)
+    deregistration_delay               = optional(number)
+    ip_address_type                    = optional(string)
+    lambda_multi_value_headers_enabled = optional(bool)
+    load_balancing_algorithm_type      = optional(string)
+    load_balancing_anomaly_mitigation  = optional(string)
+    load_balancing_cross_zone_enabled  = optional(string)
+    name                               = optional(string)
+    name_prefix                        = optional(string)
+    port                               = optional(number)
+    preserve_client_ip                 = optional(bool)
+    protocol                           = optional(string)
+    protocol_version                   = optional(string)
+    proxy_protocol_v2                  = optional(bool)
+    slow_start                         = optional(number)
+    target_control_port                = optional(number)
+    target_type                        = optional(string)
+    vpc_id                             = optional(string)
+    tags                               = optional(map(string), {})
+
+    health_check = optional(object({
+      enabled             = optional(bool)
+      healthy_threshold   = optional(number)
+      interval            = optional(number)
+      matcher             = optional(string)
+      path                = optional(string)
+      port                = optional(string)
+      protocol            = optional(string)
+      timeout             = optional(number)
+      unhealthy_threshold = optional(number)
+    }))
+
+    stickiness = optional(object({
+      cookie_duration = optional(number)
+      cookie_name     = optional(string)
+      enabled         = optional(bool, true)
+      type            = optional(string)
+    }))
+
+    target_failover = optional(list(object({
+      on_deregistration = string
+      on_unhealthy      = string
+    })), [])
+
+    target_group_health = optional(object({
+      dns_failover = optional(object({
+        minimum_healthy_targets_count      = optional(string)
+        minimum_healthy_targets_percentage = optional(string)
+      }))
+      unhealthy_state_routing = optional(object({
+        minimum_healthy_targets_count      = optional(number)
+        minimum_healthy_targets_percentage = optional(string)
+      }))
+    }))
+
+    target_health_state = optional(object({
+      enable_unhealthy_connection_termination = optional(bool, true)
+      unhealthy_draining_interval             = optional(number)
+    }))
+
+    # Attachment
+    create_attachment = optional(bool, true)
+    target_id         = optional(string)
+    availability_zone = optional(string)
+    quic_server_id    = optional(string)
+
+    # Lambda permission (when the target is a Lambda function)
+    attach_lambda_permission  = optional(bool, false)
+    lambda_qualifier          = optional(string)
+    lambda_statement_id       = optional(string, "AllowExecutionFromLb")
+    lambda_action             = optional(string, "lambda:InvokeFunction")
+    lambda_principal          = optional(string)
+    lambda_source_account     = optional(string)
+    lambda_event_source_token = optional(string)
+  }))
+  default = {}
+
+  validation {
+    condition = alltrue([
+      for tg in values(var.target_groups) :
+      tg.target_id != null if tg.create_attachment
+    ])
+    error_message = "Each target group with `create_attachment = true` (the default) must set `target_id`. Set `create_attachment = false` for target groups whose targets register themselves."
+  }
 }
 
 variable "additional_target_group_attachments" {
   description = "Map of additional target group attachments to create. Use `target_group_key` to attach to the target group created in `target_groups`"
-  type        = any
-  default     = {}
+  type = map(object({
+    target_group_key  = string
+    target_id         = string
+    port              = optional(number)
+    target_type       = optional(string)
+    availability_zone = optional(string)
+    quic_server_id    = optional(string)
+  }))
+  default = {}
 }
 
 ################################################################################

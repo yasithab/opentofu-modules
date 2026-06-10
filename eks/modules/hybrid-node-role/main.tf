@@ -1,12 +1,15 @@
 data "aws_partition" "current" {
-  count = try(1, 0)
+  count = var.enabled ? 1 : 0
 }
 
 locals {
+  enabled = var.enabled
+
   partition = try(data.aws_partition.current[0].partition, "aws")
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -15,7 +18,7 @@ locals {
 ################################################################################
 
 data "aws_iam_policy_document" "assume_role" {
-  count = try(1, 0)
+  count = local.enabled ? 1 : 0
 
   # SSM
   dynamic "statement" {
@@ -80,7 +83,7 @@ resource "aws_iam_role" "this" {
   path        = var.path
   description = var.description
 
-  assume_role_policy    = data.aws_iam_policy_document.assume_role[0].json
+  assume_role_policy    = try(data.aws_iam_policy_document.assume_role[0].json, null)
   max_session_duration  = var.max_session_duration
   permissions_boundary  = var.permissions_boundary_arn
   force_detach_policies = true
@@ -88,7 +91,7 @@ resource "aws_iam_role" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = var.enabled
+    enabled = local.enabled
   }
 }
 
@@ -97,7 +100,7 @@ resource "aws_iam_role" "this" {
 ################################################################################
 
 data "aws_iam_policy_document" "this" {
-  count = try(1, 0)
+  count = local.enabled ? 1 : 0
 
   statement {
     actions = [
@@ -169,12 +172,12 @@ resource "aws_iam_policy" "this" {
   name_prefix = var.policy_use_name_prefix ? "${var.policy_name}-" : null
   path        = var.policy_path
   description = var.policy_description
-  policy      = data.aws_iam_policy_document.this[0].json
+  policy      = try(data.aws_iam_policy_document.this[0].json, null)
 
   tags = local.tags
 
   lifecycle {
-    enabled = var.enabled
+    enabled = local.enabled
   }
 }
 
@@ -186,7 +189,7 @@ resource "aws_iam_role_policy_attachment" "this" {
       AmazonEC2ContainerRegistryPullOnly = "arn:${local.partition}:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly"
     },
     var.policies
-  ) : k => v if var.enabled }
+  ) : k => v if local.enabled }
 
   policy_arn = each.value
   role       = aws_iam_role.this.name
@@ -197,7 +200,7 @@ resource "aws_iam_role_policy_attachment" "this" {
 ################################################################################
 
 locals {
-  enable_ira = var.enabled && var.enable_ira
+  enable_ira = local.enabled && var.enable_ira
 }
 
 resource "aws_rolesanywhere_profile" "this" {
@@ -384,5 +387,7 @@ resource "aws_iam_role_policy_attachment" "intermediate" {
   ) : k => v if local.enable_ira }
 
   policy_arn = each.value
-  role       = aws_iam_role.this.name
+  role       = aws_iam_role.intermediate.name
 }
+
+data "aws_region" "current" {}

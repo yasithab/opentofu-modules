@@ -9,7 +9,7 @@ variable "enabled" {
 # Broker
 ################################################################################
 
-variable "broker_name" {
+variable "name" {
   type        = string
   description = "The name of the broker"
 }
@@ -133,8 +133,8 @@ variable "logs" {
     audit   = optional(bool, false)
     general = optional(bool, false)
   })
-  description = "Logging configuration"
-  default     = null
+  description = "Logging configuration. General logging is enabled by default; set to `null` to disable logging entirely."
+  default     = { general = true }
 }
 
 variable "maintenance_window_start_time" {
@@ -169,8 +169,8 @@ variable "configuration" {
 }
 
 variable "tags" {
+  description = "Map of tags to apply to all resources."
   type        = map(string)
-  description = "A map of tags to assign to the broker"
   default     = {}
 }
 

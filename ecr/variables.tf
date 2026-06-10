@@ -6,7 +6,7 @@ variable "tags" {
 }
 
 variable "enabled" {
-  description = "Determines whether resources will be created (affects all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -32,7 +32,7 @@ variable "create_repository" {
   default     = true
 }
 
-variable "repository_name" {
+variable "name" {
   description = "The name of the repository"
   type        = string
   default     = null
@@ -141,7 +141,7 @@ variable "create_lifecycle_policy" {
 }
 
 variable "repository_lifecycle_policy" {
-  description = "The policy document. This is a JSON formatted string. See more details about [Policy Parameters](http://docs.aws.amazon.com/AmazonECR/latest/userguide/LifecyclePolicies.html#lifecycle_policy_parameters) in the official AWS docs"
+  description = "The policy document. This is a JSON formatted string. See more details about [Policy Parameters](http://docs.aws.amazon.com/AmazonECR/latest/userguide/LifecyclePolicies.html#lifecycle_policy_parameters) in the official AWS docs. When `null` (the default) and `create_lifecycle_policy = true`, a default policy is applied that expires untagged images after 14 days and keeps only the last 100 tagged images"
   type        = string
   default     = null
 }

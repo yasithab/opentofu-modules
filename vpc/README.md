@@ -222,3 +222,10 @@ module "vpc" {
   }
 }
 ```
+
+## Notes
+
+- `name` is required (validated as non-null) since it is used for resource naming and `Name` tags.
+- `flow_log_cloudwatch_log_group_retention_in_days` defaults to `30` days.
+- `nat_gateway_type = "multi_az"` requires at least as many public subnets as availability zones; the plan fails with a clear error otherwise.
+- `customer_gateways` and `vpc_block_public_access_exclusions` use typed object schemas with optional attributes.

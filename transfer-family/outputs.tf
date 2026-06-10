@@ -56,6 +56,20 @@ output "workflow_arns" {
 }
 
 ################################################################################
+# SFTP Connectors
+################################################################################
+
+output "connector_ids" {
+  description = "Map of Transfer Family connector IDs."
+  value       = { for k, v in aws_transfer_connector.this : k => try(v.connector_id, "") }
+}
+
+output "connector_arns" {
+  description = "Map of Transfer Family connector ARNs."
+  value       = { for k, v in aws_transfer_connector.this : k => try(v.arn, "") }
+}
+
+################################################################################
 # Route53
 ################################################################################
 

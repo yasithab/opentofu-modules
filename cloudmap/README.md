@@ -4,12 +4,16 @@ Provisions AWS Cloud Map namespaces and service discovery services, supporting H
 
 ## Features
 
-- **Multiple Namespace Types** - Creates HTTP, private DNS (VPC-scoped), or public DNS namespaces, or attaches to an existing namespace via `existing_namespace_id`
+- **Multiple Namespace Types** - Creates HTTP, private DNS (VPC-scoped), or public DNS namespaces, or attaches to an existing namespace via `existing_namespace_id` (set `namespace_type` to `dns_private`/`dns_public`/`http` in that case so DNS config and health checks are emitted correctly)
 - **Service Discovery Services** - Defines multiple services per namespace with configurable DNS records, TTL, routing policies, and per-service health check settings
 - **ECS Integration** - Optionally provisions an IAM role with the minimum permissions ECS tasks need to register and deregister service instances
 - **Lambda Function URL Registration** - Registers Lambda Function URLs or API Gateway endpoints as discoverable instances in a Cloud Map service
 - **Health Checks** - Supports Route 53 health checks for public DNS namespaces and custom health checks for private DNS namespaces, with mutual exclusivity validation
 - **Flexible DNS Configuration** - Configurable DNS record types (A, AAAA, CNAME, SRV), TTL values, and routing policies (MULTIVALUE, WEIGHTED) per service
+
+> [!NOTE]
+> - The Lambda instance registration no longer registers a placeholder `127.0.0.1` A record: `AWS_INSTANCE_IPV4` is only set when `lambda_ip_address` is provided.
+> - The ECS service discovery IAM role requires `name` (or the new `ecs_service_discovery_role_name` override) to be set.
 
 ## Usage
 
@@ -18,7 +22,7 @@ module "cloudmap" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//cloudmap?depth=1&ref=master"
 
   create_private_dns_namespace = true
-  namespace_name               = "internal.example.local"
+  name                         = "internal.example.local"
   namespace_description        = "Private service discovery namespace"
   vpc_id                       = "vpc-0abc1234def567890"
 
@@ -54,7 +58,7 @@ module "cloudmap_private" {
   enabled = true
 
   create_private_dns_namespace = true
-  namespace_name               = "internal.example.local"
+  name                         = "internal.example.local"
   namespace_description        = "Private service discovery namespace for ECS services"
   vpc_id                       = "vpc-0abc1234def567890"
 
@@ -93,7 +97,7 @@ module "cloudmap_http" {
   enabled = true
 
   create_namespace  = true
-  namespace_name    = "http-services.example.com"
+  name              = "http-services.example.com"
   namespace_description = "HTTP namespace for service discovery"
 
   enable_dns_config    = false
@@ -131,7 +135,7 @@ module "cloudmap_ecs_discovery" {
 
   create_private_dns_namespace      = true
   create_ecs_service_discovery_role = true
-  namespace_name                    = "services.production.local"
+  name                              = "services.production.local"
   namespace_description             = "Production ECS service discovery"
   vpc_id                            = "vpc-0abc1234def567890"
 

@@ -1,6 +1,7 @@
 locals {
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -21,8 +22,8 @@ resource "aws_secretsmanager_secret" "this" {
     for_each = var.replica
 
     content {
-      kms_key_id = try(replica.value.kms_key_id, null)
-      region     = try(replica.value.region, replica.key)
+      kms_key_id = replica.value.kms_key_id
+      region     = coalesce(replica.value.region, replica.key)
     }
   }
 
@@ -118,10 +119,8 @@ resource "aws_secretsmanager_secret_version" "ignore_changes" {
   secret_binary            = var.secret_binary
   secret_string_wo         = var.secret_string_wo
   secret_string_wo_version = var.secret_string_wo_version
-  secret_string = coalesce(
-    var.secret_string,
-    var.create_random_password ? random_password.this.result : "default"
-  )
+  # Same precedence as aws_secretsmanager_secret_version.this: random_password wins over secret_string
+  secret_string = var.create_random_password ? random_password.this.result : var.secret_string
 
   lifecycle {
     enabled = var.enabled && (var.enable_rotation || var.ignore_secret_changes)
@@ -155,9 +154,9 @@ resource "aws_secretsmanager_secret_rotation" "this" {
     for_each = [var.rotation_rules]
 
     content {
-      automatically_after_days = try(rotation_rules.value.automatically_after_days, null)
-      duration                 = try(rotation_rules.value.duration, null)
-      schedule_expression      = try(rotation_rules.value.schedule_expression, null)
+      automatically_after_days = rotation_rules.value.automatically_after_days
+      duration                 = rotation_rules.value.duration
+      schedule_expression      = rotation_rules.value.schedule_expression
     }
   }
 
@@ -167,3 +166,5 @@ resource "aws_secretsmanager_secret_rotation" "this" {
     enabled = var.enabled && var.enable_rotation
   }
 }
+
+data "aws_region" "current" {}

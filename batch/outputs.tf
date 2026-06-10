@@ -78,16 +78,16 @@ output "security_group_arn" {
 ################################################################################
 
 output "service_role_arn" {
-  description = "The ARN of the Batch service IAM role."
-  value       = try(aws_iam_role.service.arn, "")
+  description = "The effective ARN of the Batch service IAM role (created by the module or passed via `service_role_arn`)."
+  value       = coalesce(try(aws_iam_role.service.arn, null), var.service_role_arn, "")
 }
 
 output "execution_role_arn" {
-  description = "The ARN of the Batch execution IAM role."
-  value       = try(aws_iam_role.execution.arn, "")
+  description = "The effective ARN of the Batch execution IAM role (created by the module or passed via `execution_role_arn`)."
+  value       = coalesce(try(aws_iam_role.execution.arn, null), var.execution_role_arn, "")
 }
 
 output "job_role_arn" {
-  description = "The ARN of the Batch job IAM role."
-  value       = try(aws_iam_role.job.arn, "")
+  description = "The effective ARN of the Batch job IAM role (created by the module or passed via `job_role_arn`)."
+  value       = coalesce(try(aws_iam_role.job.arn, null), var.job_role_arn, "")
 }

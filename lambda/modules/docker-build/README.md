@@ -34,18 +34,19 @@ module "docker_build" {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| enabled | Controls whether resources should be created | `bool` | `true` | no |
 | create_ecr_repo | Controls whether an ECR repository should be created | `bool` | `false` | no |
 | ecr_repo | Name of the ECR repository to use or create | `string` | `null` | no |
 | ecr_address | Address of ECR repository for cross-account pulling | `string` | `null` | no |
 | source_path | Path to folder containing application code | `string` | `null` | no |
 | docker_file_path | Path to Dockerfile in the source package | `string` | `"Dockerfile"` | no |
-| image_tag | Image tag to use. Defaults to a timestamp if not specified | `string` | `null` | no |
+| image_tag | Image tag to use. Defaults to a hash of the `source_path` contents when set, otherwise a timestamp | `string` | `null` | no |
 | use_image_tag | Controls whether to use an image tag or deploy via digest (sha256) | `bool` | `true` | no |
 | build_args | A map of Docker build arguments | `map(string)` | `{}` | no |
 | platform | The target architecture platform to build the image for | `string` | `null` | no |
-| image_tag_mutability | Tag mutability setting for the repository (MUTABLE or IMMUTABLE) | `string` | `"MUTABLE"` | no |
-| scan_on_push | Whether images are scanned after being pushed | `bool` | `false` | no |
-| ecr_force_delete | If true, deletes the repository even if it contains images | `bool` | `true` | no |
+| image_tag_mutability | Tag mutability setting for the repository (MUTABLE, IMMUTABLE, MUTABLE_WITH_EXCLUSION, IMMUTABLE_WITH_EXCLUSION) | `string` | `"IMMUTABLE"` | no |
+| scan_on_push | Whether images are scanned after being pushed | `bool` | `true` | no |
+| ecr_force_delete | If true, deletes the repository even if it contains images | `bool` | `false` | no |
 | ecr_repo_lifecycle_policy | A JSON formatted ECR lifecycle policy | `string` | `null` | no |
 | keep_remotely | Whether to keep the image in the remote registry on destroy | `bool` | `false` | no |
 | force_remove | Whether to remove the image forcibly on destroy | `bool` | `false` | no |
@@ -53,6 +54,11 @@ module "docker_build" {
 | triggers | Map of strings that, when changed, force the image to be rebuilt | `map(string)` | `{}` | no |
 | create_sam_metadata | Controls whether the SAM metadata null resource should be created | `bool` | `false` | no |
 | tags | Map of tags to apply to all resources | `map(string)` | `{}` | no |
+
+## Notes
+
+- **BREAKING default changes:** `ecr_force_delete` now defaults to `false` (repositories with images are no longer deleted on destroy), `scan_on_push` now defaults to `true`, and `image_tag_mutability` now defaults to `IMMUTABLE`. Set them explicitly to restore the previous behavior.
+- When `image_tag` is not set and `source_path` is set, the tag is derived from a content hash of the source directory, so the image is only rebuilt when sources change. Without `source_path`, a timestamp tag is used, which rebuilds and pushes the image on every apply.
 
 ## Outputs
 

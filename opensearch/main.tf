@@ -18,6 +18,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -119,7 +120,9 @@ resource "aws_opensearch_domain" "this" {
         for_each = try([advanced_security_options.value.master_user_options], [{}])
 
         content {
-          master_user_arn      = try(master_user_options.value.master_user_arn, null) != null ? try(master_user_options.value.master_user_arn, data.aws_iam_session_context.current.issuer_arn) : null
+          # Explicit ARN wins; if neither an ARN nor an internal user name is
+          # provided, fall back to the current caller so FGAC is functional
+          master_user_arn      = try(master_user_options.value.master_user_arn, null) != null ? master_user_options.value.master_user_arn : (try(master_user_options.value.master_user_name, null) == null ? data.aws_iam_session_context.current.issuer_arn : null)
           master_user_name     = try(master_user_options.value.master_user_arn, null) == null ? try(master_user_options.value.master_user_name, null) : null
           master_user_password = try(master_user_options.value.master_user_arn, null) == null ? try(master_user_options.value.master_user_password, null) : null
         }
@@ -207,7 +210,9 @@ resource "aws_opensearch_domain" "this" {
   }
 
   dynamic "log_publishing_options" {
-    for_each = { for opt in var.log_publishing_options : opt.log_type => opt }
+    # Only configure entries that either bring their own log group ARN or for
+    # which the module creates a log group - otherwise there is no valid ARN
+    for_each = { for opt in var.log_publishing_options : opt.log_type => opt if try(opt.cloudwatch_log_group_arn, null) != null || (local.create_cloudwatch_log_groups && try(opt.enabled, true)) }
 
     content {
       cloudwatch_log_group_arn = try(log_publishing_options.value.cloudwatch_log_group_arn, aws_cloudwatch_log_group.this[log_publishing_options.key].arn)

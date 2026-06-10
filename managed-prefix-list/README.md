@@ -6,7 +6,7 @@ OpenTofu module for creating and managing AWS EC2 Managed Prefix Lists with opti
 
 - **Multiple prefix lists** - define several prefix lists in a single module call using a map-based configuration
 - **IPv4 and IPv6** - supports both address families via the `address_family` attribute
-- **Automatic max entries** - calculates `max_entries` from the provided CIDR list length
+- **Automatic max entries** - calculates `max_entries` from the provided CIDR list length, with an optional per-list `max_entries` override to leave headroom for future entries
 - **RAM sharing** - optionally share prefix lists across AWS accounts or an entire AWS Organization using RAM
 - **Per-list tags** - apply tags globally and per prefix list for fine-grained resource organization
 

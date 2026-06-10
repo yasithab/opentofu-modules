@@ -27,3 +27,23 @@ output "database_names" {
   description = "Map of database keys to their names"
   value       = { for k, v in aws_athena_database.this : k => try(v.name, "") }
 }
+
+output "prepared_statement_names" {
+  description = "Map of prepared statement keys to their names"
+  value       = { for k, v in aws_athena_prepared_statement.this : k => try(v.name, "") }
+}
+
+output "capacity_reservation_arn" {
+  description = "ARN of the Athena capacity reservation"
+  value       = try(aws_athena_capacity_reservation.this.arn, "")
+}
+
+output "capacity_reservation_allocated_dpus" {
+  description = "Number of DPUs currently allocated to the capacity reservation"
+  value       = try(aws_athena_capacity_reservation.this.allocated_dpus, null)
+}
+
+output "capacity_reservation_status" {
+  description = "Status of the Athena capacity reservation"
+  value       = try(aws_athena_capacity_reservation.this.status, "")
+}

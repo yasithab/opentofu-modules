@@ -199,3 +199,28 @@ module "service_account" {
   }
 }
 ```
+
+## Security Notes
+
+### Credentials in state (BREAKING validation)
+
+Creating a login profile (`create_login_profile = true`) or access key (`create_access_key = true`)
+without a `pgp_key` causes the generated password / secret access key to be stored **in plaintext
+in the OpenTofu state**. The module now fails validation in this situation. Either:
+
+- provide `pgp_key` (base64-encoded PGP public key or `keybase:username`) so credentials are
+  encrypted before being stored, or
+- set `allow_plaintext_credentials_in_state = true` to explicitly accept the risk
+  (default `false`).
+
+### Virtual MFA seed in state
+
+When `create_virtual_mfa_device = true`, the device's `base_32_string_seed` and `qr_code_png`
+attributes are stored in the OpenTofu state. Anyone with state access can enroll the MFA device.
+Protect state access accordingly, or create MFA devices outside of OpenTofu.
+
+### Inline policy wildcards
+
+`inline_policies` values are raw JSON and are not validated by this module. Avoid wildcard
+actions/resources (`"Action": "*"`, `"Resource": "*"`) in inline policies; prefer scoped managed
+policies reviewed through your normal policy pipeline.

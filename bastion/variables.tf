@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Whether to create the bastion resources"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -11,7 +11,7 @@ variable "name" {
 }
 
 variable "tags" {
-  description = "Map of tags to apply to all resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -270,6 +270,23 @@ variable "ssh_host_key_ssm_prefix" {
   validation {
     condition     = var.ssh_host_key_ssm_prefix == null || (can(regex("^/[a-zA-Z0-9/_-]+$", var.ssh_host_key_ssm_prefix)) && !can(regex("\\.\\.", var.ssh_host_key_ssm_prefix)))
     error_message = "ssh_host_key_ssm_prefix must start with / and contain only alphanumeric characters, forward slashes, underscores, and hyphens. Path traversal (..) is not allowed."
+  }
+}
+
+variable "ssh_host_keys_wo_version" {
+  description = "Version counter for the write-only SSH host keys SSM parameter value. The host keys are written via the `value_wo` write-only attribute and never stored in state; increment this number to force the parameter value to be rewritten (e.g. after rotating the TLS keys)."
+  type        = number
+  default     = 1
+}
+
+variable "kms_key_arn" {
+  description = "ARN of the customer-managed KMS key used to encrypt the SSH host key SSM parameter. When set, the bastion's kms:Decrypt permission is scoped to this key instead of all keys in the account (the kms:ViaService=ssm condition applies either way)."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.kms_key_arn == null || can(regex("^arn:", var.kms_key_arn))
+    error_message = "kms_key_arn must be a valid ARN starting with 'arn:'."
   }
 }
 

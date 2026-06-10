@@ -309,15 +309,15 @@ data "aws_iam_policy_document" "v033" {
     for_each = var.iam_policy_statements
 
     content {
-      sid           = try(statement.value.sid, null)
-      actions       = try(statement.value.actions, null)
-      not_actions   = try(statement.value.not_actions, null)
-      effect        = try(statement.value.effect, null)
-      resources     = try(statement.value.resources, null)
-      not_resources = try(statement.value.not_resources, null)
+      sid           = statement.value.sid
+      actions       = statement.value.actions
+      not_actions   = statement.value.not_actions
+      effect        = statement.value.effect
+      resources     = statement.value.resources
+      not_resources = statement.value.not_resources
 
       dynamic "principals" {
-        for_each = try(statement.value.principals, [])
+        for_each = statement.value.principals
 
         content {
           type        = principals.value.type
@@ -326,7 +326,7 @@ data "aws_iam_policy_document" "v033" {
       }
 
       dynamic "not_principals" {
-        for_each = try(statement.value.not_principals, [])
+        for_each = statement.value.not_principals
 
         content {
           type        = not_principals.value.type
@@ -335,7 +335,7 @@ data "aws_iam_policy_document" "v033" {
       }
 
       dynamic "condition" {
-        for_each = try(statement.value.conditions, [])
+        for_each = statement.value.conditions
 
         content {
           test     = condition.value.test
@@ -711,15 +711,15 @@ data "aws_iam_policy_document" "v1" {
     for_each = var.iam_policy_statements
 
     content {
-      sid           = try(statement.value.sid, null)
-      actions       = try(statement.value.actions, null)
-      not_actions   = try(statement.value.not_actions, null)
-      effect        = try(statement.value.effect, null)
-      resources     = try(statement.value.resources, null)
-      not_resources = try(statement.value.not_resources, null)
+      sid           = statement.value.sid
+      actions       = statement.value.actions
+      not_actions   = statement.value.not_actions
+      effect        = statement.value.effect
+      resources     = statement.value.resources
+      not_resources = statement.value.not_resources
 
       dynamic "principals" {
-        for_each = try(statement.value.principals, [])
+        for_each = statement.value.principals
 
         content {
           type        = principals.value.type
@@ -728,7 +728,7 @@ data "aws_iam_policy_document" "v1" {
       }
 
       dynamic "not_principals" {
-        for_each = try(statement.value.not_principals, [])
+        for_each = statement.value.not_principals
 
         content {
           type        = not_principals.value.type
@@ -737,7 +737,7 @@ data "aws_iam_policy_document" "v1" {
       }
 
       dynamic "condition" {
-        for_each = try(statement.value.conditions, [])
+        for_each = statement.value.conditions
 
         content {
           test     = condition.value.test

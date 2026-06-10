@@ -8,6 +8,8 @@ Creates reusable AWS Route 53 delegation sets that provide a consistent set of n
 - **Bulk Creation** - Define multiple delegation sets in a single module call using a map input
 - **Reference Names** - Assign human-readable reference names to delegation sets for identification
 
+> **Note:** this module intentionally has no `tags` variable — `aws_route53_delegation_set` does not support tagging.
+
 ## Usage
 
 ```hcl

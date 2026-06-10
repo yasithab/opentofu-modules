@@ -42,8 +42,29 @@ variable "kms_key_id" {
 
 variable "tables" {
   description = "Map of Timestream table configurations. Each entry creates a table with retention policies and optional schema/magnetic store settings."
-  type        = any
-  default     = {}
+  type = map(object({
+    table_name                    = string
+    memory_store_retention_hours  = optional(number)
+    magnetic_store_retention_days = optional(number)
+    magnetic_store_write_properties = optional(object({
+      enable_magnetic_store_writes = optional(bool, true)
+      magnetic_store_rejected_data_location = optional(object({
+        s3_bucket_name       = optional(string)
+        s3_encryption_option = optional(string)
+        s3_kms_key_id        = optional(string)
+        s3_object_key_prefix = optional(string)
+      }))
+    }))
+    schema = optional(object({
+      composite_partition_key = optional(object({
+        enforcement_in_record = optional(string)
+        name                  = optional(string)
+        type                  = optional(string, "DIMENSION")
+      }))
+    }))
+    tags = optional(map(string), {})
+  }))
+  default = {}
 }
 
 variable "default_memory_store_retention_hours" {
@@ -58,9 +79,9 @@ variable "default_memory_store_retention_hours" {
 }
 
 variable "default_magnetic_store_retention_days" {
-  description = "Default number of days data is retained in the magnetic store."
+  description = "Default number of days data is retained in the magnetic store. Defaults to 365; raise it explicitly for longer retention (max 73000)."
   type        = number
-  default     = 73000
+  default     = 365
 
   validation {
     condition     = var.default_magnetic_store_retention_days >= 1

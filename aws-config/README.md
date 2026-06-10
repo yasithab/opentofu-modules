@@ -14,6 +14,17 @@ Deploys AWS Config with a configuration recorder, delivery channel, managed/cust
 - **IAM Role Management** - Automatic creation of the Config service IAM role, or bring your own
 - **Retention Configuration** - Configurable history retention period (30 to 2557 days)
 
+## Notes
+
+- `recording_group` and `recording_mode` are typed objects with `optional()` attributes
+  (previously `any`). Existing object-shaped inputs keep working unchanged.
+- `recording_mode` now defaults to `null` (no `recording_mode` block managed, AWS default
+  CONTINUOUS applies). Passing an empty object `{}` now manages an explicit
+  `recording_mode` block with `recording_frequency = "CONTINUOUS"`; previously `{}` was
+  treated the same as unset.
+- IAM policy and S3 ARNs are built with the current AWS partition (`aws`, `aws-cn`,
+  `aws-us-gov`) via `data.aws_partition`.
+
 ## Usage
 
 ```hcl

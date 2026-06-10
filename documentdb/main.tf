@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   port = 27017
@@ -55,7 +56,8 @@ resource "aws_docdb_cluster_parameter_group" "this" {
 ################################################################################
 
 resource "aws_security_group" "this" {
-  name        = "${var.name}-docdb"
+  name        = var.security_group_use_name_prefix ? null : "${var.name}-docdb"
+  name_prefix = var.security_group_use_name_prefix ? "${var.name}-docdb-" : null
   vpc_id      = var.vpc_id
   description = "Security group for DocumentDB cluster ${var.name}"
 
@@ -109,8 +111,9 @@ resource "aws_docdb_cluster" "this" {
   engine_version                  = var.engine_version
   port                            = local.port
   master_username                 = var.master_username
+  manage_master_user_password     = var.manage_master_user_password
   master_password_wo              = var.master_password_wo
-  master_password_wo_version      = var.master_password_wo_version
+  master_password_wo_version      = var.manage_master_user_password == true ? null : var.master_password_wo_version
   db_subnet_group_name            = var.create_subnet_group ? aws_docdb_subnet_group.this.name : var.subnet_group_name
   db_cluster_parameter_group_name = var.create_cluster_parameter_group ? aws_docdb_cluster_parameter_group.this.name : var.cluster_parameter_group_name
   vpc_security_group_ids          = compact(concat([try(aws_security_group.this.id, "")], var.vpc_security_group_ids))
@@ -199,3 +202,5 @@ check "deletion_protection_enabled" {
     error_message = "DocumentDB cluster should have deletion protection enabled for production use."
   }
 }
+
+data "aws_region" "current" {}

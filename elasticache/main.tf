@@ -1,13 +1,18 @@
 locals {
   enabled = var.enabled
+  name    = var.name
 
-  in_replication_group = var.replication_group_id != null
+  cluster_id           = coalesce(var.cluster_id, var.name)
+  replication_group_id = coalesce(var.replication_group_id, var.name)
+
+  in_replication_group = var.create_replication_group || var.replication_group_id != null
 
   security_group_ids = local.create_security_group ? concat(var.security_group_ids, [aws_security_group.this.id]) : var.security_group_ids
   port               = var.engine == "memcached" ? 11211 : 6379
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -22,7 +27,7 @@ resource "aws_elasticache_cluster" "this" {
   auto_minor_version_upgrade = var.auto_minor_version_upgrade
   availability_zone          = var.availability_zone
   az_mode                    = local.in_replication_group ? null : var.az_mode
-  cluster_id                 = var.cluster_id
+  cluster_id                 = local.cluster_id
   engine                     = local.in_replication_group ? null : var.engine
   engine_version             = local.in_replication_group ? null : var.engine_version
   final_snapshot_identifier  = var.final_snapshot_identifier
@@ -49,7 +54,7 @@ resource "aws_elasticache_cluster" "this" {
   port                         = local.in_replication_group ? null : coalesce(var.port, local.port)
   preferred_availability_zones = var.preferred_availability_zones
   preferred_outpost_arn        = var.preferred_outpost_arn
-  replication_group_id         = local.enabled && var.create_replication_group ? aws_elasticache_replication_group.this.id : var.replication_group_id
+  replication_group_id         = local.enabled && var.create_replication_group ? try(aws_elasticache_replication_group.this.id, aws_elasticache_replication_group.global.id) : var.replication_group_id
   security_group_ids           = local.in_replication_group ? null : local.security_group_ids
   snapshot_arns                = local.in_replication_group ? null : var.snapshot_arns
   snapshot_name                = local.in_replication_group ? null : var.snapshot_name
@@ -127,7 +132,7 @@ resource "aws_elasticache_replication_group" "this" {
   port                        = coalesce(var.port, local.port)
   preferred_cache_cluster_azs = var.preferred_cache_cluster_azs
   replicas_per_node_group     = var.replicas_per_node_group
-  replication_group_id        = var.replication_group_id
+  replication_group_id        = local.replication_group_id
   security_group_names        = var.security_group_names
   security_group_ids          = local.security_group_ids
   snapshot_arns               = var.snapshot_arns
@@ -164,7 +169,7 @@ resource "aws_elasticache_global_replication_group" "this" {
   engine_version             = var.engine_version
   num_node_groups            = var.cluster_mode_enabled ? var.num_node_groups : null
 
-  global_replication_group_id_suffix   = var.replication_group_id
+  global_replication_group_id_suffix   = local.replication_group_id
   global_replication_group_description = coalesce(var.description, "Global replication group")
   primary_replication_group_id         = aws_elasticache_replication_group.global.id
   parameter_group_name                 = local.parameter_group_name_result
@@ -215,7 +220,7 @@ resource "aws_elasticache_replication_group" "global" {
   port                        = coalesce(var.port, local.port)
   preferred_cache_cluster_azs = var.preferred_cache_cluster_azs
   replicas_per_node_group     = var.replicas_per_node_group
-  replication_group_id        = var.replication_group_id
+  replication_group_id        = local.replication_group_id
   security_group_names        = var.create_secondary_global_replication_group ? null : var.security_group_names
   security_group_ids          = local.security_group_ids
   snapshot_arns               = var.create_secondary_global_replication_group ? null : var.snapshot_arns
@@ -246,7 +251,10 @@ locals {
 resource "aws_cloudwatch_log_group" "this" {
   for_each = { for k, v in var.log_delivery_configuration : k => v if local.create_cloudwatch_log_group && try(v.create_cloudwatch_log_group, true) && try(v.destination_type, "") == "cloudwatch-logs" }
 
-  name              = "/aws/elasticache/${try(each.value.cloudwatch_log_group_name, coalesce(var.cluster_id, var.replication_group_id), "")}"
+  name = try(
+    "/aws/elasticache/${each.value.cloudwatch_log_group_name}",
+    "/aws/elasticache/${local.name}/${each.key}",
+  )
   retention_in_days = try(each.value.cloudwatch_log_group_retention_in_days, 14)
   kms_key_id        = try(each.value.cloudwatch_log_group_kms_key_id, null)
   skip_destroy      = try(each.value.cloudwatch_log_group_skip_destroy, null)
@@ -268,7 +276,7 @@ resource "random_id" "this" {
 }
 
 locals {
-  inter_parameter_group_name  = "${try(coalesce(var.cluster_id, var.replication_group_id), "")}-${replace(var.parameter_group_family, ".", "-")}-${try(random_id.this.hex, "")}"
+  inter_parameter_group_name  = "${local.name}-${replace(var.parameter_group_family, ".", "-")}-${try(random_id.this.hex, "")}"
   parameter_group_name        = coalesce(var.parameter_group_name, local.inter_parameter_group_name)
   parameter_group_name_result = local.enabled && var.create_parameter_group ? aws_elasticache_parameter_group.this.id : var.parameter_group_name
 
@@ -304,7 +312,7 @@ resource "aws_elasticache_parameter_group" "this" {
 ################################################################################
 
 locals {
-  inter_subnet_group_name = try(coalesce(var.subnet_group_name, var.cluster_id, var.replication_group_id), "")
+  inter_subnet_group_name = coalesce(var.subnet_group_name, local.name)
   subnet_group_name       = local.enabled && var.create_subnet_group ? aws_elasticache_subnet_group.this.name : var.subnet_group_name
 }
 
@@ -328,7 +336,7 @@ resource "aws_elasticache_subnet_group" "this" {
 
 locals {
   create_security_group = local.enabled && var.create_security_group
-  security_group_name   = try(coalesce(var.security_group_name, var.cluster_id, var.replication_group_id), "")
+  security_group_name   = coalesce(var.security_group_name, local.name)
 }
 
 resource "aws_security_group" "this" {
@@ -389,14 +397,24 @@ resource "aws_vpc_security_group_egress_rule" "this" {
 
 check "at_rest_encryption_enabled" {
   assert {
-    condition     = !var.enabled || !var.create_replication_group || aws_elasticache_replication_group.this.at_rest_encryption_enabled
+    condition = !var.enabled || !var.create_replication_group || try(
+      aws_elasticache_replication_group.this.at_rest_encryption_enabled,
+      aws_elasticache_replication_group.global.at_rest_encryption_enabled,
+      true,
+    )
     error_message = "ElastiCache replication group must have at-rest encryption enabled."
   }
 }
 
 check "transit_encryption_enabled" {
   assert {
-    condition     = !var.enabled || !var.create_replication_group || aws_elasticache_replication_group.this.transit_encryption_enabled
+    condition = !var.enabled || !var.create_replication_group || try(
+      aws_elasticache_replication_group.this.transit_encryption_enabled,
+      aws_elasticache_replication_group.global.transit_encryption_enabled,
+      true,
+    )
     error_message = "ElastiCache replication group must have transit encryption enabled."
   }
 }
+
+data "aws_region" "current" {}

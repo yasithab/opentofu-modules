@@ -144,3 +144,17 @@ module "acm_private_certificate" {
   }
 }
 ```
+
+## Notes
+
+### `validation_allow_overwrite_records` defaults to `false` (security)
+
+Overwriting pre-existing Route53 records with the same name/type can silently hijack DNS
+entries managed elsewhere, so the module does not overwrite by default. Set
+`validation_allow_overwrite_records = true` explicitly if you depend on overwriting (e.g.
+recreating certificates that reuse the same validation records).
+
+### Records-only mode
+
+When `create_route53_records_only = true` with `distinct_domain_names` and
+`acm_certificate_domain_validation_options` supplied, `domain_name` can be left `null`.

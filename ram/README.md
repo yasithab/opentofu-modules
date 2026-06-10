@@ -18,7 +18,7 @@ Manages AWS Resource Access Manager (RAM) resource shares for sharing AWS resour
 module "ram_share" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//ram?depth=1&ref=master"
 
-  ram_resource_share_name = "transit-gateway-share"
+  name                    = "transit-gateway-share"
   ram_resource_arn        = "arn:aws:ec2:us-east-1:123456789012:transit-gateway/tgw-0abc123def456789"
 
   tags = {
@@ -41,7 +41,7 @@ module "tgw_ram_share" {
 
   enabled = true
 
-  ram_resource_share_name = "transit-gateway-share"
+  name                    = "transit-gateway-share"
   ram_resource_arn        = "arn:aws:ec2:us-east-1:123456789012:transit-gateway/tgw-0abc123def456789"
 
   tags = {
@@ -61,7 +61,7 @@ module "subnet_ram_share" {
 
   enabled = true
 
-  ram_resource_share_name = "shared-subnets"
+  name                    = "shared-subnets"
   ram_resource_arn        = "arn:aws:ec2:us-east-1:123456789012:subnet/subnet-0aa111bbb222ccc333"
 
   ram_principals = [
@@ -86,7 +86,7 @@ module "resolver_rule_ram_share" {
 
   enabled = true
 
-  ram_resource_share_name = "dns-resolver-rules"
+  name                    = "dns-resolver-rules"
   ram_resource_arn        = "arn:aws:route53resolver:us-east-1:123456789012:resolver-rule/rslvr-rr-0abc123def456789"
 
   ram_principals = [
@@ -112,7 +112,7 @@ module "tgw_ram_share_disabled" {
 
   enabled = false
 
-  ram_resource_share_name = "future-tgw-share"
+  name                    = "future-tgw-share"
   ram_resource_arn        = "arn:aws:ec2:eu-west-1:123456789012:transit-gateway/tgw-0abc123def456789"
 
   tags = {
@@ -121,3 +121,18 @@ module "tgw_ram_share_disabled" {
   }
 }
 ```
+
+## Notes
+
+### Switching to/from organization-wide sharing recreates associations
+
+When `ram_principals` is empty, the module shares with the entire organization by using the
+Organization ARN as the principal. Later providing explicit `ram_principals` (or clearing them
+again) changes the principal association keys, so OpenTofu **destroys and recreates** the
+`aws_ram_principal_association` resources. During that replacement window, consumers briefly
+lose access to the shared resource - plan such a change for a maintenance window if the share
+backs live traffic (e.g. a shared Transit Gateway).
+
+Also note `aws_ram_sharing_with_organization` is an organization-wide, account-level setting:
+destroying it disables RAM sharing with AWS Organizations for the whole account, affecting
+*all* resource shares, not only the one managed by this module.

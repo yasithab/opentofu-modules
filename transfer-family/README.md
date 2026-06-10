@@ -2,6 +2,8 @@
 
 OpenTofu module for provisioning AWS Transfer Family servers with support for SFTP, FTPS, FTP, and AS2 protocols, multiple identity providers, and S3/EFS storage backends.
 
+> **Security trade-off — `endpoint_type` defaults to `PUBLIC`:** a PUBLIC endpoint is reachable from the entire internet and offers no network-level access control (no security groups, no IP allowlisting) — access is gated only by authentication. To restrict client IPs, use `endpoint_type = "VPC"` with `security_group_ids` (and optionally `address_allocation_ids` for static Elastic IPs).
+
 ## Features
 
 - **Multi-Protocol Support** - SFTP, FTPS, FTP, and AS2 protocol configuration on a single server
@@ -14,6 +16,7 @@ OpenTofu module for provisioning AWS Transfer Family servers with support for SF
 - **Storage Backends** - S3 and EFS domain support with S3 directory listing optimization
 - **Custom Hostnames** - Route53 CNAME record creation for branded SFTP endpoints
 - **Banner Messages** - Pre-authentication and post-authentication banner messages for compliance
+- **SFTP Connectors** - Outbound connectors (`connectors`) for pushing files to remote SFTP servers with Secrets Manager credentials and trusted host key pinning
 
 ## Usage
 
@@ -166,6 +169,40 @@ module "sftp_workflow" {
           }
         }
       ]
+    }
+  }
+
+  tags = {
+    Environment = "production"
+  }
+}
+```
+
+### Outbound SFTP Connectors
+
+Connectors transfer files from your S3 storage to remote SFTP servers. Credentials live in Secrets Manager and the remote server's host keys can be pinned via `trusted_host_keys`.
+
+```hcl
+module "sftp_connectors" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//transfer-family?depth=1&ref=master"
+
+  name      = "partner-exchange"
+  protocols = ["SFTP"]
+
+  connectors = {
+    partner-bank = {
+      url            = "sftp://sftp.partner-bank.example.com"
+      access_role    = "arn:aws:iam::123456789012:role/transfer-connector-access"
+      user_secret_id = "arn:aws:secretsmanager:us-east-1:123456789012:secret:transfer/partner-bank-abc123"
+      trusted_host_keys = [
+        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQ..."
+      ]
+    }
+    vendor-feed = {
+      url                  = "sftp://feeds.vendor.example.com"
+      access_role          = "arn:aws:iam::123456789012:role/transfer-connector-access"
+      user_secret_id       = "arn:aws:secretsmanager:us-east-1:123456789012:secret:transfer/vendor-feed-def456"
+      security_policy_name = "TransferSFTPConnectorSecurityPolicy-2024-03"
     }
   }
 

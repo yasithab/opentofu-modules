@@ -1,7 +1,7 @@
 # EventBridge Bus
 output "eventbridge_bus_name" {
   description = "The EventBridge Bus Name"
-  value       = var.bus_name
+  value       = local.name
 }
 
 output "eventbridge_bus_arn" {

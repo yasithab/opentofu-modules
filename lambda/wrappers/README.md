@@ -42,11 +42,15 @@ module "lambda" {
 | defaults | Map of default values which will be used for each item | `any` | `{}` | no |
 | items | Maps of items to create a wrapper from. Values are passed through to the module | `any` | `{}` | no |
 
+> **Note:** the wrapper modules have no `test/test.tfvars` fixtures - they are exercised indirectly through the root `lambda` module's tests.
+
 ## Outputs
 
 | Name | Description |
 |------|-------------|
 | wrapper | Map of outputs of the wrapper, keyed by each item's key |
+
+> Per-item toggling uses the `enabled` key (`items.<key>.enabled` / `defaults.enabled`) across all wrappers (`wrappers`, `wrappers/alias`, `wrappers/deploy`, `wrappers/docker-build`).
 
 
 ## Examples

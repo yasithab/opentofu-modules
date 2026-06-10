@@ -1,17 +1,18 @@
 variable "enabled" {
-  description = "Controls if Macie and associated resources are created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
 
 
 variable "name" {
-  description = "Name prefix for Macie resources used in naming and tagging"
+  description = "Name identifier for the Macie deployment, used for naming and tagging conventions"
   type        = string
+  default     = null
 }
 
 variable "tags" {
-  description = "Map of tags to apply to all Macie resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -24,6 +25,44 @@ variable "finding_publishing_frequency" {
   description = "Frequency at which Macie publishes updates to policy findings. Valid values: FIFTEEN_MINUTES, ONE_HOUR, SIX_HOURS"
   type        = string
   default     = "FIFTEEN_MINUTES"
+
+  validation {
+    condition     = contains(["FIFTEEN_MINUTES", "ONE_HOUR", "SIX_HOURS"], var.finding_publishing_frequency)
+    error_message = "finding_publishing_frequency must be FIFTEEN_MINUTES, ONE_HOUR, or SIX_HOURS."
+  }
+}
+
+################################################################################
+# Organization Support
+################################################################################
+
+variable "create_organization_admin_account" {
+  description = "Whether to designate a delegated Macie administrator account for the organization. Apply from the organization management account"
+  type        = bool
+  default     = false
+}
+
+variable "admin_account_id" {
+  description = "AWS account ID to designate as the Macie delegated administrator. Required when create_organization_admin_account is true"
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.admin_account_id == null || can(regex("^[0-9]{12}$", var.admin_account_id))
+    error_message = "admin_account_id must be a 12-digit AWS account ID."
+  }
+}
+
+variable "create_organization_configuration" {
+  description = "Whether to manage the organization-wide Macie configuration. Apply from the delegated administrator account"
+  type        = bool
+  default     = false
+}
+
+variable "auto_enable_organization_members" {
+  description = "Whether to automatically enable Macie for new accounts that join the organization"
+  type        = bool
+  default     = true
 }
 
 ################################################################################

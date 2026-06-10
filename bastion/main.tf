@@ -27,6 +27,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
     Role      = "bastion"
   })
 }
@@ -108,7 +109,7 @@ data "aws_iam_policy_document" "assume_role" {
 }
 
 resource "aws_iam_role" "this" {
-  name                 = "${local.bastion_id}-role"
+  name_prefix          = "${local.bastion_id}-role-"
   assume_role_policy   = data.aws_iam_policy_document.assume_role[0].json
   permissions_boundary = var.iam_role_permissions_boundary
 
@@ -212,13 +213,13 @@ data "aws_iam_policy_document" "bastion" {
         "kms:Decrypt",
       ]
       resources = [
-        "arn:${data.aws_partition.current.partition}:kms:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:key/*",
+        var.kms_key_arn != null ? var.kms_key_arn : "arn:${data.aws_partition.current.partition}:kms:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:key/*",
       ]
 
       condition {
         test     = "StringEquals"
         variable = "kms:ViaService"
-        values   = ["ssm.${data.aws_region.current.region}.amazonaws.com"]
+        values   = ["ssm.${data.aws_region.current.region}.${data.aws_partition.current.dns_suffix}"]
       }
     }
   }
@@ -237,7 +238,7 @@ data "aws_iam_policy_document" "bastion" {
       condition {
         test     = "StringEquals"
         variable = "kms:ViaService"
-        values   = ["logs.${data.aws_region.current.region}.amazonaws.com"]
+        values   = ["logs.${data.aws_region.current.region}.${data.aws_partition.current.dns_suffix}"]
       }
     }
   }
@@ -254,8 +255,8 @@ resource "aws_iam_role_policy" "bastion" {
 }
 
 resource "aws_iam_instance_profile" "this" {
-  name = "${local.bastion_id}-profile"
-  role = aws_iam_role.this.name
+  name_prefix = "${local.bastion_id}-profile-"
+  role        = aws_iam_role.this.name
 
   tags = local.tags
 
@@ -297,7 +298,7 @@ resource "aws_vpc_security_group_egress_rule" "all_outbound" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "ssh" {
-  for_each = { for idx, cidr in var.allowed_ssh_cidrs : idx => cidr if local.enabled && local.create_sg && var.public }
+  for_each = { for cidr in var.allowed_ssh_cidrs : cidr => cidr if local.enabled && local.create_sg && var.public }
 
   security_group_id = aws_security_group.this.id
   description       = "SSH from ${each.value}"
@@ -404,7 +405,10 @@ resource "aws_ssm_parameter" "ssh_host_keys" {
   name = local.ssh_host_key_ssm_prefix
   type = "SecureString"
   tier = "Advanced"
-  value = jsonencode({
+  # Write-only attribute: the host keys are sent to SSM but never stored in
+  # OpenTofu state. Bump var.ssh_host_keys_wo_version to force a rewrite.
+  value_wo_version = var.ssh_host_keys_wo_version
+  value_wo = jsonencode({
     ed25519 = {
       private_key = tls_private_key.ssh_host_ed25519.private_key_openssh
       public_key  = tls_private_key.ssh_host_ed25519.public_key_openssh

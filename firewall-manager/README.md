@@ -2,6 +2,12 @@
 
 AWS Firewall Manager (FMS) module for centrally managing WAFv2 security policies across an AWS Organization. Designates an FMS administrator account and deploys WAFv2 policies to targeted accounts and organizational units.
 
+## Scope
+
+This module manages **WAFv2 policies only** (`security_service_policy_data.type = "WAFV2"`).
+Other FMS policy types (Shield Advanced, security groups, Network Firewall, DNS Firewall,
+WAF Classic) are not supported.
+
 ## Features
 
 - **FMS Admin Account Association** - Optionally designate an AWS account as the Firewall Manager administrator
@@ -10,6 +16,17 @@ AWS Firewall Manager (FMS) module for centrally managing WAFv2 security policies
 - **Resource Filtering** - Protect resources by type (ALB, API Gateway, CloudFront, etc.) with optional tag-based inclusion or exclusion
 - **WAF Logging** - Integrate WAF logging via Kinesis Firehose with configurable redacted fields
 - **Auto-Remediation** - Optionally remediate non-compliant resources automatically
+
+## Notes
+
+- **BREAKING**: the `firehose_kinesis_id` and `firehose_enabled` variables were removed.
+  Use `firehose_arn` (a full Kinesis Firehose delivery stream ARN) as the single logging
+  destination input. `firehose_arn` is required when `logging_configuration_enabled = true`.
+- `redacted_fields` controls which fields are redacted from WAF logs when the module-level
+  logging configuration is used. It defaults to the previous hard-coded behaviour
+  (`SingleHeader` value `Cookies`, and `Method`).
+- `waf_v2_policies` is now a typed `list(object)` with `optional()` attributes instead of
+  `list(any)`. Existing inputs keep working; unknown attributes are now rejected at plan time.
 
 ## Usage
 

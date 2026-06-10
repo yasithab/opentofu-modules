@@ -14,13 +14,21 @@ Comprehensive Amazon EventBridge module that provisions event buses, rules, targ
 - **IAM Role Management** - Automatically create and attach least-privilege IAM roles with built-in policies for Lambda, SQS, SNS, ECS, Kinesis, Step Functions, CloudWatch, and API Destinations
 - **Custom Policies** - Attach inline JSON policies, managed policy ARNs, or dynamic policy statements to the EventBridge IAM role
 
+## Notes
+
+- **BREAKING:** when `attach_ecs_policy = true`, `ecs_pass_role_resources` is now required. The `iam:PassRole` statement is scoped to the role ARNs you provide and no longer falls back to `"*"`.
+- `name` must not be `"default"` when `create_bus = true` - the default event bus already exists. Set `create_bus = false` to reference the default bus.
+- `permissions` map keys must be in the format `"<principal> <statement_id>"` (e.g. `"123456789012 AllowAccountX"`).
+- **BREAKING:** rule `role_arn` accepts only an IAM role ARN (string) or null. The previous boolean form (`role_arn = true` to use the module-created role) has been removed; reference the role ARN explicitly (e.g. via the module's `eventbridge_role_arn` output from a separate instance, or an externally managed role).
+- `connections` values (auth parameters) are sensitive; only the map keys are unwrapped with `nonsensitive()` to drive resource creation, so secrets stay hidden in plans but the set of connections must be known at plan time.
+
 ## Usage
 
 ```hcl
 module "eventbridge" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//eventbridge?depth=1&ref=master"
 
-  bus_name = "my-app-bus"
+  name     = "my-app-bus"
 
   rules = {
     cron_schedule = {
@@ -56,7 +64,7 @@ module "eventbridge" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//eventbridge?depth=1&ref=master"
 
   enabled  = true
-  bus_name = "app-events"
+  name     = "app-events"
 
   create_rules   = true
   create_targets = true
@@ -97,7 +105,7 @@ module "eventbridge" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//eventbridge?depth=1&ref=master"
 
   enabled  = true
-  bus_name = "order-events"
+  name     = "order-events"
 
   create_rules   = true
   create_targets = true
@@ -158,7 +166,7 @@ module "eventbridge" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//eventbridge?depth=1&ref=master"
 
   enabled  = true
-  bus_name = "default"
+  name     = "default"
 
   create_bus             = false
   create_rules           = false
@@ -220,7 +228,7 @@ module "eventbridge" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//eventbridge?depth=1&ref=master"
 
   enabled      = true
-  bus_name     = "platform-events"
+  name         = "platform-events"
   bus_description = "Central event bus for platform-wide events"
 
   create_rules        = true
@@ -242,10 +250,9 @@ module "eventbridge" {
   }
 
   permissions = {
-    allow_account_b = {
-      action    = "events:PutEvents"
-      principal = "123456789013"
-      statement_id = "AllowAccountBPutEvents"
+    # Key format: "<principal> <statement_id>"
+    "123456789013 AllowAccountBPutEvents" = {
+      action = "events:PutEvents"
     }
   }
 

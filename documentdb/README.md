@@ -13,6 +13,7 @@ Provisions Amazon DocumentDB (MongoDB-compatible) clusters with configurable ins
 - **CloudWatch Log Exports** - Export audit and profiler logs to CloudWatch Logs for monitoring and compliance
 - **Backup Retention** - Configurable automated backup retention with customizable backup windows
 - **Write-Only Master Password** - Uses `master_password_wo` to avoid storing credentials in state, following the rds-aurora pattern
+- **Managed Master Password** - Set `manage_master_user_password = true` to let AWS manage the master password in Secrets Manager (secret details exposed via the `cluster_master_user_secret` output). Conflicts with `master_password_wo`
 - **Security Group** - Automatically create and configure VPC security groups with flexible ingress and egress rules
 
 ## Usage

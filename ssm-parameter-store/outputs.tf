@@ -3,16 +3,17 @@
 #######################
 
 locals {
-  # Making values nonsensitive, but keeping them in separate locals
-  stored_value = one(compact([
-    try(nonsensitive(aws_ssm_parameter.this.value), null),
-    try(nonsensitive(aws_ssm_parameter.ignore_value.value), null),
-  ]))
-  stored_insecure_value = one(compact([
-    try(nonsensitive(aws_ssm_parameter.this.insecure_value), null),
-    try(nonsensitive(aws_ssm_parameter.ignore_value.insecure_value), null),
-  ]))
-  raw_value = one(compact([local.stored_value, local.stored_insecure_value]))
+  # Only one of the two resources is enabled at a time; coalesce picks the
+  # populated value. Sensitivity is preserved end-to-end (no nonsensitive()).
+  stored_value = try(coalesce(
+    try(aws_ssm_parameter.this.value, null),
+    try(aws_ssm_parameter.ignore_value.value, null),
+  ), null)
+  stored_insecure_value = try(coalesce(
+    try(aws_ssm_parameter.this.insecure_value, null),
+    try(aws_ssm_parameter.ignore_value.insecure_value, null),
+  ), null)
+  raw_value = try(coalesce(local.stored_value, local.stored_insecure_value), null)
 }
 
 output "raw_value" {
@@ -24,13 +25,12 @@ output "raw_value" {
 output "value" {
   description = "Parameter value after jsondecode(). Probably this is what you are looking for"
   value       = try(jsondecode(local.raw_value), local.raw_value)
-  sensitive   = false
+  sensitive   = true
 }
 
 output "insecure_value" {
-  description = "Insecure value of the parameter"
-  value       = local.stored_insecure_value
-  sensitive   = false
+  description = "Insecure value of the parameter. Only populated for String type parameters; null for StringList and SecureString"
+  value       = local.string_type ? nonsensitive(local.stored_insecure_value) : null
 }
 
 output "secure_value" {

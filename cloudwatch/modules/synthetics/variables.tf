@@ -70,6 +70,11 @@ variable "canaries" {
     insufficient_data_actions = optional(list(string))
   }))
   default = {}
+
+  validation {
+    condition     = var.create_iam_role || alltrue([for v in values(var.canaries) : v.execution_role_arn != null])
+    error_message = "Each canary must set execution_role_arn when create_iam_role is false."
+  }
 }
 
 variable "default_success_retention_period" {
@@ -117,9 +122,14 @@ variable "create_artifact_bucket" {
 }
 
 variable "artifact_s3_bucket_name" {
-  description = "Name of the S3 bucket for canary artifacts. Used as bucket name when creating, or as existing bucket reference."
+  description = "Name of the S3 bucket for canary artifacts. Used as bucket name when creating, or as existing bucket reference. Required when create_artifact_bucket is false."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.create_artifact_bucket || var.artifact_s3_bucket_name != null
+    error_message = "artifact_s3_bucket_name is required when create_artifact_bucket is false."
+  }
 }
 
 variable "artifact_s3_bucket_use_name_prefix" {

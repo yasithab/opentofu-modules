@@ -1,7 +1,6 @@
-data "aws_region" "current" {
-  # Call this API only if create_vpc and enable_flow_log are true
-  count = var.enabled && var.enable_flow_log ? 1 : 0
-}
+# Reads provider configuration only (no API call); used by the flow-log IAM
+# scope and the module-wide Region tag, so it is not count-gated.
+data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {
   # Call this API only if create_vpc and enable_flow_log are true
@@ -23,9 +22,8 @@ locals {
   flow_log_destination_arn                  = local.create_flow_log_cloudwatch_log_group ? try(aws_cloudwatch_log_group.flow_log.arn, null) : var.flow_log_destination_arn
   flow_log_iam_role_arn                     = var.flow_log_destination_type != "s3" && local.create_flow_log_cloudwatch_iam_role ? try(aws_iam_role.vpc_flow_log_cloudwatch.arn, null) : var.flow_log_cloudwatch_iam_role_arn
   flow_log_cloudwatch_log_group_name_suffix = var.flow_log_cloudwatch_log_group_name_suffix == null ? local.vpc_id : var.flow_log_cloudwatch_log_group_name_suffix
-  flow_log_group_arns = local.enable_flow_log ? [
-    for log_group in aws_cloudwatch_log_group.flow_log :
-    "arn:${data.aws_partition.current[0].partition}:logs:${data.aws_region.current[0].region}:${data.aws_caller_identity.current[0].account_id}:log-group:${log_group.name}:*"
+  flow_log_group_arns = local.create_flow_log_cloudwatch_log_group ? [
+    "arn:${data.aws_partition.current[0].partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current[0].account_id}:log-group:${aws_cloudwatch_log_group.flow_log.name}:*"
   ] : []
 }
 

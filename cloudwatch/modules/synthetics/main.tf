@@ -3,9 +3,12 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   artifact_s3_location = var.create_artifact_bucket ? "s3://${aws_s3_bucket.artifacts.id}" : "s3://${var.artifact_s3_bucket_name}"
+
+  default_artifact_bucket_name = "synthetics-artifacts-${var.name}-${data.aws_caller_identity.current.account_id}-${data.aws_region.current.region}"
 }
 
 data "aws_region" "current" {}
@@ -20,38 +23,38 @@ resource "aws_synthetics_canary" "this" {
   for_each = local.enabled ? var.canaries : {}
 
   name                 = each.value.name
-  artifact_s3_location = try(each.value.artifact_s3_location, "${local.artifact_s3_location}/${each.value.name}")
+  artifact_s3_location = each.value.artifact_s3_location != null ? each.value.artifact_s3_location : "${local.artifact_s3_location}/${each.value.name}"
   execution_role_arn   = var.create_iam_role ? aws_iam_role.this.arn : each.value.execution_role_arn
   handler              = each.value.handler
   runtime_version      = each.value.runtime_version
-  zip_file             = try(each.value.zip_file, null)
-  s3_bucket            = try(each.value.s3_bucket, null)
-  s3_key               = try(each.value.s3_key, null)
-  s3_version           = try(each.value.s3_version, null)
-  start_canary         = try(each.value.start_canary, true)
-  delete_lambda        = try(each.value.delete_lambda, true)
+  zip_file             = each.value.zip_file
+  s3_bucket            = each.value.s3_bucket
+  s3_key               = each.value.s3_key
+  s3_version           = each.value.s3_version
+  start_canary         = each.value.start_canary
+  delete_lambda        = each.value.delete_lambda
 
-  success_retention_period = try(each.value.success_retention_period, var.default_success_retention_period)
-  failure_retention_period = try(each.value.failure_retention_period, var.default_failure_retention_period)
+  success_retention_period = coalesce(each.value.success_retention_period, var.default_success_retention_period)
+  failure_retention_period = coalesce(each.value.failure_retention_period, var.default_failure_retention_period)
 
   schedule {
     expression          = each.value.schedule_expression
-    duration_in_seconds = try(each.value.schedule_duration_in_seconds, null)
+    duration_in_seconds = each.value.schedule_duration_in_seconds
   }
 
   dynamic "run_config" {
-    for_each = try(each.value.run_config, null) != null ? [each.value.run_config] : []
+    for_each = each.value.run_config != null ? [each.value.run_config] : []
 
     content {
-      timeout_in_seconds    = try(run_config.value.timeout_in_seconds, 60)
-      memory_in_mb          = try(run_config.value.memory_in_mb, null)
-      active_tracing        = try(run_config.value.active_tracing, false)
-      environment_variables = try(run_config.value.environment_variables, null)
+      timeout_in_seconds    = run_config.value.timeout_in_seconds
+      memory_in_mb          = run_config.value.memory_in_mb
+      active_tracing        = run_config.value.active_tracing
+      environment_variables = run_config.value.environment_variables
     }
   }
 
   dynamic "vpc_config" {
-    for_each = try(each.value.vpc_config, null) != null ? [each.value.vpc_config] : []
+    for_each = each.value.vpc_config != null ? [each.value.vpc_config] : []
 
     content {
       security_group_ids = vpc_config.value.security_group_ids
@@ -60,12 +63,12 @@ resource "aws_synthetics_canary" "this" {
   }
 
   dynamic "artifact_config" {
-    for_each = try(each.value.artifact_config, null) != null ? [each.value.artifact_config] : []
+    for_each = each.value.artifact_config != null ? [each.value.artifact_config] : []
 
     content {
       s3_encryption {
-        encryption_mode = try(artifact_config.value.encryption_mode, "SSE_S3")
-        kms_key_arn     = try(artifact_config.value.kms_key_arn, null)
+        encryption_mode = artifact_config.value.encryption_mode
+        kms_key_arn     = artifact_config.value.kms_key_arn
       }
     }
   }
@@ -89,8 +92,8 @@ resource "aws_synthetics_group_association" "this" {
   for_each = local.enabled ? {
     for pair in flatten([
       for group_name, group_config in var.canary_groups : [
-        for canary_key in try(group_config.canary_keys, []) : {
-          key        = "${group_name}-${canary_key}"
+        for canary_key in group_config.canary_keys : {
+          key        = "${group_name}/${canary_key}"
           group_name = group_name
           canary_arn = aws_synthetics_canary.this[canary_key].arn
         }
@@ -107,8 +110,8 @@ resource "aws_synthetics_group_association" "this" {
 ################################################################################
 
 resource "aws_s3_bucket" "artifacts" {
-  bucket        = var.artifact_s3_bucket_use_name_prefix ? null : coalesce(var.artifact_s3_bucket_name, "synthetics-artifacts-${var.name}")
-  bucket_prefix = var.artifact_s3_bucket_use_name_prefix ? "${coalesce(var.artifact_s3_bucket_name, "synthetics-artifacts-${var.name}")}-" : null
+  bucket        = var.artifact_s3_bucket_use_name_prefix ? null : coalesce(var.artifact_s3_bucket_name, local.default_artifact_bucket_name)
+  bucket_prefix = var.artifact_s3_bucket_use_name_prefix ? "${coalesce(var.artifact_s3_bucket_name, local.default_artifact_bucket_name)}-" : null
   force_destroy = var.artifact_s3_bucket_force_destroy
 
   tags = local.tags
@@ -304,27 +307,27 @@ resource "aws_iam_role_policy_attachment" "additional" {
 
 resource "aws_cloudwatch_metric_alarm" "canary" {
   for_each = local.enabled ? {
-    for k, v in var.canaries : k => v if try(v.create_alarm, var.create_canary_alarms)
+    for k, v in var.canaries : k => v if(v.create_alarm != null ? v.create_alarm : var.create_canary_alarms)
   } : {}
 
-  alarm_name          = try(each.value.alarm_name, "synthetics-${each.value.name}-failed")
-  alarm_description   = try(each.value.alarm_description, "Synthetics canary ${each.value.name} is failing")
-  comparison_operator = try(each.value.alarm_comparison_operator, "LessThanThreshold")
-  evaluation_periods  = try(each.value.alarm_evaluation_periods, 1)
+  alarm_name          = coalesce(each.value.alarm_name, "synthetics-${each.value.name}-failed")
+  alarm_description   = coalesce(each.value.alarm_description, "Synthetics canary ${each.value.name} is failing")
+  comparison_operator = coalesce(each.value.alarm_comparison_operator, "LessThanThreshold")
+  evaluation_periods  = coalesce(each.value.alarm_evaluation_periods, 1)
   metric_name         = "SuccessPercent"
   namespace           = "CloudWatchSynthetics"
-  period              = try(each.value.alarm_period, 300)
+  period              = coalesce(each.value.alarm_period, 300)
   statistic           = "Average"
-  threshold           = try(each.value.alarm_threshold, 100)
-  treat_missing_data  = try(each.value.alarm_treat_missing_data, "breaching")
+  threshold           = coalesce(each.value.alarm_threshold, 100)
+  treat_missing_data  = coalesce(each.value.alarm_treat_missing_data, "breaching")
 
   dimensions = {
     CanaryName = each.value.name
   }
 
-  alarm_actions             = try(each.value.alarm_actions, var.default_alarm_actions)
-  ok_actions                = try(each.value.ok_actions, var.default_ok_actions)
-  insufficient_data_actions = try(each.value.insufficient_data_actions, [])
+  alarm_actions             = each.value.alarm_actions != null ? each.value.alarm_actions : var.default_alarm_actions
+  ok_actions                = each.value.ok_actions != null ? each.value.ok_actions : var.default_ok_actions
+  insufficient_data_actions = each.value.insufficient_data_actions != null ? each.value.insufficient_data_actions : []
 
   tags = local.tags
 }

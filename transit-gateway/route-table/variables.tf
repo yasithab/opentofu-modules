@@ -11,7 +11,7 @@ variable "tags" {
 }
 
 variable "enabled" {
-  description = "Controls if resources should be created (it affects almost all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -53,6 +53,11 @@ variable "routes" {
     transit_gateway_attachment_id = optional(string)
   }))
   default = {}
+
+  validation {
+    condition     = alltrue([for k, v in var.routes : v.blackhole != (v.transit_gateway_attachment_id != null)])
+    error_message = "Each route must either set blackhole = true or provide a transit_gateway_attachment_id, but not both."
+  }
 }
 
 variable "vpc_routes" {

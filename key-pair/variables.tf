@@ -1,6 +1,6 @@
 
 variable "enabled" {
-  description = "Determines whether resources will be created (affects all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -44,6 +44,11 @@ variable "private_key_algorithm" {
   description = "Algorithm to use for the TLS private key. Valid values: `RSA`, `ED25519`."
   type        = string
   default     = "RSA"
+
+  validation {
+    condition     = contains(["RSA", "ED25519"], var.private_key_algorithm)
+    error_message = "private_key_algorithm must be one of: RSA, ED25519."
+  }
 }
 
 variable "private_key_rsa_bits" {

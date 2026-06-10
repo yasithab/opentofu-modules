@@ -21,6 +21,7 @@ variable "prefix_lists" {
     name           = string
     cidr_list      = list(object({ cidr = string, description = optional(string) }))
     address_family = optional(string, "IPv4")
+    max_entries    = optional(number)
     tags           = optional(map(string), {})
   }))
   default = null
@@ -28,6 +29,11 @@ variable "prefix_lists" {
   validation {
     condition     = var.prefix_lists == null || alltrue([for k, v in var.prefix_lists : contains(["IPv4", "IPv6"], v.address_family)])
     error_message = "Each prefix list address_family must be 'IPv4' or 'IPv6'."
+  }
+
+  validation {
+    condition     = var.prefix_lists == null || alltrue([for k, v in var.prefix_lists : v.max_entries == null || v.max_entries >= length(v.cidr_list)])
+    error_message = "Each prefix list max_entries, when set, must be greater than or equal to the number of entries in cidr_list."
   }
 }
 

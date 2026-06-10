@@ -6,6 +6,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   # -- Recording ----------------------------------------------------------------
@@ -16,7 +17,7 @@ locals {
   include_global_resource_types = (
     var.global_resource_collector_region != null
     ? data.aws_region.current.region == var.global_resource_collector_region
-    : lookup(var.recording_group, "include_global_resource_types", false)
+    : var.recording_group.include_global_resource_types
   )
 
   # -- REQUIRED_TAGS rule -------------------------------------------------------
@@ -80,18 +81,18 @@ resource "aws_config_configuration_recorder" "this" {
   dynamic "recording_group" {
     for_each = [var.recording_group]
     content {
-      all_supported                 = lookup(recording_group.value, "all_supported", true)
+      all_supported                 = recording_group.value.all_supported
       include_global_resource_types = local.include_global_resource_types
 
       dynamic "exclusion_by_resource_types" {
-        for_each = lookup(recording_group.value, "exclusion_by_resource_types", null) != null ? [recording_group.value.exclusion_by_resource_types] : []
+        for_each = recording_group.value.exclusion_by_resource_types != null ? [recording_group.value.exclusion_by_resource_types] : []
         content {
           resource_types = exclusion_by_resource_types.value.resource_types
         }
       }
 
       dynamic "recording_strategy" {
-        for_each = lookup(recording_group.value, "recording_strategy", null) != null ? [recording_group.value.recording_strategy] : []
+        for_each = recording_group.value.recording_strategy != null ? [recording_group.value.recording_strategy] : []
         content {
           use_only = recording_strategy.value.use_only
         }
@@ -100,14 +101,14 @@ resource "aws_config_configuration_recorder" "this" {
   }
 
   dynamic "recording_mode" {
-    for_each = length(keys(var.recording_mode)) > 0 ? [var.recording_mode] : []
+    for_each = var.recording_mode != null ? [var.recording_mode] : []
     content {
-      recording_frequency = lookup(recording_mode.value, "recording_frequency", "CONTINUOUS")
+      recording_frequency = recording_mode.value.recording_frequency
 
       dynamic "recording_mode_override" {
-        for_each = lookup(recording_mode.value, "recording_mode_override", [])
+        for_each = recording_mode.value.recording_mode_override
         content {
-          description         = lookup(recording_mode_override.value, "description", null)
+          description         = recording_mode_override.value.description
           recording_frequency = recording_mode_override.value.recording_frequency
           resource_types      = recording_mode_override.value.resource_types
         }

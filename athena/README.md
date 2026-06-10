@@ -2,6 +2,8 @@
 
 OpenTofu module for provisioning and managing AWS Athena workgroups, named queries, data catalogs, and databases.
 
+> **Note:** `result_output_location` is required when `enforce_workgroup_configuration = true` (the default) — an enforced workgroup without a result location would leave queries with nowhere to write results.
+
 ## Features
 
 - **Workgroup Management** - Create and configure Athena workgroups with engine version selection, state control, and force destroy options
@@ -12,6 +14,8 @@ OpenTofu module for provisioning and managing AWS Athena workgroups, named queri
 - **Databases** - Manage Athena databases with optional encryption and S3 bucket configuration
 - **CloudWatch Metrics** - Publish workgroup metrics to CloudWatch for monitoring (enabled by default)
 - **Requester Pays** - Optional requester pays support for cross-account data access
+- **Prepared Statements** - Parameterised SQL statements registered in the workgroup (`prepared_statements`)
+- **Capacity Reservation** - Optional dedicated DPU processing capacity for the workgroup's queries (`capacity_reservation`)
 
 ## Usage
 
@@ -125,6 +129,42 @@ module "athena_federated" {
   tags = {
     Environment = "production"
     Team        = "platform"
+  }
+}
+```
+
+### Prepared Statements and Capacity Reservation
+
+A workgroup with parameterised prepared statements and a dedicated capacity reservation for predictable query performance.
+
+```hcl
+module "athena_reserved" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//athena?depth=1&ref=master"
+
+  enabled = true
+  name    = "reporting-workgroup"
+
+  result_output_location   = "s3://athena-results/reporting/"
+  result_encryption_option = "SSE_S3"
+
+  prepared_statements = {
+    user_events_by_day = {
+      query_statement = "SELECT * FROM analytics.events WHERE event_date = ? AND user_id = ?"
+      description     = "Fetch events for a user on a given day"
+    }
+    orders_above_total = {
+      query_statement = "SELECT order_id, total FROM sales.orders WHERE total > ?"
+    }
+  }
+
+  capacity_reservation = {
+    name        = "reporting-capacity"
+    target_dpus = 24
+  }
+
+  tags = {
+    Environment = "production"
+    Team        = "reporting"
   }
 }
 ```

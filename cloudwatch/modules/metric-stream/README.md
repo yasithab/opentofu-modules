@@ -68,9 +68,9 @@ module "metric_stream" {
 | `output_format` | Output format for the metric stream (json, opentelemetry0.7, opentelemetry1.0) | `string` | n/a | yes |
 | `name` | The name of the CloudWatch Metric Stream (conflicts with `name_prefix`) | `string` | `null` | no |
 | `name_prefix` | Creates a unique name beginning with the specified prefix (conflicts with `name`) | `string` | `null` | no |
-| `exclude_filter` | Map of exclusive metric filters keyed by namespace (conflicts with `include_filter`) | `any` | `{}` | no |
-| `include_filter` | Map of inclusive metric filters keyed by namespace (conflicts with `exclude_filter`) | `any` | `{}` | no |
-| `statistics_configuration` | List of statistics configurations for streaming additional statistics | `any` | `[]` | no |
+| `exclude_filter` | Map of exclusive metric filters keyed by namespace (conflicts with `include_filter`) | `map(object({ metric_names = optional(list(string), []) }))` | `{}` | no |
+| `include_filter` | Map of inclusive metric filters keyed by namespace (conflicts with `exclude_filter`) | `map(object({ metric_names = optional(list(string), []) }))` | `{}` | no |
+| `statistics_configuration` | List of objects with `additional_statistics` and `include_metric` | `list(object)` | `[]` | no |
 | `enabled` | Set to false to prevent the module from creating any resources | `bool` | `true` | no |
 | `tags` | Map of tags to apply to all resources | `map(string)` | `{}` | no |
 

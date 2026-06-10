@@ -39,9 +39,9 @@ variable "aqua_configuration_status" {
 }
 
 variable "automated_snapshot_retention_period" {
-  description = "The number of days that automated snapshots are retained. If the value is 0, automated snapshots are disabled. Even if automated snapshots are disabled, you can still create manual snapshots when you want with create-cluster-snapshot. Default is 1"
+  description = "The number of days that automated snapshots are retained. If the value is 0, automated snapshots are disabled. Even if automated snapshots are disabled, you can still create manual snapshots when you want with create-cluster-snapshot. Defaults to 7"
   type        = number
-  default     = null
+  default     = 7
 }
 
 variable "availability_zone" {
@@ -136,9 +136,9 @@ variable "manual_snapshot_retention_period" {
 
 
 variable "manage_master_password" {
-  description = "Whether to use AWS SecretsManager to manage the cluster admin credentials. Conflicts with `master_password`. One of `master_password` or `manage_master_password` is required unless `snapshot_identifier` is provided"
+  description = "Whether to use AWS SecretsManager to manage the cluster admin credentials. Enabled by default so no password is stored in OpenTofu state. Conflicts with `master_password`. One of `master_password` or `manage_master_password` is required unless `snapshot_identifier` is provided"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "master_password_secret_kms_key_id" {
@@ -173,9 +173,9 @@ variable "multi_az" {
 }
 
 variable "create_random_password" {
-  description = "Determines whether to create random password for cluster `master_password`"
+  description = "Determines whether to create random password for cluster `master_password`. Disabled by default - prefer `manage_master_password` so no password is stored in OpenTofu state"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "random_password_length" {
@@ -427,7 +427,7 @@ variable "iam_role_name" {
 
 variable "iam_role_use_name_prefix" {
   description = "Determines whether scheduled action the IAM role name (`iam_role_name`) is used as a prefix"
-  type        = string
+  type        = bool
   default     = true
 }
 

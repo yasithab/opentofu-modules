@@ -43,6 +43,7 @@ output "ram_resource_share_id" {
 output "vpc_attachments" {
   description = "Map of VPC attachments created"
   value       = aws_ec2_transit_gateway_vpc_attachment.this
+  sensitive   = true
 }
 
 ################################################################################
@@ -52,4 +53,5 @@ output "vpc_attachments" {
 output "peering_attachments" {
   description = "Map of TGW peering attachments created"
   value       = aws_ec2_transit_gateway_peering_attachment.this
+  sensitive   = true
 }

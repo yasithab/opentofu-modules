@@ -1,16 +1,11 @@
 output "enabler_id" {
-  description = "ID of the Inspector enabler resource"
-  value       = try(aws_inspector2_enabler.this.id, "")
-}
-
-output "enabler_arn" {
-  description = "ARN of the Inspector enabler resource (composite of account IDs and resource types)"
+  description = "ID of the Inspector enabler resource (composite of account IDs and resource types)"
   value       = try(aws_inspector2_enabler.this.id, "")
 }
 
 output "name" {
   description = "Name identifier for the Inspector deployment"
-  value       = var.name
+  value       = local.name
 }
 
 output "delegated_admin_account_id" {

@@ -5,6 +5,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -49,5 +50,22 @@ resource "aws_codeconnections_host" "this" {
 
   lifecycle {
     enabled = local.enabled && var.create_host
+
+    precondition {
+      condition     = !var.create_host || var.host_name != null
+      error_message = "host_name must be set when create_host is true."
+    }
+
+    precondition {
+      condition     = !var.create_host || var.host_provider_endpoint != null
+      error_message = "host_provider_endpoint must be set when create_host is true."
+    }
+
+    precondition {
+      condition     = !var.create_host || var.host_provider_type != null
+      error_message = "host_provider_type must be set when create_host is true."
+    }
   }
 }
+
+data "aws_region" "current" {}

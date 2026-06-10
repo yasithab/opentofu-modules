@@ -4,14 +4,16 @@
 
 locals {
   enabled = var.enabled
+  name    = var.name
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
 resource "aws_cloudwatch_metric_alarm" "this" {
-  alarm_name        = var.alarm_name
+  alarm_name        = local.name
   alarm_description = var.alarm_description
 
   comparison_operator = var.comparison_operator
@@ -41,22 +43,22 @@ resource "aws_cloudwatch_metric_alarm" "this" {
 
     content {
       id          = metric_query.value.id
-      account_id  = try(metric_query.value.account_id, null)
-      expression  = try(metric_query.value.expression, null)
-      label       = try(metric_query.value.label, null)
-      return_data = try(metric_query.value.return_data, null)
-      period      = try(metric_query.value.period, null)
+      account_id  = metric_query.value.account_id
+      expression  = metric_query.value.expression
+      label       = metric_query.value.label
+      return_data = metric_query.value.return_data
+      period      = metric_query.value.period
 
       dynamic "metric" {
-        for_each = try([metric_query.value.metric], [])
+        for_each = metric_query.value.metric != null ? [metric_query.value.metric] : []
 
         content {
-          dimensions  = try(metric.value.dimensions, null)
+          dimensions  = metric.value.dimensions
           metric_name = metric.value.metric_name
           namespace   = metric.value.namespace
           period      = metric.value.period
           stat        = metric.value.stat
-          unit        = try(metric.value.unit, null)
+          unit        = metric.value.unit
         }
       }
     }
@@ -68,3 +70,5 @@ resource "aws_cloudwatch_metric_alarm" "this" {
     enabled = local.enabled
   }
 }
+
+data "aws_region" "current" {}

@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls if EMR Serverless application and associated resources are created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -11,7 +11,7 @@ variable "name" {
 }
 
 variable "tags" {
-  description = "A map of tags to add to all resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -162,9 +162,20 @@ variable "execution_role_s3_bucket_arns" {
 }
 
 variable "execution_role_glue_access_enabled" {
-  description = "Whether to grant the execution role access to AWS Glue Data Catalog"
+  description = "Whether to grant the execution role access to AWS Glue Data Catalog. BREAKING: defaults to false (was true); enable explicitly and scope with execution_role_glue_catalog_arns"
   type        = bool
-  default     = true
+  default     = false
+}
+
+variable "execution_role_glue_catalog_arns" {
+  description = "List of Glue Data Catalog resource ARNs (catalog, database, and table ARNs) the execution role's Glue permissions are scoped to. Falls back to all Glue resources (\"*\") when empty. Only used when execution_role_glue_access_enabled is true"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for arn in var.execution_role_glue_catalog_arns : can(regex("^arn:", arn))])
+    error_message = "execution_role_glue_catalog_arns entries must be valid ARNs starting with 'arn:'."
+  }
 }
 
 variable "execution_role_additional_policy_arns" {

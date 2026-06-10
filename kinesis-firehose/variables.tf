@@ -17,15 +17,10 @@ variable "tags" {
 }
 
 variable "enabled" {
-  description = "Controls if kinesis firehose should be created (it affects almost all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
-
-# variable "name" {
-#   description = "A name to identify the stream. This is unique to the AWS account and region the Stream is created in"
-#   type        = string
-# }
 
 variable "input_source" {
   description = "This is the kinesis firehose source"
@@ -50,6 +45,11 @@ variable "create_role" {
   description = "Controls whether IAM role for Kinesis Firehose Stream should be created"
   type        = bool
   default     = true
+
+  validation {
+    condition     = !var.create_role || var.role_name != null || var.name != null
+    error_message = "When create_role is true, either role_name or name must be set so the IAM role has a valid name."
+  }
 }
 
 ######
@@ -375,9 +375,9 @@ variable "destination_cross_account" {
 }
 
 variable "enable_sse" {
-  description = "Whether to enable encryption at rest. Only makes sense when source is Direct Put"
+  description = "Whether to enable encryption at rest. Defaults to `true`. Only applies when the source is Direct PUT (ignored for Kinesis and MSK sources); set to `false` to opt out."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "sse_kms_key_type" {
@@ -1437,6 +1437,11 @@ variable "create_application_role" {
   description = "Set it to true to create role to be used by the source"
   default     = false
   type        = bool
+
+  validation {
+    condition     = !var.create_application_role || var.application_role_name != null || var.name != null
+    error_message = "When create_application_role is true, either application_role_name or name must be set so the IAM role has a valid name."
+  }
 }
 
 variable "application_role_name" {

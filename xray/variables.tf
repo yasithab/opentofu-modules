@@ -21,19 +21,24 @@ variable "tags" {
 ################################################################################
 
 variable "create_encryption_config" {
-  description = "Determines whether to create an X-Ray encryption configuration. When enabled, traces are encrypted with the specified KMS key."
+  description = "Determines whether to create an X-Ray encryption configuration. When enabled, traces are encrypted with the KMS key specified in `kms_key_id` (required). Disabled by default so the module never silently reverts an account's existing KMS encryption to the default."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "kms_key_id" {
-  description = "ID or ARN of a KMS key used for encrypting X-Ray traces. When null, X-Ray uses its default encryption (NONE type)."
+  description = "ID or ARN of a KMS key used for encrypting X-Ray traces. Required when `create_encryption_config` is `true`."
   type        = string
   default     = null
 
   validation {
     condition     = var.kms_key_id == null || can(regex("^(arn:aws[a-z-]*:kms:|[a-f0-9-]{36}$)", var.kms_key_id))
     error_message = "kms_key_id must be a valid KMS key ARN, key ID, or null."
+  }
+
+  validation {
+    condition     = !var.create_encryption_config || var.kms_key_id != null
+    error_message = "kms_key_id is required when create_encryption_config is true."
   }
 }
 

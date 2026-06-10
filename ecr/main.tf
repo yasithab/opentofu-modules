@@ -1,9 +1,13 @@
 locals {
-  create_private_repository = var.enabled && var.create_repository && var.repository_type == "private"
-  create_public_repository  = var.enabled && var.create_repository && var.repository_type == "public"
+  enabled = var.enabled
+  name    = var.name
+
+  create_private_repository = local.enabled && var.create_repository && var.repository_type == "private"
+  create_public_repository  = local.enabled && var.create_repository && var.repository_type == "public"
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -12,7 +16,7 @@ data "aws_partition" "current" {}
 
 # Policy used by both private and public repositories
 data "aws_iam_policy_document" "repository" {
-  count = var.enabled && var.create_repository && var.create_repository_policy ? 1 : 0
+  count = local.enabled && var.create_repository && var.create_repository_policy ? 1 : 0
 
   dynamic "statement" {
     for_each = var.repository_type == "public" ? [1] : []
@@ -180,7 +184,7 @@ data "aws_iam_policy_document" "repository" {
 ################################################################################
 
 resource "aws_ecr_repository" "this" {
-  name                 = var.repository_name
+  name                 = local.name
   image_tag_mutability = var.repository_image_tag_mutability
 
   dynamic "image_tag_mutability_exclusion_filter" {
@@ -227,9 +231,43 @@ resource "aws_ecr_repository_policy" "this" {
 # Lifecycle Policy
 ################################################################################
 
+locals {
+  # Default lifecycle policy applied when `create_lifecycle_policy = true` and
+  # no `repository_lifecycle_policy` is supplied: expire untagged images after
+  # 14 days and keep only the last 100 tagged images.
+  default_lifecycle_policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Expire untagged images older than 14 days"
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 14
+        }
+        action = { type = "expire" }
+      },
+      {
+        rulePriority = 2
+        description  = "Keep only the last 100 tagged images"
+        selection = {
+          tagStatus      = "tagged"
+          tagPatternList = ["*"]
+          countType      = "imageCountMoreThan"
+          countNumber    = 100
+        }
+        action = { type = "expire" }
+      },
+    ]
+  })
+
+  repository_lifecycle_policy = var.repository_lifecycle_policy != null ? var.repository_lifecycle_policy : local.default_lifecycle_policy
+}
+
 resource "aws_ecr_lifecycle_policy" "this" {
   repository = aws_ecr_repository.this.name
-  policy     = var.repository_lifecycle_policy
+  policy     = local.repository_lifecycle_policy
 
   lifecycle {
     enabled = local.create_private_repository && var.create_lifecycle_policy
@@ -241,7 +279,7 @@ resource "aws_ecr_lifecycle_policy" "this" {
 ################################################################################
 
 resource "aws_ecrpublic_repository" "this" {
-  repository_name = var.repository_name
+  repository_name = local.name
 
   dynamic "catalog_data" {
     for_each = length(var.public_repository_catalog_data) > 0 ? [var.public_repository_catalog_data] : []
@@ -284,7 +322,7 @@ resource "aws_ecr_registry_policy" "this" {
   policy = var.registry_policy
 
   lifecycle {
-    enabled = var.enabled && var.create_registry_policy
+    enabled = local.enabled && var.create_registry_policy
   }
 }
 
@@ -293,7 +331,7 @@ resource "aws_ecr_registry_policy" "this" {
 ################################################################################
 
 resource "aws_ecr_pull_through_cache_rule" "this" {
-  for_each = { for k, v in var.registry_pull_through_cache_rules : k => v if var.enabled }
+  for_each = { for k, v in var.registry_pull_through_cache_rules : k => v if local.enabled }
 
   ecr_repository_prefix      = each.value.ecr_repository_prefix
   upstream_registry_url      = each.value.upstream_registry_url
@@ -327,7 +365,7 @@ resource "aws_ecr_registry_scanning_configuration" "this" {
   }
 
   lifecycle {
-    enabled = var.enabled && var.manage_registry_scanning_configuration
+    enabled = local.enabled && var.manage_registry_scanning_configuration
   }
 }
 
@@ -364,6 +402,8 @@ resource "aws_ecr_replication_configuration" "this" {
   }
 
   lifecycle {
-    enabled = var.enabled && var.create_registry_replication_configuration
+    enabled = local.enabled && var.create_registry_replication_configuration
   }
 }
+
+data "aws_region" "current" {}

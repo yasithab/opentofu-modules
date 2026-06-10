@@ -2,6 +2,7 @@ locals {
   enabled = var.enabled
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -16,7 +17,27 @@ resource "aws_msk_configuration" "this" {
   server_properties = var.server_properties
 
   lifecycle {
-    enabled = local.enabled && var.server_properties != null
+    enabled               = local.enabled && var.server_properties != null
+    create_before_destroy = true
+  }
+}
+
+################################################################################
+# CloudWatch Log Group for Broker Logs
+################################################################################
+
+locals {
+  create_cloudwatch_log_group = local.enabled && !var.serverless_enabled && var.logging_enabled && var.cloudwatch_log_group == null
+}
+
+resource "aws_cloudwatch_log_group" "this" {
+  name              = "/aws/msk/${var.name}"
+  retention_in_days = var.cloudwatch_log_group_retention_in_days
+
+  tags = local.tags
+
+  lifecycle {
+    enabled = local.create_cloudwatch_log_group
   }
 }
 
@@ -138,13 +159,9 @@ resource "aws_msk_cluster" "this" {
 
     content {
       broker_logs {
-        dynamic "cloudwatch_logs" {
-          for_each = var.cloudwatch_log_group != null ? [1] : []
-
-          content {
-            enabled   = true
-            log_group = var.cloudwatch_log_group
-          }
+        cloudwatch_logs {
+          enabled   = true
+          log_group = var.cloudwatch_log_group != null ? var.cloudwatch_log_group : aws_cloudwatch_log_group.this.name
         }
 
         dynamic "firehose" {
@@ -223,6 +240,19 @@ resource "aws_msk_scram_secret_association" "this" {
 }
 
 ################################################################################
+# Cluster Policy
+################################################################################
+
+resource "aws_msk_cluster_policy" "this" {
+  cluster_arn = var.serverless_enabled ? aws_msk_serverless_cluster.this.arn : aws_msk_cluster.this.arn
+  policy      = var.cluster_policy
+
+  lifecycle {
+    enabled = local.enabled && var.cluster_policy != null
+  }
+}
+
+################################################################################
 # OpenTofu Check Blocks
 ################################################################################
 
@@ -232,3 +262,5 @@ check "encryption_in_transit_enabled" {
     error_message = "MSK cluster must have in-cluster encryption in transit enabled."
   }
 }
+
+data "aws_region" "current" {}

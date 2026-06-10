@@ -14,13 +14,13 @@ variable "tags" {
 # Log Group
 ################################################################################
 
-variable "log_group_name" {
+variable "name" {
   description = "The name of the CloudWatch Log Group to create."
   type        = string
 }
 
 variable "use_name_prefix" {
-  description = "Determines whether `log_group_name` is used as a prefix."
+  description = "Determines whether `name` is used as a prefix."
   type        = bool
   default     = false
 }
@@ -81,4 +81,46 @@ variable "log_streams" {
     name = optional(string)
   }))
   default = {}
+}
+
+################################################################################
+# Data Protection Policy
+################################################################################
+
+variable "data_protection_policy_document" {
+  description = "JSON data protection policy document to attach to the log group for masking/auditing sensitive data (e.g. PII). See the CloudWatch Logs data protection policy syntax. Leave null to skip."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.data_protection_policy_document == null || can(jsondecode(coalesce(var.data_protection_policy_document, "{}")))
+    error_message = "data_protection_policy_document must be a valid JSON document."
+  }
+}
+
+################################################################################
+# Log Anomaly Detector
+################################################################################
+
+variable "anomaly_detector" {
+  description = "Configuration for a CloudWatch Logs anomaly detector scanning this log group. Set to a (possibly empty) object to enable, or leave null to skip. detector_name defaults to <name>-anomaly-detector."
+  type = object({
+    detector_name           = optional(string)
+    evaluation_frequency    = optional(string, "ONE_HOUR")
+    filter_pattern          = optional(string)
+    anomaly_visibility_time = optional(number)
+    kms_key_id              = optional(string)
+    enabled                 = optional(bool, true)
+  })
+  default = null
+
+  validation {
+    condition     = var.anomaly_detector == null || contains(["ONE_MIN", "FIVE_MIN", "TEN_MIN", "FIFTEEN_MIN", "THIRTY_MIN", "ONE_HOUR"], try(var.anomaly_detector.evaluation_frequency, ""))
+    error_message = "anomaly_detector.evaluation_frequency must be one of: ONE_MIN, FIVE_MIN, TEN_MIN, FIFTEEN_MIN, THIRTY_MIN, ONE_HOUR."
+  }
+
+  validation {
+    condition     = var.anomaly_detector == null || try(var.anomaly_detector.anomaly_visibility_time, null) == null || (try(var.anomaly_detector.anomaly_visibility_time, 21) >= 7 && try(var.anomaly_detector.anomaly_visibility_time, 21) <= 90)
+    error_message = "anomaly_detector.anomaly_visibility_time must be between 7 and 90 days."
+  }
 }

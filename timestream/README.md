@@ -9,7 +9,7 @@ Provisions Amazon Timestream databases and tables with configurable retention po
 - **Retention Policies** - Configure memory store and magnetic store retention periods independently per table
 - **Magnetic Store Writes** - Enable magnetic store write properties with optional rejected data routing to S3
 - **Schema Definition** - Configure composite partition keys for optimized query performance
-- **Sensible Defaults** - 24-hour memory store retention and 73,000-day (200-year) magnetic store retention by default
+- **Sensible Defaults** - 24-hour memory store retention and 365-day magnetic store retention by default
 
 ## Usage
 

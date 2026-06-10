@@ -3,14 +3,23 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
-  logging_config_firehose_arn     = jsonencode({ logDestinationConfigs : [var.firehose_arn], redactedFields : [{ redactedFieldType : "SingleHeader", redactedFieldValue : "Cookies" }, { redactedFieldType : "Method" }] })
-  logging_config_firehose_enabled = jsonencode({ logDestinationConfigs : [var.firehose_kinesis_id], redactedFields : [{ redactedFieldType : "SingleHeader", redactedFieldValue : "Cookies" }, { redactedFieldType : "Method" }] })
+  # camelCase field objects for the WAFv2 managed_service_data logging JSON.
+  redacted_fields = [
+    for f in var.redacted_fields : merge(
+      { redactedFieldType = f.redacted_field_type },
+      f.redacted_field_value != null ? { redactedFieldValue = f.redacted_field_value } : {}
+    )
+  ]
 
-  logging_configuration = var.logging_configuration_enabled ? (var.firehose_enabled ? local.logging_config_firehose_enabled : (var.firehose_arn != null ? local.logging_config_firehose_arn : null)) : null
+  logging_configuration = var.logging_configuration_enabled ? jsonencode({
+    logDestinationConfigs = [var.firehose_arn]
+    redactedFields        = local.redacted_fields
+  }) : null
 
-  waf_v2_policies = local.enabled && length(var.waf_v2_policies) > 0 ? { for policy in flatten(var.waf_v2_policies) : policy.name => policy } : {}
+  waf_v2_policies = { for policy in var.waf_v2_policies : policy.name => policy if local.enabled }
 }
 
 ################################################################################
@@ -24,3 +33,5 @@ resource "aws_fms_admin_account" "this" {
     enabled = local.enabled && var.associate_admin_account
   }
 }
+
+data "aws_region" "current" {}

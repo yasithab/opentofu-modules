@@ -36,6 +36,7 @@ module "alias" {
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | enabled | Controls whether resources should be created | `bool` | `true` | no |
+| tags | A map of tags to assign to resources (merged with `ManagedBy = "opentofu"` and applied to event source mappings) | `map(string)` | `{}` | no |
 | name | Name for the alias | `string` | `null` | no |
 | description | Description of the alias | `string` | `null` | no |
 | function_name | The function ARN of the Lambda function | `string` | `null` | no |

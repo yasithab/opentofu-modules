@@ -4,12 +4,6 @@ variable "enabled" {
   default     = true
 }
 
-
-variable "name" {
-  description = "Name identifier used for tagging and resource naming within the organization."
-  type        = string
-}
-
 variable "tags" {
   description = "Map of tags to apply to all resources."
   type        = map(string)
@@ -94,7 +88,7 @@ variable "accounts" {
     - parent_key: Key of the OU to place this account in (null for organization root)
     - iam_user_access_to_billing: ALLOW or DENY IAM user access to billing. Defaults to ALLOW.
     - role_name: Name of the IAM role created for cross-account access. Defaults to OrganizationAccountAccessRole.
-    - close_on_deletion: If true, closes the account on removal instead of just removing from org.
+    - close_on_deletion: If true, closes the account on removal instead of just removing from org. Defaults to false (BREAKING: previously true - removing an account from configuration would CLOSE it).
     - tags: Optional map of tags for the account
 
     Example:
@@ -117,7 +111,7 @@ variable "accounts" {
     parent_key                 = optional(string, null)
     iam_user_access_to_billing = optional(string, "ALLOW")
     role_name                  = optional(string, "OrganizationAccountAccessRole")
-    close_on_deletion          = optional(bool, true)
+    close_on_deletion          = optional(bool, false)
     tags                       = optional(map(string), {})
   }))
   default = {}

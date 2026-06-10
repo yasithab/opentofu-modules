@@ -1,11 +1,11 @@
 variable "enabled" {
-  description = "Determines whether resources will be created (affects all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
 
 variable "tags" {
-  description = "A map of tags to add to all resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -14,7 +14,7 @@ variable "tags" {
 # Cluster
 ################################################################################################################
 
-variable "cluster_name" {
+variable "name" {
   description = "Name of the cluster (up to 255 letters, numbers, hyphens, and underscores)"
   type        = string
   default     = null

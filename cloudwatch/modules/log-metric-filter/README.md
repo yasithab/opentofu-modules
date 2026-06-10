@@ -10,6 +10,8 @@ OpenTofu module to create an AWS CloudWatch Log Metric Filter. Extracts metric d
 - **Default Value** - Optionally emit a default value when no log events match the filter pattern
 - **Lifecycle Management** - Toggle resource creation with the `enabled` variable
 
+> **Note — no `tags` variable:** `aws_cloudwatch_log_metric_filter` does not support resource tagging, so this module intentionally omits the repo-standard `tags` variable. This is a deliberate exemption from the module conventions for untaggable resources.
+
 ## Usage
 
 ```hcl

@@ -6,7 +6,7 @@ variable "tags" {
 }
 
 variable "enabled" {
-  description = "Determines whether resources will be created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -108,9 +108,9 @@ variable "repl_instance_auto_minor_version_upgrade" {
 }
 
 variable "repl_instance_allow_major_version_upgrade" {
-  description = "Indicates that major version upgrades are allowed"
+  description = "Indicates that major version upgrades are allowed. Disabled by default so the replication instance is not upgraded across major engine versions unexpectedly"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "repl_instance_apply_immediately" {
@@ -234,9 +234,10 @@ variable "repl_config_timeouts" {
 ################################################################################
 
 variable "endpoints" {
-  description = "Map of objects that define the endpoints to be created"
+  description = "Map of objects that define the endpoints to be created. May contain plaintext credentials (`username`/`password`, Kafka SASL, Redis auth) - prefer `secrets_manager_arn` so credentials live in Secrets Manager instead of OpenTofu state"
   type        = any
   default     = {}
+  sensitive   = true
 }
 
 variable "endpoint_timeouts" {

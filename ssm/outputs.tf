@@ -1,41 +1,37 @@
-# Splitting and joining, and then compacting a list to get a normalised list
 locals {
-  name_list = compact(concat(keys(local.parameter_write), keys(local.parameter_write_ignore_values), local.parameter_read))
+  written_parameters = merge(aws_ssm_parameter.default, aws_ssm_parameter.ignore_value_changes)
 
-  value_list = compact(
-    concat(
-      [for p in aws_ssm_parameter.default : coalesce(p.value, p.insecure_value, "")],
-      [for p in aws_ssm_parameter.ignore_value_changes : coalesce(p.value, p.insecure_value, "")],
-      data.aws_ssm_parameter.read[*].value
-    )
+  # Single maps keyed by parameter name keep names, values, and ARNs aligned
+  # (no compact(), which previously could shift lists out of alignment).
+  parameter_value_map = merge(
+    { for name, p in local.written_parameters : name => coalesce(p.value, p.insecure_value, "") },
+    { for name, p in data.aws_ssm_parameter.read : name => p.value },
   )
 
-  arn_list = compact(
-    concat(
-      [for p in aws_ssm_parameter.default : p.arn], [for p in aws_ssm_parameter.ignore_value_changes : p.arn], data.aws_ssm_parameter.read[*].arn
-    )
+  parameter_arn_map = merge(
+    { for name, p in local.written_parameters : name => p.arn },
+    { for name, p in data.aws_ssm_parameter.read : name => p.arn },
   )
 }
 
 output "names" {
-  # Names are not sensitive
-  value       = local.name_list
   description = "A list of all of the parameter names"
+  value       = keys(local.parameter_value_map)
 }
 
 output "values" {
-  description = "A list of all of the parameter values"
-  value       = local.value_list
+  description = "A list of all of the parameter values, aligned with the `names` output"
+  value       = values(local.parameter_value_map)
   sensitive   = true
 }
 
 output "map" {
   description = "A map of the names and values created"
-  value       = zipmap(local.name_list, local.value_list)
+  value       = local.parameter_value_map
   sensitive   = true
 }
 
 output "arn_map" {
   description = "A map of the names and ARNs created"
-  value       = zipmap(local.name_list, local.arn_list)
+  value       = local.parameter_arn_map
 }

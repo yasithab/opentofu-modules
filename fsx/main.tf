@@ -3,6 +3,7 @@ locals {
   name    = var.name
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   is_lustre  = local.enabled && var.file_system_type == "LUSTRE"
@@ -36,32 +37,50 @@ resource "aws_security_group" "this" {
   }
 }
 
+# Flatten rules x CIDRs so every CIDR in cidr_blocks / ipv6_cidr_blocks gets its own rule
+locals {
+  security_group_ingress_rules = merge([
+    for k, v in var.security_group_ingress_rules : merge(
+      { for cidr in v.cidr_blocks : "${k}-ipv4-${cidr}" => merge(v, { cidr_ipv4 = cidr, cidr_ipv6 = null, source_security_group_id = null, self = false }) },
+      { for cidr in v.ipv6_cidr_blocks : "${k}-ipv6-${cidr}" => merge(v, { cidr_ipv4 = null, cidr_ipv6 = cidr, source_security_group_id = null, self = false }) },
+      v.source_security_group_id != null || v.self ? { "${k}-sg" = merge(v, { cidr_ipv4 = null, cidr_ipv6 = null }) } : {}
+    )
+  ]...)
+
+  security_group_egress_rules = merge([
+    for k, v in var.security_group_egress_rules : merge(
+      { for cidr in v.cidr_blocks : "${k}-ipv4-${cidr}" => merge(v, { cidr_ipv4 = cidr, cidr_ipv6 = null }) },
+      { for cidr in v.ipv6_cidr_blocks : "${k}-ipv6-${cidr}" => merge(v, { cidr_ipv4 = null, cidr_ipv6 = cidr }) }
+    )
+  ]...)
+}
+
 resource "aws_vpc_security_group_ingress_rule" "this" {
-  for_each = { for k, v in var.security_group_ingress_rules : k => v if local.create_security_group }
+  for_each = { for k, v in local.security_group_ingress_rules : k => v if local.create_security_group }
 
   security_group_id            = aws_security_group.this.id
-  description                  = try(each.value.description, null)
+  description                  = each.value.description
   from_port                    = each.value.from_port
   to_port                      = each.value.to_port
   ip_protocol                  = each.value.protocol
-  cidr_ipv4                    = try(each.value.cidr_blocks[0], null)
-  cidr_ipv6                    = try(each.value.ipv6_cidr_blocks[0], null)
-  referenced_security_group_id = try(each.value.source_security_group_id, each.value.self ? aws_security_group.this.id : null, null)
+  cidr_ipv4                    = each.value.cidr_ipv4
+  cidr_ipv6                    = each.value.cidr_ipv6
+  referenced_security_group_id = each.value.self ? aws_security_group.this.id : each.value.source_security_group_id
 
   tags = local.tags
 }
 
 # trivy:ignore:AVD-AWS-0104 - Egress rules are caller-controlled via var.security_group_egress_rules
 resource "aws_vpc_security_group_egress_rule" "this" {
-  for_each = { for k, v in var.security_group_egress_rules : k => v if local.create_security_group }
+  for_each = { for k, v in local.security_group_egress_rules : k => v if local.create_security_group }
 
   security_group_id = aws_security_group.this.id
-  description       = try(each.value.description, null)
+  description       = each.value.description
   from_port         = each.value.from_port
   to_port           = each.value.to_port
   ip_protocol       = each.value.protocol
-  cidr_ipv4         = try(each.value.cidr_blocks[0], null)
-  cidr_ipv6         = try(each.value.ipv6_cidr_blocks[0], null)
+  cidr_ipv4         = each.value.cidr_ipv4
+  cidr_ipv6         = each.value.cidr_ipv6
 
   tags = local.tags
 }
@@ -157,7 +176,7 @@ resource "aws_fsx_ontap_file_system" "this" {
   kms_key_id                        = var.kms_key_id
   deployment_type                   = var.ontap_deployment_type
   throughput_capacity               = var.throughput_capacity
-  preferred_subnet_id               = var.ontap_preferred_subnet_id
+  preferred_subnet_id               = coalesce(var.ontap_preferred_subnet_id, var.subnet_ids[0])
   endpoint_ip_address_range         = var.ontap_endpoint_ip_address_range
   route_table_ids                   = var.ontap_route_table_ids
   ha_pairs                          = var.ontap_ha_pairs
@@ -184,17 +203,21 @@ resource "aws_fsx_ontap_file_system" "this" {
 }
 
 ################################################################################
-# ONTAP Storage Virtual Machine
+# ONTAP Storage Virtual Machines
 ################################################################################
 
 resource "aws_fsx_ontap_storage_virtual_machine" "this" {
+  # var.ontap_svms is sensitive (may carry passwords); iterate over its keys
+  # only so for_each itself never receives a sensitive value.
+  for_each = { for k in nonsensitive(keys(var.ontap_svms)) : k => k if local.is_ontap }
+
   file_system_id             = aws_fsx_ontap_file_system.this.id
-  name                       = try(var.ontap_svm.name, local.name)
-  root_volume_security_style = try(var.ontap_svm.root_volume_security_style, "UNIX")
-  svm_admin_password         = try(var.ontap_svm.svm_admin_password, null)
+  name                       = coalesce(var.ontap_svms[each.key].name, each.key)
+  root_volume_security_style = var.ontap_svms[each.key].root_volume_security_style
+  svm_admin_password         = var.ontap_svms[each.key].svm_admin_password
 
   dynamic "active_directory_configuration" {
-    for_each = try(var.ontap_svm.active_directory, null) != null ? [var.ontap_svm.active_directory] : []
+    for_each = try(var.ontap_svms[each.key].active_directory, null) != null ? [var.ontap_svms[each.key].active_directory] : []
 
     content {
       netbios_name = try(active_directory_configuration.value.netbios_name, null)
@@ -211,10 +234,6 @@ resource "aws_fsx_ontap_storage_virtual_machine" "this" {
   }
 
   tags = local.tags
-
-  lifecycle {
-    enabled = local.is_ontap && nonsensitive(var.ontap_svm != null)
-  }
 }
 
 ################################################################################
@@ -222,13 +241,13 @@ resource "aws_fsx_ontap_storage_virtual_machine" "this" {
 ################################################################################
 
 resource "aws_fsx_ontap_volume" "this" {
-  for_each = { for k, v in var.ontap_volumes : k => v if local.is_ontap && nonsensitive(var.ontap_svm != null) }
+  for_each = { for k, v in var.ontap_volumes : k => v if local.is_ontap }
 
   name                       = each.value.name
   junction_path              = try(each.value.junction_path, "/${each.value.name}")
   size_in_megabytes          = each.value.size_in_megabytes
   storage_efficiency_enabled = try(each.value.storage_efficiency_enabled, true)
-  storage_virtual_machine_id = aws_fsx_ontap_storage_virtual_machine.this.id
+  storage_virtual_machine_id = aws_fsx_ontap_storage_virtual_machine.this[each.value.svm_key].id
   ontap_volume_type          = try(each.value.ontap_volume_type, "RW")
   security_style             = try(each.value.security_style, "UNIX")
   copy_tags_to_backups       = try(each.value.copy_tags_to_backups, true)
@@ -370,6 +389,19 @@ resource "aws_fsx_openzfs_volume" "this" {
 }
 
 ################################################################################
+# OpenZFS Snapshots
+################################################################################
+
+resource "aws_fsx_openzfs_snapshot" "this" {
+  for_each = { for k, v in var.openzfs_snapshots : k => v if local.is_openzfs }
+
+  name      = coalesce(each.value.name, "${local.name}-${each.key}")
+  volume_id = each.value.volume_key != null ? aws_fsx_openzfs_volume.this[each.value.volume_key].id : aws_fsx_openzfs_file_system.this.root_volume_id
+
+  tags = local.tags
+}
+
+################################################################################
 # FSx for Windows File Server
 ################################################################################
 
@@ -381,7 +413,7 @@ resource "aws_fsx_windows_file_system" "this" {
   kms_key_id                        = var.kms_key_id
   deployment_type                   = var.windows_deployment_type
   throughput_capacity               = var.throughput_capacity
-  preferred_subnet_id               = var.windows_preferred_subnet_id
+  preferred_subnet_id               = try(coalesce(var.windows_preferred_subnet_id, var.subnet_ids[0]), null)
   active_directory_id               = var.windows_active_directory_id
   aliases                           = var.windows_aliases
   copy_tags_to_backups              = var.windows_copy_tags_to_backups
@@ -429,3 +461,5 @@ resource "aws_fsx_windows_file_system" "this" {
     enabled = local.is_windows
   }
 }
+
+data "aws_region" "current" {}

@@ -1,12 +1,12 @@
 resource "aws_appautoscaling_target" "table_read" {
   max_capacity       = var.autoscaling_read["max_capacity"]
-  min_capacity       = var.read_capacity
+  min_capacity       = try(coalesce(var.read_capacity, lookup(var.autoscaling_read, "min_capacity", null)), null)
   resource_id        = "table/${try(aws_dynamodb_table.autoscaled.name, aws_dynamodb_table.autoscaled_gsi_ignore.name)}"
   scalable_dimension = "dynamodb:table:ReadCapacityUnits"
   service_namespace  = "dynamodb"
 
   lifecycle {
-    enabled = var.enabled && var.autoscaling_enabled && length(var.autoscaling_read) > 0
+    enabled = local.enabled && var.autoscaling_enabled && length(var.autoscaling_read) > 0
   }
 }
 
@@ -28,19 +28,19 @@ resource "aws_appautoscaling_policy" "table_read_policy" {
   }
 
   lifecycle {
-    enabled = var.enabled && var.autoscaling_enabled && length(var.autoscaling_read) > 0
+    enabled = local.enabled && var.autoscaling_enabled && length(var.autoscaling_read) > 0
   }
 }
 
 resource "aws_appautoscaling_target" "table_write" {
   max_capacity       = var.autoscaling_write["max_capacity"]
-  min_capacity       = var.write_capacity
+  min_capacity       = try(coalesce(var.write_capacity, lookup(var.autoscaling_write, "min_capacity", null)), null)
   resource_id        = "table/${try(aws_dynamodb_table.autoscaled.name, aws_dynamodb_table.autoscaled_gsi_ignore.name)}"
   scalable_dimension = "dynamodb:table:WriteCapacityUnits"
   service_namespace  = "dynamodb"
 
   lifecycle {
-    enabled = var.enabled && var.autoscaling_enabled && length(var.autoscaling_write) > 0
+    enabled = local.enabled && var.autoscaling_enabled && length(var.autoscaling_write) > 0
   }
 }
 
@@ -62,12 +62,12 @@ resource "aws_appautoscaling_policy" "table_write_policy" {
   }
 
   lifecycle {
-    enabled = var.enabled && var.autoscaling_enabled && length(var.autoscaling_write) > 0
+    enabled = local.enabled && var.autoscaling_enabled && length(var.autoscaling_write) > 0
   }
 }
 
 resource "aws_appautoscaling_target" "index_read" {
-  for_each = var.enabled && var.autoscaling_enabled ? var.autoscaling_indexes : {}
+  for_each = { for k, v in var.autoscaling_indexes : k => v if local.enabled && var.autoscaling_enabled }
 
   max_capacity       = each.value["read_max_capacity"]
   min_capacity       = each.value["read_min_capacity"]
@@ -77,7 +77,7 @@ resource "aws_appautoscaling_target" "index_read" {
 }
 
 resource "aws_appautoscaling_policy" "index_read_policy" {
-  for_each = var.enabled && var.autoscaling_enabled ? var.autoscaling_indexes : {}
+  for_each = { for k, v in var.autoscaling_indexes : k => v if local.enabled && var.autoscaling_enabled }
 
   name               = "DynamoDBReadCapacityUtilization:${aws_appautoscaling_target.index_read[each.key].resource_id}"
   policy_type        = "TargetTrackingScaling"
@@ -97,7 +97,7 @@ resource "aws_appautoscaling_policy" "index_read_policy" {
 }
 
 resource "aws_appautoscaling_target" "index_write" {
-  for_each = var.enabled && var.autoscaling_enabled ? var.autoscaling_indexes : {}
+  for_each = { for k, v in var.autoscaling_indexes : k => v if local.enabled && var.autoscaling_enabled }
 
   max_capacity       = each.value["write_max_capacity"]
   min_capacity       = each.value["write_min_capacity"]
@@ -107,7 +107,7 @@ resource "aws_appautoscaling_target" "index_write" {
 }
 
 resource "aws_appautoscaling_policy" "index_write_policy" {
-  for_each = var.enabled && var.autoscaling_enabled ? var.autoscaling_indexes : {}
+  for_each = { for k, v in var.autoscaling_indexes : k => v if local.enabled && var.autoscaling_enabled }
 
   name               = "DynamoDBWriteCapacityUtilization:${aws_appautoscaling_target.index_write[each.key].resource_id}"
   policy_type        = "TargetTrackingScaling"

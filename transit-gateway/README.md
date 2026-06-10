@@ -191,3 +191,10 @@ module "transit_gateway" {
   }
 }
 ```
+
+## Notes
+
+- `name` is required (validated as non-null).
+- `auto_accept_shared_attachments` now defaults to `false` (security hardening); set it to `true` explicitly if you rely on automatic acceptance.
+- `flow_logs.max_aggregation_interval` defaults to `60` and must be `60` or `600` (AWS-supported values).
+- `vpc_attachments` and `peering_attachments` outputs are marked sensitive.

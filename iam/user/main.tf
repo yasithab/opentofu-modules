@@ -1,6 +1,7 @@
 locals {
   enabled = var.enabled
-  tags    = merge(var.tags, { ManagedBy = "opentofu" })
+  tags = merge(var.tags, { ManagedBy = "opentofu"
+  Region = data.aws_region.current.region })
 }
 
 # -----------------------------------------------------------------------------
@@ -89,7 +90,7 @@ resource "aws_iam_user_group_membership" "this" {
 resource "aws_iam_user_ssh_key" "this" {
   username   = aws_iam_user.this.name
   encoding   = var.ssh_key_encoding
-  public_key = try(var.ssh_public_key, "")
+  public_key = var.ssh_public_key != null ? var.ssh_public_key : ""
   status     = var.ssh_key_status
 
   lifecycle {
@@ -110,3 +111,5 @@ resource "aws_iam_virtual_mfa_device" "this" {
     enabled = local.enabled && var.create_virtual_mfa_device
   }
 }
+
+data "aws_region" "current" {}

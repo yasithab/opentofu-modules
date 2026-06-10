@@ -24,8 +24,36 @@ variable "vpc_id" {
 
 variable "endpoints" {
   description = "A map of interface and/or gateway endpoints containing their properties and configurations"
-  type        = any
-  default     = {}
+  type = map(object({
+    create                     = optional(bool, true)
+    service                    = optional(string)
+    service_name               = optional(string)
+    service_endpoint           = optional(string)
+    service_region             = optional(string)
+    service_type               = optional(string, "Interface")
+    auto_accept                = optional(bool)
+    resource_configuration_arn = optional(string)
+    service_network_arn        = optional(string)
+    security_group_ids         = optional(list(string), [])
+    subnet_ids                 = optional(list(string), [])
+    route_table_ids            = optional(list(string))
+    policy                     = optional(string)
+    private_dns_enabled        = optional(bool)
+    ip_address_type            = optional(string)
+    dns_options = optional(object({
+      dns_record_ip_type                             = optional(string)
+      private_dns_only_for_inbound_resolver_endpoint = optional(bool)
+      private_dns_preference                         = optional(string)
+      private_dns_specified_domains                  = optional(list(string))
+    }))
+    subnet_configuration = optional(list(object({
+      ipv4      = optional(string)
+      ipv6      = optional(string)
+      subnet_id = string
+    })), [])
+    tags = optional(map(string), {})
+  }))
+  default = {}
 }
 
 variable "security_group_ids" {

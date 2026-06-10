@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls if resources should be created."
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -27,9 +27,20 @@ variable "create_ecs_service_discovery_role" {
   description = "Whether to create IAM role for ECS service discovery"
   type        = bool
   default     = false
+
+  validation {
+    condition     = !var.create_ecs_service_discovery_role || var.name != null || var.ecs_service_discovery_role_name != null
+    error_message = "name (or ecs_service_discovery_role_name) is required when create_ecs_service_discovery_role is true."
+  }
 }
 
-variable "namespace_name" {
+variable "ecs_service_discovery_role_name" {
+  description = "Override name for the ECS service discovery IAM role. Defaults to '<name>-service-discovery-role'"
+  type        = string
+  default     = null
+}
+
+variable "name" {
   description = "Name of the CloudMap namespace"
   type        = string
   default     = null
@@ -45,6 +56,17 @@ variable "existing_namespace_id" {
   description = "ID of an existing namespace to use"
   type        = string
   default     = null
+}
+
+variable "namespace_type" {
+  description = "Type of the namespace the services attach to: 'dns_private', 'dns_public', or 'http'. Set this when using existing_namespace_id so DNS config and health checks are emitted correctly; otherwise it is inferred from the create_* flags"
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.namespace_type == null || contains(["dns_private", "dns_public", "http"], var.namespace_type)
+    error_message = "The namespace_type must be 'dns_private', 'dns_public', or 'http'."
+  }
 }
 
 variable "vpc_id" {
@@ -115,7 +137,7 @@ variable "enable_dns_config" {
 }
 
 variable "tags" {
-  description = "A map of tags to assign to the resources"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -160,7 +182,7 @@ variable "lambda_attributes" {
 }
 
 variable "lambda_ip_address" {
-  description = "IP address to use for Lambda A record in CloudMap. If not provided, uses a placeholder IP."
+  description = "IP address to use for the Lambda A record in CloudMap. If not provided, no AWS_INSTANCE_IPV4 attribute is registered (no placeholder IP is used)."
   type        = string
   default     = null
   validation {

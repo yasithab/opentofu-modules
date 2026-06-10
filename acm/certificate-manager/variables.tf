@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Whether to create ACM certificate"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -17,9 +17,9 @@ variable "validate_certificate" {
 }
 
 variable "validation_allow_overwrite_records" {
-  description = "Whether to allow overwrite of Route53 records"
+  description = "Whether to allow overwrite of Route53 records. BREAKING: previously defaulted to true; now defaults to false so existing DNS records are never silently overwritten - set to true explicitly if you rely on overwriting"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "wait_for_validation" {
@@ -82,9 +82,12 @@ variable "early_renewal_duration" {
 }
 
 variable "validation_option" {
-  description = "The domain name that you want ACM to use to send you validation emails. This domain name is the suffix of the email addresses that you want ACM to use."
-  type        = any
-  default     = {}
+  description = "The domain name that you want ACM to use to send you validation emails. This domain name is the suffix of the email addresses that you want ACM to use. The map key is used as the domain_name when not set explicitly."
+  type = map(object({
+    domain_name       = optional(string)
+    validation_domain = string
+  }))
+  default = {}
 }
 
 variable "create_route53_records" {
@@ -112,7 +115,7 @@ variable "zones" {
 }
 
 variable "tags" {
-  description = "A mapping of tags to assign to the resource"
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }

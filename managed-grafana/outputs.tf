@@ -42,15 +42,28 @@ output "iam_role_name" {
 }
 
 ################################################################################
-# API Keys
+# Service Accounts
 ################################################################################
 
-output "api_keys" {
-  description = "Map of API key names to their attributes."
+output "service_accounts" {
+  description = "Map of service account names to their attributes."
   value = {
-    for k, v in aws_grafana_workspace_api_key.this : k => {
-      id  = v.id
-      key = v.key
+    for k, v in aws_grafana_workspace_service_account.this : k => {
+      id                 = v.id
+      service_account_id = v.service_account_id
+      grafana_role       = v.grafana_role
+    }
+  }
+}
+
+output "service_account_tokens" {
+  description = "Map of service account token keys (service_account/token) to their attributes, including the secret token key."
+  value = {
+    for k, v in aws_grafana_workspace_service_account_token.this : k => {
+      id         = v.id
+      key        = v.key
+      created_at = v.created_at
+      expires_at = v.expires_at
     }
   }
   sensitive = true

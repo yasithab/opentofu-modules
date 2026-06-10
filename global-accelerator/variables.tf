@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Whether to create the Global Accelerator resources."
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -60,7 +60,12 @@ variable "accelerator_enabled" {
 variable "flow_logs_enabled" {
   description = "Whether flow logs are enabled for the accelerator."
   type        = bool
-  default     = true
+  default     = false
+
+  validation {
+    condition     = !var.flow_logs_enabled || var.flow_logs_s3_bucket != null
+    error_message = "flow_logs_s3_bucket must be set when flow_logs_enabled is true."
+  }
 }
 
 variable "flow_logs_s3_bucket" {
@@ -81,8 +86,15 @@ variable "flow_logs_s3_prefix" {
 
 variable "listeners" {
   description = "Map of listener configurations. Each listener defines port ranges and protocol."
-  type        = any
-  default     = {}
+  type = map(object({
+    client_affinity = optional(string, "NONE")
+    protocol        = optional(string, "TCP")
+    port_ranges = optional(list(object({
+      from_port = number
+      to_port   = optional(number)
+    })), [{ from_port = 80, to_port = 80 }])
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -91,8 +103,27 @@ variable "listeners" {
 
 variable "endpoint_groups" {
   description = "Map of endpoint group configurations including health checks and endpoint configurations."
-  type        = any
-  default     = {}
+  type = map(object({
+    listener_key                  = optional(string)
+    listener_arn                  = optional(string)
+    endpoint_group_region         = optional(string)
+    health_check_interval_seconds = optional(number, 30)
+    health_check_path             = optional(string, "/")
+    health_check_port             = optional(number, 80)
+    health_check_protocol         = optional(string, "HTTP")
+    threshold_count               = optional(number, 3)
+    traffic_dial_percentage       = optional(number, 100)
+    endpoint_configurations = optional(list(object({
+      client_ip_preservation_enabled = optional(bool, true)
+      endpoint_id                    = string
+      weight                         = optional(number, 128)
+    })), [])
+    port_overrides = optional(list(object({
+      endpoint_port = number
+      listener_port = number
+    })), [])
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -107,14 +138,31 @@ variable "create_custom_routing_accelerator" {
 
 variable "custom_routing_listeners" {
   description = "Map of custom routing listener configurations."
-  type        = any
-  default     = {}
+  type = map(object({
+    port_ranges = optional(list(object({
+      from_port = number
+      to_port   = optional(number)
+    })), [{ from_port = 80, to_port = 80 }])
+  }))
+  default = {}
 }
 
 variable "custom_routing_endpoint_groups" {
   description = "Map of custom routing endpoint group configurations with destination configurations."
-  type        = any
-  default     = {}
+  type = map(object({
+    listener_key          = optional(string)
+    listener_arn          = optional(string)
+    endpoint_group_region = optional(string)
+    destination_configurations = optional(list(object({
+      from_port = number
+      to_port   = number
+      protocols = list(string)
+    })), [])
+    endpoint_configurations = optional(list(object({
+      endpoint_id = string
+    })), [])
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -123,6 +171,13 @@ variable "custom_routing_endpoint_groups" {
 
 variable "cross_account_attachments" {
   description = "Map of cross-account attachment configurations for sharing endpoints across AWS accounts."
-  type        = any
-  default     = {}
+  type = map(object({
+    name       = string
+    principals = optional(list(string), [])
+    resources = optional(list(object({
+      endpoint_id = string
+      region      = optional(string)
+    })), [])
+  }))
+  default = {}
 }

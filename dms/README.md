@@ -15,6 +15,16 @@ Provisions the full AWS DMS stack including IAM roles, replication subnet groups
 - **Access IAM Role** - Creates a customizable IAM role for DMS to access KMS keys, Secrets Manager secrets, S3 buckets, Elasticsearch, Kinesis, and DynamoDB targets
 - **Existing Infrastructure** - Supports attaching to existing replication instances and subnet groups by skipping creation of those resources
 
+## Security notes
+
+- **Prefer `secrets_manager_arn` over plaintext `username`/`password` in endpoints.** The `endpoints` variable is marked `sensitive`, but any plaintext credentials supplied there are still stored in OpenTofu state. With `secrets_manager_arn` (plus `secrets_manager_access_role_arn` or the module-created access role) the credentials never enter state and can be rotated in Secrets Manager.
+- The access IAM policy only grants `kms:Decrypt`/`kms:DescribeKey` on the keys listed in `access_kms_key_arns`; when the list is empty the KMS statement is omitted entirely. Provide the specific key ARNs your endpoints need.
+
+## Notes
+
+- `repl_instance_allow_major_version_upgrade` defaults to `false`, so the replication instance will not be upgraded across major engine versions unexpectedly. Set it to `true` explicitly when you intend to perform a major version upgrade.
+- Replication tasks require either `create_repl_instance = true` or an explicit `replication_instance_arn` per task (enforced via a precondition).
+
 ## Usage
 
 ```hcl

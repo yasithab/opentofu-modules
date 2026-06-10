@@ -10,41 +10,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ── 1. Format ─────────────────────────────────────────────────────────────
+  # ── 1. Format (check-only) ────────────────────────────────────────────────
+  # Deliberately check-only: running the PR head's Taskfile with a
+  # push-capable token and auto-committing allowed untrusted PR code to
+  # execute with write access. Formatting drift now simply fails the PR;
+  # contributors run `task format` locally instead.
   format:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: write
+      contents: read
 
     steps:
     - name: Check out repository code
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
-        ref: ${{ github.head_ref }}
-        token: ${{ secrets.GH_TOKEN || github.token }}
         fetch-depth: 1
 
     - name: Setup OpenTofu
-      uses: opentofu/setup-opentofu@v2
+      uses: opentofu/setup-opentofu@847eaa4afeb791b06daa46e8eafa8b1b68d7cfb4 # v2.0.1
       with:
         tofu_version: "1.11.5"
 
-    - name: Setup Task
-      uses: arduino/setup-task@v2
-
-    - name: Format Code
-      run: task format
-
-    - name: Commit changes
-      run: |
-        git config --global user.name 'GitHub Action'
-        git config --global user.email 'action@github.com'
-        git add .
-        if [ -n "$(git status --porcelain)" ]; then
-          git commit -m "chore: apply tofu fmt"
-          git push
-        fi
+    - name: Check formatting
+      run: tofu fmt -check -recursive -diff .
 
   # ── 2. Validate all modules ───────────────────────────────────────────────
   validate:
@@ -55,24 +44,23 @@ jobs:
       contents: read
     env:
       TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
-      TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE: "true"
 
     steps:
     - name: Check out repository code
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
         fetch-depth: 1
 
     - name: Setup OpenTofu
-      uses: opentofu/setup-opentofu@v2
+      uses: opentofu/setup-opentofu@847eaa4afeb791b06daa46e8eafa8b1b68d7cfb4 # v2.0.1
       with:
         tofu_version: "1.11.5"
 
     - name: Setup Task
-      uses: arduino/setup-task@v2
+      uses: arduino/setup-task@b91d5d2c96a56797b48ac1e0e89220bf64044611 # v2.0.0
 
     - name: Cache OpenTofu provider plugins
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ${{ env.TF_PLUGIN_CACHE_DIR }}
         key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/providers.tf', '**/versions.tf') }}
@@ -124,20 +112,20 @@ jobs:
 
     steps:
     - name: Check out repository code
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
         fetch-depth: 1
 
     - name: Setup Task
-      uses: arduino/setup-task@v2
+      uses: arduino/setup-task@b91d5d2c96a56797b48ac1e0e89220bf64044611 # v2.0.0
 
     - name: Setup tflint
-      uses: terraform-linters/setup-tflint@v6
+      uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
       with:
         tflint_version: v0.55.1
 
     - name: Cache tflint plugins
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ~/.tflint.d/plugins
         key: tflint-plugins-${{ runner.os }}-${{ hashFiles('.tflint.hcl') }}
@@ -182,16 +170,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [format]
+    # This job assumes a (read-only) AWS role via OIDC while running code
+    # from the PR head. The environment lets repository protection rules
+    # require reviewer approval before untrusted PR code can reach AWS.
+    environment: aws-plan
     permissions:
       contents: read
       id-token: write   # Required for OIDC
     env:
       TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
-      TF_PLUGIN_CACHE_MAY_BREAK_DEPENDENCY_LOCK_FILE: "true"
 
     steps:
     - name: Check out repository code
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
         fetch-depth: 0
 
@@ -204,13 +195,16 @@ jobs:
           xargs -I{} dirname {} | \
           sort -u | \
           while read dir; do
+            # Walk up from the changed dir collecting EVERY ancestor that
+            # contains a main.tf - a parent module embedding a changed
+            # submodule must be re-tested too, not just the nearest module.
             d="$dir"
-            while [ "$d" != "." ] && [ ! -f "$d/main.tf" ]; do
+            while [ "$d" != "." ]; do
+              if [ -f "$d/main.tf" ] && [[ "$d" != *"wrappers"* ]]; then
+                echo "$d"
+              fi
               d=$(dirname "$d")
             done
-            if [ -f "$d/main.tf" ] && [[ "$d" != *"wrappers"* ]]; then
-              echo "$d"
-            fi
           done | sort -u | paste -sd ',' -)
         echo "modules=$CHANGED" >> "$GITHUB_OUTPUT"
         COUNT=$(echo "$CHANGED" | tr ',' '\n' | grep -c '[^[:space:]]' || echo "0")
@@ -219,20 +213,20 @@ jobs:
 
     - name: Setup OpenTofu
       if: steps.changes.outputs.count != '0'
-      uses: opentofu/setup-opentofu@v2
+      uses: opentofu/setup-opentofu@847eaa4afeb791b06daa46e8eafa8b1b68d7cfb4 # v2.0.1
       with:
         tofu_version: "1.11.5"
 
     - name: Setup Go
       if: steps.changes.outputs.count != '0'
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
       with:
         go-version-file: test/go.mod
         cache-dependency-path: test/go.sum
 
     - name: Configure AWS credentials via OIDC
       if: steps.changes.outputs.count != '0'
-      uses: aws-actions/configure-aws-credentials@v6
+      uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
       with:
         role-to-assume: ${{ secrets.AWS_MGMT_RO_ROLE_ARN }}
         aws-region: us-east-1
@@ -240,7 +234,7 @@ jobs:
 
     - name: Cache OpenTofu provider plugins
       if: steps.changes.outputs.count != '0'
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ${{ env.TF_PLUGIN_CACHE_DIR }}
         key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/providers.tf', '**/versions.tf') }}
@@ -300,13 +294,13 @@ jobs:
 
     steps:
     - name: Check out repository code
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
         fetch-depth: 1
 
     - name: Run Trivy security scan
       id: trivy
-      uses: aquasecurity/trivy-action@0.35.0
+      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
       continue-on-error: true
       with:
         scan-type: config

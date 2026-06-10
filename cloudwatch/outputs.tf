@@ -30,3 +30,21 @@ output "log_streams" {
   description = "Map of log streams created and their attributes."
   value       = aws_cloudwatch_log_stream.this
 }
+
+################################################################################
+# Data Protection Policy
+################################################################################
+
+output "data_protection_policy_id" {
+  description = "The name of the log group the data protection policy is attached to (if created)."
+  value       = try(aws_cloudwatch_log_data_protection_policy.this.id, null)
+}
+
+################################################################################
+# Log Anomaly Detector
+################################################################################
+
+output "anomaly_detector_arn" {
+  description = "The ARN of the log anomaly detector (if created)."
+  value       = try(aws_cloudwatch_log_anomaly_detector.this.arn, null)
+}

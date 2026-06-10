@@ -2,6 +2,10 @@
 
 OpenTofu module for managing S3 objects including uploads, copies, encryption, object lock, and bucket notification configuration.
 
+> **Note:** `content` and `content_base64` are marked `sensitive = true`. Plan output will no longer show diffs of inline object content — use `source_file` with `source_hash` if you need visible change detection.
+
+> **Warning — bucket notification exclusivity:** `aws_s3_bucket_notification` manages the *entire* notification configuration for a bucket; S3 allows only one such configuration per bucket. Do not configure notifications for the same bucket from this module and elsewhere (e.g. the `s3` module or another stack) — the configurations will overwrite each other on every apply.
+
 ## Features
 
 - **Object Upload** - Upload objects from local files, inline string content, or base64-encoded content

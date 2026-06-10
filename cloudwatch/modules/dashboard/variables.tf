@@ -4,13 +4,13 @@ variable "enabled" {
   default     = true
 }
 
-variable "dashboard_name" {
+variable "name" {
   description = "The name of the CloudWatch dashboard."
   type        = string
 
   validation {
-    condition     = length(var.dashboard_name) > 0
-    error_message = "dashboard_name must not be empty."
+    condition     = length(var.name) > 0
+    error_message = "name must not be empty."
   }
 }
 
@@ -21,5 +21,10 @@ variable "dashboard_body" {
   validation {
     condition     = length(var.dashboard_body) > 0
     error_message = "dashboard_body must not be empty."
+  }
+
+  validation {
+    condition     = can(jsondecode(var.dashboard_body))
+    error_message = "dashboard_body must be a valid JSON document."
   }
 }

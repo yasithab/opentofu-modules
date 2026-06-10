@@ -2,6 +2,11 @@ variable "name" {
   description = "Name to use for resource naming and tagging."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.name != null
+    error_message = "name must be set; it is used for resource naming and Name tags."
+  }
 }
 
 variable "tags" {
@@ -11,7 +16,7 @@ variable "tags" {
 }
 
 variable "enabled" {
-  description = "Controls if resources should be created (it affects almost all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -29,7 +34,7 @@ variable "amazon_side_asn" {
 variable "auto_accept_shared_attachments" {
   description = "Whether resource attachment requests are automatically accepted"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "default_route_table_association" {
@@ -197,7 +202,7 @@ variable "flow_logs" {
     log_destination          = optional(string)
     log_destination_type     = optional(string)
     log_format               = optional(string)
-    max_aggregation_interval = optional(number, 30)
+    max_aggregation_interval = optional(number, 60)
     regional_nat_gateway_id  = optional(string)
     subnet_id                = optional(string)
     traffic_type             = optional(string, "ALL")
@@ -209,4 +214,9 @@ variable "flow_logs" {
     peering_attachment_key = optional(string)
   }))
   default = {}
+
+  validation {
+    condition     = alltrue([for k, v in var.flow_logs : contains([60, 600], v.max_aggregation_interval)])
+    error_message = "flow_logs max_aggregation_interval must be either 60 or 600 seconds."
+  }
 }

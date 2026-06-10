@@ -8,6 +8,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -19,18 +20,18 @@ resource "aws_ec2_managed_prefix_list" "this" {
   for_each = { for k, v in local.prefix_lists : k => v if local.enabled }
 
   name           = each.value.name
-  address_family = lookup(each.value, "address_family", "IPv4")
-  max_entries    = length(each.value.cidr_list)
+  address_family = each.value.address_family
+  max_entries    = each.value.max_entries != null ? each.value.max_entries : length(each.value.cidr_list)
 
   dynamic "entry" {
     for_each = each.value.cidr_list
     content {
       cidr        = entry.value.cidr
-      description = try(entry.value.description, null)
+      description = entry.value.description
     }
   }
 
-  tags = merge(local.tags, lookup(each.value, "tags", {}))
+  tags = merge(local.tags, each.value.tags)
 }
 
 ################################################################################
@@ -67,3 +68,5 @@ resource "aws_ram_principal_association" "this" {
 }
 
 ################################################################################
+
+data "aws_region" "current" {}

@@ -1,11 +1,11 @@
 variable "enabled" {
-  description = "Controls whether resources should be created"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
 
 variable "tags" {
-  description = "A map of tags to assign to resources."
+  description = "Map of tags to apply to all resources."
   type        = map(string)
   default     = {}
 }
@@ -247,6 +247,11 @@ variable "codedeploy_role_name" {
   description = "IAM role name to create or use by CodeDeploy"
   type        = string
   default     = null
+
+  validation {
+    condition     = var.create_codedeploy_role || !(var.create_deployment_group || var.create_deployment) || var.codedeploy_role_name != null
+    error_message = "codedeploy_role_name is required when create_codedeploy_role is false and a deployment group or deployment is being created (the existing role must be looked up by name)."
+  }
 }
 
 variable "codedeploy_principals" {

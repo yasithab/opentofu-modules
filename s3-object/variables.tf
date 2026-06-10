@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Determines whether resources will be created (affects all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -47,15 +47,17 @@ variable "source_file" {
 }
 
 variable "content" {
-  description = "Inline string content for the object. Conflicts with `source_file` and `content_base64`."
+  description = "Inline string content for the object. Conflicts with `source_file` and `content_base64`. Marked sensitive, so plan diffs of object content are hidden."
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "content_base64" {
-  description = "Base64-encoded content for the object. Conflicts with `source_file` and `content`."
+  description = "Base64-encoded content for the object. Conflicts with `source_file` and `content`. Marked sensitive, so plan diffs of object content are hidden."
   type        = string
   default     = null
+  sensitive   = true
 }
 
 variable "content_type" {

@@ -1,18 +1,82 @@
 # Security Group
 
-Provisions an AWS VPC security group with flexible ingress and egress rule definitions supporting named rules, CIDR blocks, security group references, self-referencing rules, prefix lists, and computed (dynamic) values.
+Provisions an AWS VPC security group with a minimal, map-based rule interface. Each rule entry fans out internally to one `aws_vpc_security_group_ingress_rule` / `aws_vpc_security_group_egress_rule` per source (per IPv4 CIDR, per IPv6 CIDR, per prefix list ID, referenced security group, or self), giving every rule its own AWS-side rule object with an independent description and lifecycle.
 
 ## Features
 
-- **Security Group** - Create a VPC security group with support for both fixed names and name prefixes
-- **Named Rules** - Define ingress and egress rules by well-known service name from a built-in rules database
-- **CIDR-Based Rules** - Ingress and egress rules using IPv4 and IPv6 CIDR blocks
-- **Source Security Group Rules** - Ingress and egress rules referencing other security groups by ID
-- **Self-Referencing Rules** - Ingress and egress rules that allow traffic within the same security group
-- **Prefix List Rules** - Ingress and egress rules using VPC prefix list IDs for endpoint access
-- **Computed Rules** - Support for computed (dynamic) ingress and egress rules across all rule types for values not known until apply time
-- **Existing Security Group** - Optionally manage rules on an existing security group by providing its ID
-- **Configurable Timeouts** - Custom create and delete timeouts for security group operations
+- **Two core inputs** - `ingress_rules` and `egress_rules`, each a map of rule objects keyed by a user-chosen rule name
+- **All source types per rule** - IPv4 CIDRs, IPv6 CIDRs, prefix list IDs, a referenced security group ID, and `self`, freely combinable on a single rule entry
+- **Per-source fan-out** - one rule resource per (rule x source) pair with stable composite keys, so adding or removing a single CIDR never churns the others
+- **No implicit open egress** - egress is empty by default; open egress must be opted into explicitly
+- **Existing security group attach mode** - manage rules on an existing security group by providing `security_group_id`
+- **Fixed name or name prefix** - `use_name_prefix` toggles `name_prefix` (create-before-destroy) vs fixed `name`
+- **Configurable timeouts** - custom create and delete timeouts for security group operations
+
+## Interface
+
+### Rule object shape
+
+Both `ingress_rules` and `egress_rules` are `map(object({...}))`. All attributes are optional:
+
+| Attribute | Type | Default | Description |
+|---|---|---|---|
+| `from_port` | `number` | `null` | Start of port range (required unless `ip_protocol = "-1"`) |
+| `to_port` | `number` | `null` | End of port range (required unless `ip_protocol = "-1"`) |
+| `ip_protocol` | `string` | `"tcp"` | `tcp`, `udp`, `icmp`, `icmpv6`, `-1` (all), or an IANA protocol number |
+| `description` | `string` | `null` | Description applied to every rule created from this entry |
+| `cidr_ipv4` | `list(string)` | `[]` | IPv4 CIDRs - one rule per CIDR |
+| `cidr_ipv6` | `list(string)` | `[]` | IPv6 CIDRs - one rule per CIDR |
+| `prefix_list_ids` | `list(string)` | `[]` | Managed prefix list IDs - one rule per ID |
+| `referenced_security_group_id` | `string` | `null` | Source/destination security group - one rule |
+| `self` | `bool` | `false` | Reference this security group itself - one rule |
+
+Validation enforced by the module:
+
+- Every rule must define **at least one source** (`cidr_ipv4`, `cidr_ipv6`, `prefix_list_ids`, `referenced_security_group_id`, or `self = true`).
+- `from_port` and `to_port` are **required** unless `ip_protocol = "-1"`. When `ip_protocol = "-1"`, ports are ignored (AWS does not allow ports on all-traffic rules).
+
+### Resource keys
+
+Each rule entry expands to one rule resource per source with stable composite keys:
+
+| Source | Key |
+|---|---|
+| IPv4 CIDR | `<rule key>/ipv4/<cidr>` |
+| IPv6 CIDR | `<rule key>/ipv6/<cidr>` |
+| Prefix list | `<rule key>/pl/<id>` |
+| Referenced security group | `<rule key>/sg` |
+| Self | `<rule key>/self` |
+
+These keys are also the keys of the `ingress_rule_ids` / `egress_rule_ids` outputs.
+
+### Other variables
+
+| Variable | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | `bool` | `true` | Whether to create any resources |
+| `name` | `string` | `null` | Name used for resource naming and tagging |
+| `use_name_prefix` | `bool` | `true` | Use `name_prefix` instead of fixed `name` |
+| `description` | `string` | `"Security Group managed by OpenTofu"` | Security group description (changing forces replacement) |
+| `vpc_id` | `string` | `null` | VPC to create the security group in |
+| `security_group_id` | `string` | `null` | Existing security group to attach rules to (skips creation) |
+| `revoke_rules_on_delete` | `bool` | `false` | Revoke all rules before deleting the group (enable for EMR) |
+| `create_timeout` / `delete_timeout` | `string` | `"10m"` / `"15m"` | Security group operation timeouts |
+| `tags` | `map(string)` | `{}` | Tags merged with `{ ManagedBy = "opentofu" }` onto all resources |
+
+### Outputs
+
+| Output | Description |
+|---|---|
+| `security_group_id` | ID of the security group |
+| `security_group_arn` | ARN of the security group |
+| `security_group_name` | Name of the security group |
+| `security_group_vpc_id` | VPC ID |
+| `security_group_owner_id` | Owner ID |
+| `security_group_description` | Description |
+| `ingress_rule_ids` | Map of ingress rule IDs keyed by composite key |
+| `egress_rule_ids` | Map of egress rule IDs keyed by composite key |
+| `ingress_rule_arns` | Map of ingress rule ARNs keyed by composite key |
+| `egress_rule_arns` | Map of egress rule ARNs keyed by composite key |
 
 ## Usage
 
@@ -20,21 +84,29 @@ Provisions an AWS VPC security group with flexible ingress and egress rule defin
 module "security_group" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//security-group?depth=1&ref=master"
 
-  name        = "my-app-sg"
+  name        = "my-app"
   description = "Security group for my application"
   vpc_id      = "vpc-0abc123def456789"
 
-  ingress_with_cidr_blocks = [
-    {
+  ingress_rules = {
+    https = {
       from_port   = 443
       to_port     = 443
-      protocol    = "tcp"
-      cidr_blocks = "10.0.0.0/16"
+      ip_protocol = "tcp"
       description = "HTTPS from VPC"
+      cidr_ipv4   = ["10.0.0.0/16"]
     }
-  ]
+  }
 
-  egress_rules = ["all-all"]
+  egress_rules = {
+    https-anywhere = {
+      from_port   = 443
+      to_port     = 443
+      ip_protocol = "tcp"
+      description = "HTTPS to anywhere"
+      cidr_ipv4   = ["0.0.0.0/0"]
+    }
+  }
 
   tags = {
     Environment = "production"
@@ -42,158 +114,128 @@ module "security_group" {
 }
 ```
 
-
 ## Examples
 
-## Basic Web Application Security Group
+### Multi-CIDR fan-out
 
-Create a security group that allows HTTP and HTTPS inbound traffic from the internet and all outbound traffic.
+A single rule entry with multiple CIDRs creates one AWS rule per CIDR. Adding or removing a CIDR only touches that CIDR's rule.
 
 ```hcl
 module "sg_web" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//security-group?depth=1&ref=master"
 
-  enabled = true
-  name    = "web-app"
-  vpc_id  = "vpc-0abc123456def7890"
+  name   = "web-app"
+  vpc_id = "vpc-0abc123456def7890"
 
-  description      = "Security group for web application servers"
-  use_name_prefix  = true
-
-  ingress_with_cidr_blocks = [
-    {
-      from_port   = 80
-      to_port     = 80
-      protocol    = "tcp"
-      description = "HTTP from internet"
-      cidr_blocks = "0.0.0.0/0"
-    },
-    {
+  ingress_rules = {
+    https = {
       from_port   = 443
       to_port     = 443
-      protocol    = "tcp"
-      description = "HTTPS from internet"
-      cidr_blocks = "0.0.0.0/0"
-    },
-  ]
-
-  egress_rules = ["all-all"]
-
-  tags = {
-    Environment = "production"
-    Team        = "platform"
+      description = "HTTPS from office and VPN"
+      cidr_ipv4   = ["203.0.113.0/24", "198.51.100.0/24"]
+      cidr_ipv6   = ["2001:db8::/48"]
+    }
   }
 }
 ```
 
-## Internal Service Security Group
+Creates `https/ipv4/203.0.113.0/24`, `https/ipv4/198.51.100.0/24`, and `https/ipv6/2001:db8::/48`.
 
-Create a security group for an internal microservice that accepts traffic only from a specific source security group.
+### Security-group-referenced rules
 
 ```hcl
-module "sg_internal_service" {
+module "sg_app" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//security-group?depth=1&ref=master"
 
-  enabled = true
-  name    = "search-service"
-  vpc_id  = "vpc-0abc123456def7890"
+  name   = "app"
+  vpc_id = module.vpc.vpc_id
 
-  description = "Security group for internal search service"
+  ingress_rules = {
+    from-alb = {
+      from_port                    = 8080
+      to_port                      = 8080
+      description                  = "App traffic from ALB"
+      referenced_security_group_id = module.sg_alb.security_group_id
+    }
+  }
 
-  ingress_with_source_security_group_id = [
-    {
-      from_port                = 8080
-      to_port                  = 8080
-      protocol                 = "tcp"
-      description              = "App traffic from API gateway SG"
-      source_security_group_id = "sg-0aaaa111111111111"
-    },
-  ]
-
-  egress_with_cidr_blocks = [
-    {
-      from_port   = 443
-      to_port     = 443
-      protocol    = "tcp"
-      description = "HTTPS to AWS services"
-      cidr_blocks = "0.0.0.0/0"
-    },
-  ]
-
-  tags = {
-    Environment = "production"
-    Service     = "search"
-    Team        = "backend"
+  egress_rules = {
+    to-db = {
+      from_port                    = 5432
+      to_port                      = 5432
+      description                  = "PostgreSQL to database"
+      referenced_security_group_id = module.sg_db.security_group_id
+    }
   }
 }
 ```
 
-## RDS Database Security Group
-
-Restrict PostgreSQL access to application-tier subnets only using CIDR ranges.
+### Prefix lists and self-referencing rules
 
 ```hcl
-module "sg_rds" {
+module "sg_cluster" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//security-group?depth=1&ref=master"
 
-  enabled = true
-  name    = "rds-postgres"
-  vpc_id  = "vpc-0abc123456def7890"
+  name   = "cluster"
+  vpc_id = module.vpc.vpc_id
 
-  description = "Security group for PostgreSQL RDS instances"
+  ingress_rules = {
+    # All traffic between cluster members - protocol "-1" needs no ports
+    intra-cluster = {
+      ip_protocol = "-1"
+      description = "All traffic within the cluster"
+      self        = true
+    }
+  }
 
-  ingress_with_cidr_blocks = [
-    {
-      from_port   = 5432
-      to_port     = 5432
-      protocol    = "tcp"
-      description = "PostgreSQL from app subnet A"
-      cidr_blocks = "10.0.10.0/24"
-    },
-    {
-      from_port   = 5432
-      to_port     = 5432
-      protocol    = "tcp"
-      description = "PostgreSQL from app subnet B"
-      cidr_blocks = "10.0.11.0/24"
-    },
-  ]
-
-  egress_cidr_blocks = []
-
-  tags = {
-    Environment = "production"
-    Tier        = "data"
-    Team        = "platform"
+  egress_rules = {
+    s3 = {
+      from_port       = 443
+      to_port         = 443
+      description     = "HTTPS to S3 gateway endpoint"
+      prefix_list_ids = [aws_vpc_endpoint.s3.prefix_list_id]
+    }
   }
 }
 ```
 
-## Manage Rules on an Existing Security Group
+### Open egress (explicit opt-in)
 
-Attach additional ingress rules to a security group that already exists and is managed outside this module.
+The module never opens egress implicitly. To allow all outbound traffic:
 
 ```hcl
-module "sg_existing" {
+module "sg_worker" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//security-group?depth=1&ref=master"
 
-  enabled           = true
-  security_group_id = "sg-0existing1234567890"
-  vpc_id            = "vpc-0abc123456def7890"
+  name   = "worker"
+  vpc_id = module.vpc.vpc_id
 
-  ingress_with_cidr_blocks = [
-    {
-      from_port   = 9200
-      to_port     = 9200
-      protocol    = "tcp"
-      description = "OpenSearch from monitoring subnet"
-      cidr_blocks = "10.0.50.0/24"
-    },
-  ]
+  egress_rules = {
+    all = {
+      ip_protocol = "-1"
+      description = "Allow all outbound traffic"
+      cidr_ipv4   = ["0.0.0.0/0"]
+      cidr_ipv6   = ["::/0"]
+    }
+  }
+}
+```
 
-  tags = {
-    Environment = "production"
-    ManagedBy   = "platform-team"
+### Manage rules on an existing security group
+
+```hcl
+module "sg_rules_only" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//security-group?depth=1&ref=master"
+
+  security_group_id = "sg-0abc123456def7890"
+
+  ingress_rules = {
+    ssh-bastion = {
+      from_port   = 22
+      to_port     = 22
+      description = "SSH from bastion subnet"
+      cidr_ipv4   = ["10.0.250.0/28"]
+    }
   }
 }
 ```

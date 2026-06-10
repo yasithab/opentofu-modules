@@ -151,6 +151,21 @@ variable "enable_s3_lifecycle" {
   default     = false
 }
 
+variable "s3_lifecycle_rules" {
+  description = "List of lifecycle rules for the report bucket, applied when enable_s3_lifecycle is true. When null (default), a single rule transitioning objects to GLACIER after s3_lifecycle_glacier_transition_days and expiring them after s3_lifecycle_expiration_days is used (previous behaviour)."
+  type = list(object({
+    id     = string
+    status = optional(string, "Enabled")
+    prefix = optional(string)
+    transitions = optional(list(object({
+      days          = number
+      storage_class = string
+    })), [])
+    expiration_days = optional(number)
+  }))
+  default = null
+}
+
 variable "s3_lifecycle_glacier_transition_days" {
   description = "Number of days before transitioning report objects to Glacier storage."
   type        = number

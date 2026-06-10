@@ -7,7 +7,8 @@ OpenTofu module to read and write AWS SSM Parameter Store parameters in bulk, wi
 - **Bulk Parameter Write** - Create or update multiple SSM parameters at once from a list of parameter definitions with configurable defaults
 - **Bulk Parameter Read** - Read existing SSM parameters by name and expose their values as outputs
 - **SecureString Support** - Automatically encrypts SecureString parameters with an optional custom KMS key
-- **Configurable Defaults** - Set default type, tier, overwrite behavior, allowed pattern, and data type for all written parameters
+- **Write-Only Values** - Per-entry `value_wo`/`value_wo_version` keep parameter values out of OpenTofu state entirely (preferred for secrets)
+- **Configurable Defaults** - Set default type, tier, allowed pattern, and data type for all written parameters
 - **Ignore Value Changes** - Optionally ignore future external changes to parameter values after initial creation, useful for secrets managed outside of OpenTofu
 - **Combined Outputs** - Provides consolidated name lists, value lists, name-to-value maps, and name-to-ARN maps across all read and written parameters
 - **Lifecycle Management** - Toggle resource creation on or off with the `enabled` variable
@@ -46,7 +47,35 @@ module "ssm" {
 ```
 
 
+> [!NOTE]
+> - `parameter_write` is marked `sensitive`, so entry values never appear in plan output. Prefer `value_wo` + `value_wo_version` over `value` for secrets — write-only values are never stored in state. Bump `value_wo_version` to push a new value.
+> - The deprecated `overwrite` argument has been removed; drop it from your entries and from any custom `parameter_write_defaults`.
+> - `parameter_read` data sources are now addressed by parameter name instead of list index (`data.aws_ssm_parameter.read["/name"]`). This is a state address change for data sources only — they are simply re-read on the next plan; no managed resources are affected.
+> - The `names`/`values`/`map`/`arn_map` outputs are built from a single name-keyed map, so they always stay aligned.
+
 ## Examples
+
+## Write Secrets with Write-Only Values (recommended)
+
+Write-only values are sent to AWS but never persisted in OpenTofu state. Increment `value_wo_version` whenever the value changes.
+
+```hcl
+module "ssm_secrets_wo" {
+  source = "git::https://github.com/yasithab/opentofu-modules.git//ssm?depth=1&ref=master"
+
+  kms_arn = "arn:aws:kms:eu-west-1:123456789012:key/mrk-00000000000000000000000000000000"
+
+  parameter_write = [
+    {
+      name             = "/production/myapp/db_password"
+      type             = "SecureString"
+      value_wo         = var.db_password
+      value_wo_version = "1" # bump to rotate
+      description      = "Database password for MyApp"
+    },
+  ]
+}
+```
 
 ## Write Plain String Parameters
 

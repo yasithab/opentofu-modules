@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -56,14 +57,16 @@ resource "aws_elasticache_user" "default" {
 ################################################################################
 
 resource "aws_elasticache_user" "this" {
-  for_each = { for k, v in var.users : k => v if local.enabled }
+  # var.users is sensitive, so iterate over its (nonsensitive) keys to keep
+  # for_each valid while the user attributes themselves stay sensitive
+  for_each = toset([for k in nonsensitive(keys(var.users)) : k if local.enabled])
 
   region = var.region
 
-  access_string = each.value.access_string
+  access_string = var.users[each.key].access_string
 
   dynamic "authentication_mode" {
-    for_each = try([each.value.authentication_mode], [])
+    for_each = try([var.users[each.key].authentication_mode], [])
 
     content {
       passwords = try(authentication_mode.value.passwords, null)
@@ -71,26 +74,28 @@ resource "aws_elasticache_user" "this" {
     }
   }
 
-  engine               = try(lower(each.value.engine), "redis")
-  no_password_required = try(each.value.no_password_required, null)
-  passwords            = try(each.value.passwords, null)
-  user_id              = try(each.value.user_id, each.key)
-  user_name            = try(each.value.user_name, each.key)
+  engine               = try(lower(var.users[each.key].engine), "redis")
+  no_password_required = try(var.users[each.key].no_password_required, null)
+  passwords            = try(var.users[each.key].passwords, null)
+  user_id              = try(var.users[each.key].user_id, each.key)
+  user_name            = try(var.users[each.key].user_name, each.key)
 
-  tags = merge(local.tags, try(each.value.tags, {}))
+  tags = merge(local.tags, try(var.users[each.key].tags, {}))
 }
 
 resource "aws_elasticache_user_group_association" "this" {
-  for_each = { for k, v in var.users : k => v if local.enabled }
+  for_each = toset([for k in nonsensitive(keys(var.users)) : k if local.enabled])
 
-  user_group_id = local.enabled && var.create_group ? aws_elasticache_user_group.this.user_group_id : each.value.user_group_id
+  user_group_id = local.enabled && var.create_group ? aws_elasticache_user_group.this.user_group_id : try(coalesce(try(var.users[each.key].user_group_id, null), var.user_group_id), var.user_group_id)
   user_id       = aws_elasticache_user.this[each.key].user_id
 
   dynamic "timeouts" {
-    for_each = try([each.value.timeouts], [])
+    for_each = try([var.users[each.key].timeouts], [])
     content {
       create = try(timeouts.value.create, null)
       delete = try(timeouts.value.delete, null)
     }
   }
 }
+
+data "aws_region" "current" {}

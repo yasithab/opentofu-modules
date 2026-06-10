@@ -1,3 +1,4 @@
+data "aws_partition" "current" {}
 data "aws_region" "current" {}
 
 locals {
@@ -5,6 +6,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   is_arm         = can(regex("[a-zA-Z]+\\d+g[a-z]*\\..+", var.instance_type))
@@ -81,7 +83,7 @@ data "cloudinit_config" "this" {
       aws_region                     = data.aws_region.current.region
       exit_node_enabled              = var.exit_node_enabled
       cloudwatch_logs_enabled        = var.cloudwatch_logs_enabled
-      cloudwatch_log_group           = var.cloudwatch_logs_enabled ? "/headscale/${var.name}" : ""
+      cloudwatch_log_group           = var.cloudwatch_logs_enabled ? "/headscale/subnet-router/${var.name}" : ""
     })
   }
 
@@ -201,6 +203,20 @@ resource "aws_autoscaling_group" "this" {
     "GroupTotalInstances",
   ]
 
+  # Roll instances automatically when the launch template changes; without this,
+  # `version = "$Latest"` only affects future replacements.
+  dynamic "instance_refresh" {
+    for_each = var.enable_instance_refresh ? [1] : []
+
+    content {
+      strategy = "Rolling"
+
+      preferences {
+        min_healthy_percentage = 90
+      }
+    }
+  }
+
   timeouts {
     delete = "15m"
   }
@@ -222,7 +238,7 @@ data "aws_iam_policy_document" "assume_role" {
 
     principals {
       type        = "Service"
-      identifiers = ["ec2.amazonaws.com"]
+      identifiers = ["ec2.${data.aws_partition.current.dns_suffix}"]
     }
   }
 }
@@ -297,7 +313,10 @@ data "aws_iam_policy_document" "this" {
     }
   }
 
-  # KMS decrypt (required for cross-account Secrets Manager encrypted with customer managed key)
+  # KMS decrypt (required when the Secrets Manager secret is encrypted with a customer
+  # managed key, including cross-account secrets). Scoped to var.kms_key_arn when set;
+  # otherwise falls back to "*" but is always restricted to use via Secrets Manager.
+  # trivy:ignore:AVD-AWS-0057 - wildcard fallback is constrained by kms:ViaService; set kms_key_arn to scope it
   dynamic "statement" {
     for_each = local.has_sm_secrets ? [1] : []
 
@@ -307,7 +326,15 @@ data "aws_iam_policy_document" "this" {
       actions = [
         "kms:Decrypt",
       ]
-      resources = ["*"]
+      resources = [
+        var.kms_key_arn != null ? var.kms_key_arn : "*",
+      ]
+
+      condition {
+        test     = "StringEquals"
+        variable = "kms:ViaService"
+        values   = ["secretsmanager.${data.aws_region.current.region}.${data.aws_partition.current.dns_suffix}"]
+      }
     }
   }
 
@@ -394,7 +421,7 @@ resource "aws_cloudwatch_metric_alarm" "asg_health" {
 ################################################################################
 
 resource "aws_cloudwatch_log_group" "this" {
-  name              = "/headscale/${var.name}"
+  name              = "/headscale/subnet-router/${var.name}"
   retention_in_days = var.cloudwatch_logs_retention_days
 
   tags = local.tags

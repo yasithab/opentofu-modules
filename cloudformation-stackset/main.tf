@@ -1,8 +1,10 @@
 locals {
   enabled = var.enabled
+  name    = var.name
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -11,7 +13,7 @@ locals {
 ################################################################################
 
 resource "aws_cloudformation_stack_set" "this" {
-  name             = var.name
+  name             = local.name
   description      = var.description
   permission_model = var.permission_model
 
@@ -66,8 +68,7 @@ resource "aws_cloudformation_stack_set" "this" {
   }
 
   lifecycle {
-    enabled        = local.enabled
-    ignore_changes = [administration_role_arn]
+    enabled = local.enabled
   }
 }
 
@@ -76,7 +77,7 @@ resource "aws_cloudformation_stack_set" "this" {
 ################################################################################
 
 resource "aws_cloudformation_stack_set_instance" "this" {
-  for_each = { for idx, deployment in var.deployments : idx => deployment if local.enabled }
+  for_each = { for key, deployment in var.deployments : key => deployment if local.enabled }
 
   stack_set_name            = aws_cloudformation_stack_set.this.name
   stack_set_instance_region = each.value.region
@@ -124,3 +125,5 @@ resource "aws_cloudformation_stack_set_instance" "this" {
 }
 
 ################################################################################
+
+data "aws_region" "current" {}

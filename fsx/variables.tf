@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Determines whether resources will be created (affects all resources)"
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -324,13 +324,14 @@ variable "ontap_ha_pairs" {
   default     = null
 }
 
-variable "ontap_svm" {
-  description = "ONTAP Storage Virtual Machine (SVM) configuration. Note: svm_admin_password and active_directory password will be stored in state as the provider does not support write_only for these fields"
-  type = object({
-    name                       = string
+variable "ontap_svms" {
+  description = "Map of ONTAP Storage Virtual Machines (SVMs) to create. The map key is used as the SVM name when `name` is not set, and is referenced by `ontap_volumes` via `svm_key`. Note: svm_admin_password and active_directory password will be stored in state as the provider does not support write_only for these fields"
+  type = map(object({
+    name                       = optional(string)
     root_volume_security_style = optional(string, "UNIX")
     svm_admin_password         = optional(string)
     active_directory = optional(object({
+      netbios_name                           = optional(string)
       dns_ips                                = list(string)
       domain_name                            = string
       file_system_administrators_group       = optional(string)
@@ -338,15 +339,16 @@ variable "ontap_svm" {
       password                               = string
       username                               = string
     }))
-  })
-  default   = null
+  }))
+  default   = {}
   sensitive = true
 }
 
 variable "ontap_volumes" {
-  description = "Map of ONTAP volumes to create"
+  description = "Map of ONTAP volumes to create. Each volume must reference an SVM via `svm_key` (a key of `ontap_svms`)"
   type = map(object({
     name                       = string
+    svm_key                    = string
     junction_path              = optional(string)
     size_in_megabytes          = number
     storage_efficiency_enabled = optional(bool, true)
@@ -434,6 +436,15 @@ variable "openzfs_volumes" {
       copy_strategy = string
       snapshot_arn  = string
     }))
+  }))
+  default = {}
+}
+
+variable "openzfs_snapshots" {
+  description = "Map of OpenZFS snapshots to create. `volume_key` references a key of `openzfs_volumes`; when omitted the snapshot targets the file system root volume. `name` defaults to `<name>-<map key>`"
+  type = map(object({
+    name       = optional(string)
+    volume_key = optional(string)
   }))
   default = {}
 }

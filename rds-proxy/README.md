@@ -27,13 +27,13 @@ module "rds_proxy" {
   vpc_subnet_ids         = ["subnet-aaa", "subnet-bbb"]
   vpc_security_group_ids = ["sg-0abc123def456789a"]
 
-  auth = {
-    superuser = {
+  auth = [
+    {
       auth_scheme = "SECRETS"
       iam_auth    = "DISABLED"
       secret_arn  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:rds!cluster-abc123-AbCdEf"
     }
-  }
+  ]
 
   target_db_cluster     = true
   db_cluster_identifier = "app-db"
@@ -63,13 +63,13 @@ module "rds_proxy" {
   vpc_subnet_ids         = ["subnet-0aa111bbb222", "subnet-0cc333ddd444"]
   vpc_security_group_ids = ["sg-0abc123def456789a"]
 
-  auth = {
-    superuser = {
+  auth = [
+    {
       auth_scheme = "SECRETS"
       iam_auth    = "DISABLED"
       secret_arn  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:rds!cluster-abc123-AbCdEf"
     }
-  }
+  ]
 
   target_db_cluster    = true
   db_cluster_identifier = "app-db"
@@ -98,15 +98,15 @@ module "rds_proxy_iam" {
   vpc_subnet_ids         = ["subnet-0aa111bbb222", "subnet-0cc333ddd444", "subnet-0ee555fff666"]
   vpc_security_group_ids = ["sg-0abc123def456789a"]
 
-  auth = {
-    iam_user = {
+  auth = [
+    {
       auth_scheme               = "SECRETS"
       iam_auth                  = "REQUIRED"
       client_password_auth_type = "POSTGRES_SCRAM_SHA_256"
       secret_arn                = "arn:aws:secretsmanager:us-east-1:123456789012:secret:rds!cluster-listings-AbCdEf"
       description               = "IAM-authenticated app user"
     }
-  }
+  ]
 
   target_db_cluster     = true
   db_cluster_identifier = "listings-db"
@@ -143,13 +143,13 @@ module "rds_proxy_mysql" {
   vpc_subnet_ids         = ["subnet-0aa111bbb222", "subnet-0cc333ddd444"]
   vpc_security_group_ids = ["sg-0abc123def456789b"]
 
-  auth = {
-    app = {
+  auth = [
+    {
       auth_scheme = "SECRETS"
       iam_auth    = "DISABLED"
       secret_arn  = "arn:aws:secretsmanager:us-east-1:123456789012:secret:orders-db-creds-AbCdEf"
     }
-  }
+  ]
 
   target_db_cluster     = true
   db_cluster_identifier = "orders-db"

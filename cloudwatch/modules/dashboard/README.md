@@ -9,13 +9,15 @@ Provisions a CloudWatch dashboard with a JSON-defined widget layout for monitori
 - **Cross-Account/Region** - Reference metrics from other accounts and regions in widget definitions
 - **Lifecycle Toggle** - Enable/disable dashboard creation via the `enabled` variable
 
+> **Note — no `tags` variable:** `aws_cloudwatch_dashboard` does not support resource tagging, so this module intentionally omits the repo-standard `tags` variable. This is a deliberate exemption from the module conventions for untaggable resources.
+
 ## Usage
 
 ```hcl
 module "dashboard" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch/modules/dashboard?depth=1&ref=master"
 
-  dashboard_name = "app-overview"
+  name           = "app-overview"
 
   dashboard_body = jsonencode({
     widgets = [
@@ -37,10 +39,6 @@ module "dashboard" {
       }
     ]
   })
-
-  tags = {
-    Environment = "production"
-  }
 }
 ```
 
@@ -52,7 +50,7 @@ module "dashboard" {
 module "dashboard" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch/modules/dashboard?depth=1&ref=master"
 
-  dashboard_name = "production-overview"
+  name           = "production-overview"
 
   dashboard_body = jsonencode({
     widgets = [
@@ -135,11 +133,6 @@ module "dashboard" {
       }
     ]
   })
-
-  tags = {
-    Environment = "production"
-    Team        = "platform"
-  }
 }
 ```
 
@@ -149,7 +142,7 @@ module "dashboard" {
 module "dashboard" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch/modules/dashboard?depth=1&ref=master"
 
-  dashboard_name = "application-logs"
+  name           = "application-logs"
 
   dashboard_body = jsonencode({
     widgets = [

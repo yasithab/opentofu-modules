@@ -17,15 +17,19 @@ OpenTofu module for provisioning and managing Amazon ElastiCache clusters and re
 - **Snapshots** - Configurable snapshot windows and retention with support for restoring from existing snapshots or S3 ARNs
 - **Data Tiering** - Support for r6gd node types with data tiering for cost-optimized memory management
 
+## Security notes
+
+- **`auth_token` is stored in OpenTofu state.** Even though the variable is marked `sensitive`, the token value still ends up in the state file. Prefer ElastiCache RBAC via user groups (`user_group_ids` together with the `elasticache/user-group` module, ideally with IAM authentication) instead of a shared auth token. If you must use an auth token, ensure your state backend is encrypted and access-restricted.
+
 ## Usage
 
 ```hcl
 module "elasticache" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//elasticache?depth=1&ref=master"
 
-  replication_group_id = "my-redis"
-  node_type            = "cache.t4g.micro"
-  num_cache_clusters   = 2
+  name               = "my-redis"
+  node_type          = "cache.t4g.micro"
+  num_cache_clusters = 2
 
   subnet_ids = ["subnet-0a1b2c3d", "subnet-4e5f6a7b"]
   vpc_id     = "vpc-0123456789abcdef0"
@@ -55,11 +59,11 @@ module "elasticache" {
 
   enabled = true
 
-  replication_group_id = "my-redis"
-  description          = "Redis cache for the application layer"
-  engine               = "redis"
-  engine_version       = "7.1"
-  node_type            = "cache.t4g.medium"
+  name           = "my-redis"
+  description    = "Redis cache for the application layer"
+  engine         = "redis"
+  engine_version = "7.1"
+  node_type      = "cache.t4g.medium"
 
   subnet_ids = ["subnet-0aaa111", "subnet-0bbb222"]
   vpc_id     = "vpc-0abc123def456789"
@@ -84,11 +88,11 @@ module "elasticache" {
 
   enabled = true
 
-  replication_group_id = "app-redis-ha"
-  description          = "HA Redis cache with automatic failover"
-  engine               = "redis"
-  engine_version       = "7.1"
-  node_type            = "cache.r7g.large"
+  name           = "app-redis-ha"
+  description    = "HA Redis cache with automatic failover"
+  engine         = "redis"
+  engine_version = "7.1"
+  node_type      = "cache.r7g.large"
 
   num_cache_clusters        = 2
   multi_az_enabled          = true
@@ -133,11 +137,11 @@ module "elasticache" {
 
   enabled = true
 
-  replication_group_id = "app-redis-cluster"
-  description          = "Redis cluster-mode replication group"
-  engine               = "redis"
-  engine_version       = "7.1"
-  node_type            = "cache.r7g.large"
+  name           = "app-redis-cluster"
+  description    = "Redis cluster-mode replication group"
+  engine         = "redis"
+  engine_version = "7.1"
+  node_type      = "cache.r7g.large"
 
   cluster_mode              = "enabled"
   num_node_groups           = 3
@@ -179,7 +183,7 @@ module "elasticache_memcached" {
   create_cluster         = true
   create_replication_group = false
 
-  cluster_id     = "app-memcached"
+  name           = "app-memcached"
   engine         = "memcached"
   engine_version = "1.6.22"
   node_type      = "cache.t4g.medium"

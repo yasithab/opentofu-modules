@@ -201,3 +201,11 @@ module "readonly_group" {
   }
 }
 ```
+
+## Notes
+
+### No tags on IAM groups
+
+`aws_iam_group` does not support tags (the IAM Groups API has no tagging operations), so this
+module intentionally has no `tags` variable and is exempt from the repo-wide
+`tags`/`ManagedBy` convention.

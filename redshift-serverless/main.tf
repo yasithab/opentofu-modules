@@ -1,14 +1,14 @@
 locals {
   enabled            = var.enabled
-  is_serverless      = var.engine_mode == "serverless"
   has_policy_arn     = try(nonsensitive(var.policy_arn != null), var.policy_arn != null)
-  create_role_policy = nonsensitive(local.enabled && local.is_serverless && var.policy_enabled && var.iam_role_enabled && !local.has_policy_arn)
-  attach_role_policy = nonsensitive(local.enabled && local.is_serverless && var.policy_enabled && var.iam_role_enabled && local.has_policy_arn)
+  create_role_policy = nonsensitive(local.enabled && var.policy_enabled && var.iam_role_enabled && !local.has_policy_arn)
+  attach_role_policy = nonsensitive(local.enabled && var.policy_enabled && var.iam_role_enabled && local.has_policy_arn)
   admin_password     = local.enabled && !var.manage_admin_password ? (var.create_random_password ? random_password.master_password.result : var.admin_password) : null
   port               = var.port
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -49,7 +49,7 @@ resource "aws_iam_role" "serverless" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.enabled && local.is_serverless && var.iam_role_enabled
+    enabled = local.enabled && var.iam_role_enabled
   }
 }
 
@@ -73,19 +73,21 @@ resource "aws_iam_role_policy_attachment" "serverless" {
 }
 
 resource "aws_iam_role_policy_attachment" "serverless_managed" {
-  for_each   = toset(var.managed_policy_arns)
+  for_each   = toset([for arn in var.managed_policy_arns : arn if local.enabled && var.iam_role_enabled])
   role       = aws_iam_role.serverless.id
   policy_arn = each.value
 }
 
 resource "aws_kms_key" "serverless" {
-  deletion_window_in_days = 10
+  deletion_window_in_days = var.kms_deletion_window_in_days
   key_usage               = "ENCRYPT_DECRYPT"
+  enable_key_rotation     = true
+  policy                  = var.kms_key_policy
 
   tags = local.tags
 
   lifecycle {
-    enabled = local.enabled && local.is_serverless && var.kms_enabled
+    enabled = local.enabled && var.kms_enabled
   }
 }
 
@@ -94,7 +96,7 @@ resource "aws_kms_alias" "serverless" {
   target_key_id = try(aws_kms_key.serverless.key_id, "")
 
   lifecycle {
-    enabled = local.enabled && local.is_serverless && var.kms_enabled
+    enabled = local.enabled && var.kms_enabled
   }
 }
 
@@ -115,7 +117,7 @@ resource "aws_redshiftserverless_namespace" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.enabled && local.is_serverless
+    enabled = local.enabled
   }
 }
 
@@ -127,7 +129,7 @@ resource "aws_redshiftserverless_workgroup" "this" {
   enhanced_vpc_routing = var.workgroup_enhanced_vpc_routing
   port                 = var.workgroup_port
   publicly_accessible  = var.publicly_accessible
-  security_group_ids   = [aws_security_group.this.id]
+  security_group_ids   = compact(concat([try(aws_security_group.this.id, "")], var.security_group_ids))
   subnet_ids           = var.subnet_ids
   track_name           = var.workgroup_track_name
 
@@ -150,7 +152,7 @@ resource "aws_redshiftserverless_workgroup" "this" {
   tags = local.tags
 
   lifecycle {
-    enabled = local.enabled && local.is_serverless
+    enabled = local.enabled
   }
 }
 
@@ -162,13 +164,17 @@ resource "aws_redshiftserverless_usage_limit" "this" {
   period        = var.usage_period
 
   lifecycle {
-    enabled = local.enabled && local.is_serverless && var.usage_limit_enabled
+    enabled = local.enabled && var.usage_limit_enabled
   }
 }
 
 resource "time_sleep" "this" {
   depends_on      = [aws_redshiftserverless_workgroup.this]
   create_duration = "60s"
+
+  lifecycle {
+    enabled = local.enabled && (var.endpoint_enabled || var.custom_domain_enabled)
+  }
 }
 
 resource "aws_redshiftserverless_endpoint_access" "this" {
@@ -176,11 +182,11 @@ resource "aws_redshiftserverless_endpoint_access" "this" {
   endpoint_name          = var.endpoint_name
   owner_account          = var.endpoint_owner_account
   workgroup_name         = try(aws_redshiftserverless_workgroup.this.id, "")
-  vpc_security_group_ids = concat([aws_security_group.this.id], var.endpoint_security_group_ids)
+  vpc_security_group_ids = compact(concat([try(aws_security_group.this.id, "")], var.endpoint_security_group_ids))
   subnet_ids             = var.subnet_ids
 
   lifecycle {
-    enabled = local.enabled && local.is_serverless && var.endpoint_enabled
+    enabled = local.enabled && var.endpoint_enabled
   }
 }
 
@@ -190,7 +196,7 @@ resource "aws_redshiftserverless_snapshot" "this" {
   retention_period = var.snapshot_retention_period
 
   lifecycle {
-    enabled = local.enabled && local.is_serverless && var.snapshot_enabled
+    enabled = local.enabled && var.snapshot_enabled
   }
 }
 
@@ -199,7 +205,7 @@ resource "aws_redshiftserverless_resource_policy" "this" {
   policy       = var.snapshot_policy
 
   lifecycle {
-    enabled = local.enabled && local.is_serverless && var.snapshot_policy_enabled
+    enabled = local.enabled && var.snapshot_policy_enabled
   }
 }
 
@@ -210,7 +216,7 @@ resource "aws_redshiftserverless_custom_domain_association" "this" {
   custom_domain_certificate_arn = var.custom_domain_certificate_arn
 
   lifecycle {
-    enabled = local.enabled && local.is_serverless && var.custom_domain_enabled
+    enabled = local.enabled && var.custom_domain_enabled
   }
 }
 
@@ -281,9 +287,13 @@ resource "aws_vpc_security_group_egress_rule" "this" {
 
 check "namespace_encryption_enabled" {
   assert {
-    condition     = !var.enabled || try(aws_redshiftserverless_namespace.this.kms_key_id, "") != ""
-    error_message = "Redshift Serverless namespace should use a customer-managed KMS key for encryption."
+    # Redshift Serverless is always encrypted (AWS-owned key by default); only
+    # assert a customer-managed key is wired up when one was requested
+    condition     = !var.enabled || !(var.kms_enabled || var.kms_key_arn != null) || try(aws_redshiftserverless_namespace.this.kms_key_id, "") != ""
+    error_message = "Redshift Serverless namespace should use the customer-managed KMS key when kms_enabled or kms_key_arn is configured."
   }
 }
 
 ################################################################################
+
+data "aws_region" "current" {}

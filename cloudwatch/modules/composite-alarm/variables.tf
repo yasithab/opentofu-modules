@@ -14,13 +14,13 @@ variable "tags" {
 # Composite Alarm
 ################################################################################
 
-variable "alarm_name" {
+variable "name" {
   description = "The name for the composite alarm. Must be unique within the region."
   type        = string
 
   validation {
-    condition     = length(var.alarm_name) > 0
-    error_message = "alarm_name must not be empty."
+    condition     = length(var.name) > 0
+    error_message = "name must not be empty."
   }
 }
 

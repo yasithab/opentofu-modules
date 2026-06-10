@@ -36,8 +36,51 @@ variable "private_zone" {
 
 variable "records" {
   description = "List of objects of DNS records"
-  type        = any
-  default     = []
+  type = list(object({
+    key                              = optional(string)
+    name                             = string
+    type                             = string
+    ttl                              = optional(number)
+    records                          = optional(list(string))
+    set_identifier                   = optional(string)
+    health_check_id                  = optional(string)
+    multivalue_answer_routing_policy = optional(bool)
+    allow_overwrite                  = optional(bool, false)
+    full_name_override               = optional(bool, false)
+    alias = optional(object({
+      name                   = string
+      zone_id                = optional(string)
+      evaluate_target_health = optional(bool, false)
+    }))
+    failover_routing_policy = optional(object({
+      type = string
+    }))
+    latency_routing_policy = optional(object({
+      region = string
+    }))
+    weighted_routing_policy = optional(object({
+      weight = number
+    }))
+    cidr_routing_policy = optional(object({
+      collection_id = string
+      location_name = string
+    }))
+    geolocation_routing_policy = optional(object({
+      continent   = optional(string)
+      country     = optional(string)
+      subdivision = optional(string)
+    }))
+    geoproximity_routing_policy = optional(object({
+      aws_region       = optional(string)
+      bias             = optional(number)
+      local_zone_group = optional(string)
+      coordinates = optional(object({
+        latitude  = string
+        longitude = string
+      }))
+    }))
+  }))
+  default = []
 }
 
 variable "records_jsonencoded" {

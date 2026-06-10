@@ -1,4 +1,4 @@
-service_name = "terratest-plan"
+name = "terratest-plan"
 source_configuration = {
   image_repository = {
     image_identifier      = "public.ecr.aws/nginx/nginx:latest"

@@ -15,7 +15,7 @@ OpenTofu module to create an AWS CloudWatch Composite Alarm. Composite alarms co
 module "composite_alarm" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch/modules/composite-alarm?depth=1&ref=master"
 
-  alarm_name        = "service-degraded"
+  name              = "service-degraded"
   alarm_description = "Both CPU and memory are in alarm state"
   alarm_rule        = "ALARM(high-cpu-alarm) AND ALARM(high-memory-alarm)"
 
@@ -33,7 +33,7 @@ module "composite_alarm" {
 module "composite_alarm" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//cloudwatch/modules/composite-alarm?depth=1&ref=master"
 
-  alarm_name = "service-degraded"
+  name       = "service-degraded"
   alarm_rule = "ALARM(high-cpu-alarm) OR ALARM(high-memory-alarm)"
 
   alarm_actions = ["arn:aws:sns:us-east-1:123456789012:critical-alerts"]
@@ -50,7 +50,7 @@ module "composite_alarm" {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|----------|
-| `alarm_name` | The name for the composite alarm (must be unique within the region) | `string` | n/a | yes |
+| `name` | The name for the composite alarm (must be unique within the region) | `string` | n/a | yes |
 | `alarm_rule` | Expression specifying which alarms to evaluate (e.g., `ALARM(my-alarm-1) OR ALARM(my-alarm-2)`) | `string` | n/a | yes |
 | `alarm_description` | The description for the composite alarm | `string` | `null` | no |
 | `actions_enabled` | Whether actions should be executed during state changes | `bool` | `true` | no |

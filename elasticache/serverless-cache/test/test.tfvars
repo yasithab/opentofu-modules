@@ -1,3 +1,3 @@
-cache_name           = "terratest"
+name                 = "terratest"
 engine               = "redis"
 major_engine_version = "7"

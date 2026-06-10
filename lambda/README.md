@@ -15,13 +15,27 @@ OpenTofu module for deploying AWS Lambda functions and layers with built-in supp
 - **Advanced logging** - structured JSON or text log formats with configurable application and system log levels
 - **Lambda@Edge** - deploy functions to CloudFront edge locations with automatic timeout constraints
 
+## Prerequisites
+
+- **python3** must be available on `PATH` (or `python.exe` on Windows). The packaging pipeline (`package.tf` / `package.py`) shells out to Python to compute source hashes and build deployment archives whenever `create_package = true`. Set `create_package = false` (e.g. when deploying from a container image or an existing zip) to avoid the Python dependency.
+
+## Notes
+
+- `environment_variables` is marked `sensitive`, so plans will hide environment variable diffs (you will see `(sensitive value)` instead of individual key changes).
+- `authorization_type` for Lambda Function URLs defaults to `AWS_IAM`. Set it explicitly to `NONE` if you need a public endpoint (previous default).
+- `s3_server_side_encryption` defaults to `AES256` for packages stored on S3.
+- `cors` is now a typed object (`allow_credentials`, `allow_headers`, `allow_methods`, `allow_origins`, `expose_headers`, `max_age` - all optional) and defaults to `null` instead of `{}`.
+- **BREAKING:** `policy_statements`, `assume_role_policy_statements`, `event_source_mapping`, and `trusted_entities` are now fully typed (`map(object)` / `list(object)` with `optional()` attributes); unknown attributes are rejected. See `variables.tf` for the full schemas. In particular:
+  - `trusted_entities` no longer accepts plain service-name strings; express service principals as `{ type = "Service", identifiers = ["foo.amazonaws.com"] }`.
+  - `event_source_mapping` entry `filter_criteria` is always a list of `{ pattern }` objects (a single bare object is no longer accepted), and per-entry `enabled` must be a bool.
+
 ## Usage
 
 ```hcl
 module "lambda" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//lambda?depth=1&ref=master"
 
-  function_name = "my-api-handler"
+  name          = "my-api-handler"
   handler       = "index.handler"
   runtime       = "python3.12"
   timeout       = 30
@@ -52,7 +66,7 @@ module "lambda_function" {
 
   enabled = true
 
-  function_name = "my-api-handler"
+  name          = "my-api-handler"
   description   = "Handles API Gateway requests"
   handler       = "index.handler"
   runtime       = "python3.12"
@@ -83,7 +97,7 @@ module "lambda_vpc" {
 
   enabled = true
 
-  function_name = "order-processor"
+  name          = "order-processor"
   description   = "Processes order events from SQS"
   handler       = "processor.handler"
   runtime       = "python3.12"
@@ -128,7 +142,7 @@ module "lambda_container" {
 
   enabled = true
 
-  function_name  = "ml-inference"
+  name           = "ml-inference"
   description    = "Machine learning inference endpoint"
   package_type   = "Image"
   image_uri      = "123456789012.dkr.ecr.us-east-1.amazonaws.com/ml-inference:latest"
@@ -161,7 +175,7 @@ module "lambda_kinesis_consumer" {
 
   enabled = true
 
-  function_name = "kinesis-event-consumer"
+  name          = "kinesis-event-consumer"
   description   = "Consumes events from Kinesis stream"
   handler       = "consumer.handler"
   runtime       = "python3.12"

@@ -154,4 +154,5 @@ output "image_id" {
 output "user_data" {
   description = "Base64 encoded user data"
   value       = try(module.user_data.user_data, null)
+  sensitive   = true
 }

@@ -31,33 +31,54 @@ locals {
   appspec_content = replace(jsonencode(local.appspec), "\"", "\\\"")
   appspec_sha256  = sha256(jsonencode(local.appspec))
 
+  # Revision payload passed to the AWS CLI via an environment variable
+  revision = jsonencode({
+    revisionType = "AppSpecContent"
+    appSpecContent = {
+      content = jsonencode(local.appspec)
+      sha256  = local.appspec_sha256
+    }
+  })
+
+  # User-provided values are passed to the script via environment variables
+  # (see the local-exec provisioner) to avoid shell interpolation/injection.
+  deploy_script_environment = {
+    TARGET_VERSION         = var.target_version != null ? var.target_version : ""
+    CURRENT_VERSION        = var.current_version != null ? var.current_version : local.current_version
+    APPLICATION_NAME       = local.app_name
+    DEPLOYMENT_GROUP_NAME  = local.deployment_group_name
+    DEPLOYMENT_CONFIG_NAME = var.deployment_config_name
+    DEPLOYMENT_DESCRIPTION = var.description
+    REVISION               = local.revision
+  }
+
   script = <<EOF
 #!/bin/bash
 
-if [[ '${var.target_version}' == '${var.current_version != null ? var.current_version : local.current_version}' ]]; then
-  echo "Skipping deployment because target version (${var.target_version}) is already the current version"
+if [[ "$TARGET_VERSION" == "$CURRENT_VERSION" ]]; then
+  echo "Skipping deployment because target version ($TARGET_VERSION) is already the current version"
   exit 0
 fi
 
 ID=$(${var.aws_cli_command} deploy create-deployment \
-    --application-name ${local.app_name} \
-    --deployment-group-name ${local.deployment_group_name} \
-    --deployment-config-name ${var.deployment_config_name} \
-    --description "${var.description}" \
-    --revision '{"revisionType": "AppSpecContent", "appSpecContent": {"content": "${local.appspec_content}", "sha256": "${local.appspec_sha256}"}}' \
+    --application-name "$APPLICATION_NAME" \
+    --deployment-group-name "$DEPLOYMENT_GROUP_NAME" \
+    --deployment-config-name "$DEPLOYMENT_CONFIG_NAME" \
+    --description "$DEPLOYMENT_DESCRIPTION" \
+    --revision "$REVISION" \
     --output text \
     --query '[deploymentId]')
 
 %{if var.wait_deployment_completion}
 STATUS=$(${var.aws_cli_command} deploy get-deployment \
-    --deployment-id $ID \
+    --deployment-id "$ID" \
     --output text \
     --query '[deploymentInfo.status]')
 
-while [[ $STATUS == "Created" || $STATUS == "InProgress" || $STATUS == "Pending" || $STATUS == "Queued" || $STATUS == "Ready" ]]; do
+while [[ "$STATUS" == "Created" || "$STATUS" == "InProgress" || "$STATUS" == "Pending" || "$STATUS" == "Queued" || "$STATUS" == "Ready" ]]; do
     echo "Status: $STATUS..."
     STATUS=$(${var.aws_cli_command} deploy get-deployment \
-        --deployment-id $ID \
+        --deployment-id "$ID" \
         --output text \
         --query '[deploymentInfo.status]')
 
@@ -67,9 +88,9 @@ while [[ $STATUS == "Created" || $STATUS == "InProgress" || $STATUS == "Pending"
     sleep $SLEEP_TIME
 done
 
-${var.aws_cli_command} deploy get-deployment --deployment-id $ID
+${var.aws_cli_command} deploy get-deployment --deployment-id "$ID"
 
-if [[ $STATUS == "Succeeded" ]]; then
+if [[ "$STATUS" == "Succeeded" ]]; then
     echo "Deployment succeeded."
 else
     echo "Deployment failed!"
@@ -78,7 +99,7 @@ fi
 
 %{else}
 
-${var.aws_cli_command} deploy get-deployment --deployment-id $ID
+${var.aws_cli_command} deploy get-deployment --deployment-id "$ID"
 echo "Deployment started, but wait deployment completion is disabled!"
 
 %{endif}
@@ -87,8 +108,11 @@ EOF
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
+
+data "aws_partition" "current" {}
 
 data "aws_lambda_alias" "this" {
   count = var.enabled && var.create_deployment ? 1 : 0
@@ -124,6 +148,7 @@ resource "null_resource" "deploy" {
   provisioner "local-exec" {
     command     = local.script
     interpreter = var.interpreter
+    environment = local.deploy_script_environment
   }
 
   depends_on = [
@@ -218,7 +243,7 @@ resource "aws_codedeploy_deployment_group" "this" {
 }
 
 data "aws_iam_role" "codedeploy" {
-  count = var.enabled && !var.create_codedeploy_role ? 1 : 0
+  count = var.enabled && (var.create_deployment_group || var.create_deployment) && !var.create_codedeploy_role ? 1 : 0
 
   name = var.codedeploy_role_name
 }
@@ -250,7 +275,7 @@ data "aws_iam_policy_document" "assume_role" {
 
 resource "aws_iam_role_policy_attachment" "codedeploy" {
   role       = try(aws_iam_role.codedeploy.id, "")
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda"
 
   lifecycle {
     enabled = var.enabled && var.create_codedeploy_role
@@ -273,6 +298,7 @@ data "aws_iam_policy_document" "hooks" {
 }
 
 resource "aws_iam_policy" "hooks" {
+  name   = "${try(coalesce(var.codedeploy_role_name, "${local.app_name}-codedeploy"), "codedeploy")}-hooks"
   policy = try(data.aws_iam_policy_document.hooks[0].json, "")
   tags   = local.tags
 
@@ -290,8 +316,13 @@ resource "aws_iam_role_policy_attachment" "hooks" {
   }
 }
 
+locals {
+  # SNS topics that CodeDeploy needs to publish deployment notifications to
+  trigger_target_arns = distinct(compact([for k, v in var.triggers : try(v.target_arn, null)]))
+}
+
 data "aws_iam_policy_document" "triggers" {
-  count = var.enabled && var.create_codedeploy_role && var.attach_triggers_policy ? 1 : 0
+  count = var.enabled && var.create_codedeploy_role && var.attach_triggers_policy && length(local.trigger_target_arns) > 0 ? 1 : 0
 
   statement {
     effect = "Allow"
@@ -300,16 +331,17 @@ data "aws_iam_policy_document" "triggers" {
       "sns:Publish",
     ]
 
-    resources = ["*"]
+    resources = local.trigger_target_arns
   }
 }
 
 resource "aws_iam_policy" "triggers" {
+  name   = "${try(coalesce(var.codedeploy_role_name, "${local.app_name}-codedeploy"), "codedeploy")}-triggers"
   policy = try(data.aws_iam_policy_document.triggers[0].json, "")
   tags   = local.tags
 
   lifecycle {
-    enabled = var.enabled && var.create_codedeploy_role && var.attach_triggers_policy
+    enabled = var.enabled && var.create_codedeploy_role && var.attach_triggers_policy && length(local.trigger_target_arns) > 0
   }
 }
 
@@ -318,7 +350,7 @@ resource "aws_iam_role_policy_attachment" "triggers" {
   policy_arn = aws_iam_policy.triggers.arn
 
   lifecycle {
-    enabled = var.enabled && var.create_codedeploy_role && var.attach_triggers_policy
+    enabled = var.enabled && var.create_codedeploy_role && var.attach_triggers_policy && length(local.trigger_target_arns) > 0
   }
 }
 
@@ -337,3 +369,5 @@ resource "aws_iam_role_policy_attachment" "triggers" {
 #    }
 #  }
 #}
+
+data "aws_region" "current" {}

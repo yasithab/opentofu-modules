@@ -12,6 +12,11 @@ OpenTofu module to create an Amazon ElastiCache user group with users for Redis-
 - **Cross-Region** - Optionally specify a region different from the provider default
 - **Lifecycle Management** - Toggle resource creation with the `enabled` variable
 
+## Security notes
+
+- **Prefer IAM authentication** (`authentication_mode = { type = "iam" }`) over password-based users. Passwords supplied via `users`/`default_user` are stored in OpenTofu state even though the variables and the `users` output are marked `sensitive`. With IAM authentication no long-lived credential exists in state, and access is governed by IAM policies.
+- The `users` and `default_user` variables and the `users` output are marked `sensitive`; ensure your state backend is encrypted and access-restricted regardless.
+
 ## Usage
 
 ```hcl

@@ -3,6 +3,7 @@ locals {
   name    = var.name
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   create_role = local.enabled && var.create_role
@@ -88,8 +89,11 @@ resource "aws_iam_role" "this" {
 # Managed Policy Attachments
 ################################################################################
 
+# NOTE: keyed by policy ARN (previously by list index) so that reordering or
+# removing entries in `managed_policy_arns` no longer churns unrelated
+# attachments. Existing states require state moves - see README.
 resource "aws_iam_role_policy_attachment" "this" {
-  for_each = { for idx, arn in var.managed_policy_arns : idx => arn if local.create_role }
+  for_each = { for arn in var.managed_policy_arns : arn => arn if local.create_role }
 
   role       = aws_iam_role.this.name
   policy_arn = each.value
@@ -121,3 +125,5 @@ resource "aws_eks_pod_identity_association" "this" {
 
   tags = local.tags
 }
+
+data "aws_region" "current" {}

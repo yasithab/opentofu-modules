@@ -1,6 +1,9 @@
 locals {
+  enabled = var.enabled
+
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -175,7 +178,7 @@ resource "aws_dynamodb_table" "this" {
   }
 
   lifecycle {
-    enabled = var.enabled && !var.autoscaling_enabled
+    enabled = local.enabled && !var.autoscaling_enabled
   }
 }
 
@@ -350,7 +353,7 @@ resource "aws_dynamodb_table" "autoscaled" {
   }
 
   lifecycle {
-    enabled        = var.enabled && var.autoscaling_enabled && !var.ignore_changes_global_secondary_index
+    enabled        = local.enabled && var.autoscaling_enabled && !var.ignore_changes_global_secondary_index
     ignore_changes = [read_capacity, write_capacity]
   }
 }
@@ -365,7 +368,7 @@ resource "aws_dynamodb_resource_policy" "this" {
   confirm_remove_self_resource_access = var.resource_policy_confirm_remove_self_access
 
   lifecycle {
-    enabled = var.enabled && var.resource_policy != null
+    enabled = local.enabled && var.resource_policy != null
   }
 }
 
@@ -540,7 +543,7 @@ resource "aws_dynamodb_table" "autoscaled_gsi_ignore" {
   }
 
   lifecycle {
-    enabled        = var.enabled && var.autoscaling_enabled && var.ignore_changes_global_secondary_index
+    enabled        = local.enabled && var.autoscaling_enabled && var.ignore_changes_global_secondary_index
     ignore_changes = [global_secondary_index, read_capacity, write_capacity]
   }
 }
@@ -551,7 +554,7 @@ resource "aws_dynamodb_table" "autoscaled_gsi_ignore" {
 
 check "deletion_protection_enabled" {
   assert {
-    condition = !var.enabled || try(
+    condition = !local.enabled || try(
       aws_dynamodb_table.this.deletion_protection_enabled,
       aws_dynamodb_table.autoscaled.deletion_protection_enabled,
       aws_dynamodb_table.autoscaled_gsi_ignore.deletion_protection_enabled,
@@ -563,7 +566,7 @@ check "deletion_protection_enabled" {
 
 check "point_in_time_recovery_enabled" {
   assert {
-    condition = !var.enabled || try(
+    condition = !local.enabled || try(
       aws_dynamodb_table.this.point_in_time_recovery[0].enabled,
       aws_dynamodb_table.autoscaled.point_in_time_recovery[0].enabled,
       aws_dynamodb_table.autoscaled_gsi_ignore.point_in_time_recovery[0].enabled,
@@ -575,7 +578,7 @@ check "point_in_time_recovery_enabled" {
 
 check "server_side_encryption_enabled" {
   assert {
-    condition = !var.enabled || try(
+    condition = !local.enabled || try(
       aws_dynamodb_table.this.server_side_encryption[0].enabled,
       aws_dynamodb_table.autoscaled.server_side_encryption[0].enabled,
       aws_dynamodb_table.autoscaled_gsi_ignore.server_side_encryption[0].enabled,
@@ -584,3 +587,5 @@ check "server_side_encryption_enabled" {
     error_message = "DynamoDB table should have server-side encryption enabled."
   }
 }
+
+data "aws_region" "current" {}

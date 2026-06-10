@@ -1,6 +1,10 @@
 locals {
+  enabled = var.enabled
+  name    = var.name
+
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   resource_id = coalesce(
@@ -15,22 +19,22 @@ locals {
 
   # Conditional IAM role ARN
   iam_role_arn = var.log_destination_type == "cloud-watch-logs" ? (
-    coalesce(var.iam_role_arn, try(aws_iam_role.this.arn, null))
+    try(coalesce(var.iam_role_arn, try(aws_iam_role.this.arn, null)), null)
   ) : null
 
   # Log destination resolution
-  log_destination = coalesce(
+  log_destination = try(coalesce(
     var.log_destination,
     {
       "cloud-watch-logs"      = try(aws_cloudwatch_log_group.this.arn, null),
       "s3"                    = var.s3_bucket_arn,
       "kinesis-data-firehose" = var.kinesis_firehose_delivery_stream_arn
     }[var.log_destination_type]
-  )
+  ), null)
 
   # Conditional resource flags
-  create_cw_log_group  = var.enabled && var.log_destination_type == "cloud-watch-logs" && var.log_destination == null
-  create_iam_resources = var.enabled && var.log_destination_type == "cloud-watch-logs" && var.iam_role_arn == null
+  create_cw_log_group  = local.enabled && var.log_destination_type == "cloud-watch-logs" && var.log_destination == null
+  create_iam_resources = local.enabled && var.log_destination_type == "cloud-watch-logs" && var.iam_role_arn == null
 }
 
 ################################################################################
@@ -64,10 +68,10 @@ resource "aws_flow_log" "this" {
     }
   }
 
-  tags = merge(local.tags, { Name = var.name })
+  tags = merge(local.tags, { Name = local.name })
 
   lifecycle {
-    enabled = var.enabled
+    enabled = local.enabled
   }
 }
 
@@ -142,14 +146,18 @@ data "aws_iam_policy_document" "this" {
   statement {
     effect = "Allow"
     actions = [
-      "logs:CreateLogGroup",
       "logs:CreateLogStream",
       "logs:PutLogEvents",
       "logs:DescribeLogGroups",
       "logs:DescribeLogStreams"
     ]
-    resources = ["*"]
+    resources = [
+      local.log_destination,
+      "${local.log_destination}:*",
+    ]
   }
 }
 
 ################################################################################
+
+data "aws_region" "current" {}

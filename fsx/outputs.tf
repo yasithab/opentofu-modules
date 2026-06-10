@@ -103,14 +103,16 @@ output "ontap_vpc_id" {
   value       = try(aws_fsx_ontap_file_system.this.vpc_id, "")
 }
 
-output "ontap_svm_id" {
-  description = "ID of the ONTAP Storage Virtual Machine"
-  value       = try(aws_fsx_ontap_storage_virtual_machine.this.id, "")
-}
-
-output "ontap_svm_endpoints" {
-  description = "Endpoints of the ONTAP Storage Virtual Machine"
-  value       = try(aws_fsx_ontap_storage_virtual_machine.this.endpoints, [])
+output "ontap_svms" {
+  description = "Map of ONTAP Storage Virtual Machine attributes, keyed by `ontap_svms` map key"
+  value = {
+    for k, v in aws_fsx_ontap_storage_virtual_machine.this : k => {
+      id        = try(v.id, "")
+      arn       = try(v.arn, "")
+      uuid      = try(v.uuid, "")
+      endpoints = try(v.endpoints, [])
+    }
+  }
 }
 
 output "ontap_volumes" {
@@ -168,6 +170,17 @@ output "openzfs_volumes" {
   description = "Map of OpenZFS volume attributes"
   value = {
     for k, v in aws_fsx_openzfs_volume.this : k => {
+      id   = try(v.id, "")
+      arn  = try(v.arn, "")
+      name = try(v.name, "")
+    }
+  }
+}
+
+output "openzfs_snapshots" {
+  description = "Map of OpenZFS snapshot attributes, keyed by `openzfs_snapshots` map key"
+  value = {
+    for k, v in aws_fsx_openzfs_snapshot.this : k => {
       id   = try(v.id, "")
       arn  = try(v.arn, "")
       name = try(v.name, "")

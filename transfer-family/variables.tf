@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Whether to create the Transfer Family resources."
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -231,8 +231,24 @@ variable "workflows" {
 
 variable "users" {
   description = "Map of Transfer Family user configurations including home directory, policy, and SSH keys."
-  type        = any
-  default     = {}
+  type = map(object({
+    user_name           = string
+    role                = string
+    home_directory      = optional(string)
+    home_directory_type = optional(string)
+    policy              = optional(string)
+    home_directory_mappings = optional(list(object({
+      entry  = string
+      target = string
+    })), [])
+    posix_profile = optional(object({
+      gid            = number
+      uid            = number
+      secondary_gids = optional(list(number))
+    }))
+    ssh_public_key = optional(string)
+  }))
+  default = {}
 }
 
 ################################################################################
@@ -270,4 +286,26 @@ variable "route53_records" {
   description = "Map of Route53 record configurations for custom hostnames."
   type        = any
   default     = {}
+}
+
+################################################################################
+# SFTP Connectors
+################################################################################
+
+variable "connectors" {
+  description = "Map of outbound SFTP connectors used to transfer files to remote SFTP servers. `url` is the remote endpoint (sftp://...), `access_role` is the IAM role the connector assumes, `user_secret_id` is the Secrets Manager secret holding the SFTP credentials, and `trusted_host_keys` pins the remote server's public host keys."
+  type = map(object({
+    url                  = string
+    access_role          = string
+    logging_role         = optional(string)
+    security_policy_name = optional(string)
+    trusted_host_keys    = optional(list(string))
+    user_secret_id       = optional(string)
+  }))
+  default = {}
+
+  validation {
+    condition     = alltrue([for v in values(var.connectors) : can(regex("^arn:", v.access_role))])
+    error_message = "Each connector access_role must be a valid IAM role ARN starting with 'arn:'."
+  }
 }

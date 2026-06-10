@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -53,7 +54,7 @@ resource "aws_memorydb_parameter_group" "this" {
 
 resource "aws_memorydb_acl" "this" {
   name       = var.acl_name != null ? var.acl_name : var.name
-  user_names = concat(["default"], [for u in aws_memorydb_user.this : u.user_name])
+  user_names = concat(var.include_default_user ? ["default"] : [], [for u in aws_memorydb_user.this : u.user_name])
 
   tags = local.tags
 
@@ -69,17 +70,19 @@ resource "aws_memorydb_acl" "this" {
 ################################################################################
 
 resource "aws_memorydb_user" "this" {
-  for_each = { for k, v in var.users : k => v if local.enabled }
+  # var.users is sensitive, so iterate over its (nonsensitive) keys to keep
+  # for_each valid while the user attributes themselves stay sensitive
+  for_each = toset([for k in nonsensitive(keys(var.users)) : k if local.enabled])
 
-  user_name     = each.value.user_name
-  access_string = each.value.access_string
+  user_name     = var.users[each.key].user_name
+  access_string = var.users[each.key].access_string
 
   authentication_mode {
-    type      = try(each.value.authentication_mode.type, "password")
-    passwords = try(each.value.authentication_mode.passwords, null)
+    type      = try(var.users[each.key].authentication_mode.type, "password")
+    passwords = try(var.users[each.key].authentication_mode.passwords, null)
   }
 
-  tags = merge(local.tags, try(each.value.tags, {}))
+  tags = merge(local.tags, try(var.users[each.key].tags, {}))
 }
 
 ################################################################################
@@ -147,3 +150,5 @@ check "snapshot_retention_configured" {
     error_message = "MemoryDB cluster should have snapshot retention enabled for data protection."
   }
 }
+
+data "aws_region" "current" {}

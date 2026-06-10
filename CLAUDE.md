@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Collection of 128+ reusable OpenTofu modules for AWS infrastructure. All modules target OpenTofu >= 1.11.0 and AWS provider >= 6.38, < 7.0.
+Collection of 128+ reusable OpenTofu modules for AWS infrastructure. All modules target OpenTofu >= 1.11.0 and AWS provider >= 6.49, < 7.0.
 
 ## Commands
 
@@ -12,6 +12,7 @@ Collection of 128+ reusable OpenTofu modules for AWS infrastructure. All modules
 |---------|---------|
 | `task format` | Format all OpenTofu code (`tofu fmt -recursive`) |
 | `task validate` | Run `tofu validate` in every module (backend-less init) |
+| `task lockfiles` | (Re)generate `.terraform.lock.hcl` in every module |
 | `task lint` | Run tflint across all modules |
 | `task lint-init` | Install tflint plugins (run once before first lint) |
 | `task test` | Run Terratest validate on all modules (no AWS creds needed) |
@@ -55,6 +56,8 @@ locals {
 
 **Outputs** use `try()` for safe extraction with empty string defaults. Expose all useful resource attributes for composability.
 
+**`try()` semantics** - `try()` only falls back on *error*, not on `null` — use `coalesce()` or a ternary for null fallbacks on `optional()` attributes.
+
 
 ### Derived locals naming
 
@@ -71,7 +74,7 @@ Some modules have submodules under `modules/` (e.g., `eks/modules/`, `cloudwatch
 ## CI/CD
 
 ### PR Workflow
-1. Format (`task format`) - auto-commits fixes
+1. Format check (`tofu fmt -check -recursive`) - fails on drift; run `task format` locally to fix
 2. Validate all modules (`task validate`)
 3. Lint with tflint (`task lint`)
 4. Terratest validate - Go-based syntax/type validation (no AWS creds)
@@ -90,7 +93,7 @@ Commit message prefix determines version bump on merge to `master`:
 - `[MINOR]` - new feature (v1.0.0 -> v1.1.0)
 - No prefix - patch (v1.0.0 -> v1.0.1)
 
-Versions in `providers.tf` use bounded floor constraints (`>= 6.38, < 7.0`) for the AWS provider — never exact pins in reusable modules. Update manually when raising the minimum provider version.
+Versions in `providers.tf` use bounded floor constraints (`>= 6.49, < 7.0`) for the AWS provider — never exact pins in reusable modules. Update manually when raising the minimum provider version. Non-AWS providers use bounded floors too (e.g. `>= 4.0, < 5.0`).
 
 `.terraform.lock.hcl` files are committed to ensure reproducible builds. Regenerate with `tofu init -upgrade` when bumping provider constraints.
 

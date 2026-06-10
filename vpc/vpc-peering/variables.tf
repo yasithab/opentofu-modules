@@ -35,8 +35,20 @@ variable "acceptor_aws_account_id" {
 
 variable "acceptor_aws_region" {
   type        = string
-  description = "The AWS account id of the acceptor"
+  description = "The AWS region of the acceptor VPC"
   default     = null
+}
+
+variable "auto_accept" {
+  type        = bool
+  description = "Accept the peering request on the requestor side (only valid for same-account, same-region peering)"
+  default     = false
+}
+
+variable "create_accepter" {
+  type        = bool
+  description = "Create an aws_vpc_peering_connection_accepter resource to accept the peering request (requires the provider to have access to the acceptor VPC)"
+  default     = false
 }
 
 variable "acceptor_vpc_id" {

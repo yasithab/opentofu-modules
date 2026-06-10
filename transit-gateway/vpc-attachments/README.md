@@ -18,7 +18,7 @@ module "tgw_vpc_attachments" {
 
   vpc_attachments = {
     vpc-shared = {
-      tgw_id     = "tgw-0123456789abcdef0"
+      transit_gateway_id     = "tgw-0123456789abcdef0"
       vpc_id     = "vpc-aaa"
       subnet_ids = ["subnet-aaa", "subnet-bbb"]
     }
@@ -46,7 +46,7 @@ module "tgw_vpc_attachments" {
 
   vpc_attachments = {
     app-vpc = {
-      tgw_id     = "tgw-0a1b2c3d4e5f67890"
+      transit_gateway_id     = "tgw-0a1b2c3d4e5f67890"
       vpc_id     = "vpc-0a1b2c3d4e5f67891"
       subnet_ids = ["subnet-0a1b2c3d4e5f67892", "subnet-0a1b2c3d4e5f67893"]
     }
@@ -73,7 +73,7 @@ module "tgw_vpc_attachments" {
 
   vpc_attachments = {
     shared-services = {
-      tgw_id     = "tgw-0a1b2c3d4e5f67890"
+      transit_gateway_id     = "tgw-0a1b2c3d4e5f67890"
       vpc_id     = "vpc-0b2c3d4e5f6789abc"
       subnet_ids = [
         "subnet-0b2c3d4e5f6789abd",
@@ -86,7 +86,7 @@ module "tgw_vpc_attachments" {
       tags = { Purpose = "shared-services" }
     }
     data-vpc = {
-      tgw_id     = "tgw-0a1b2c3d4e5f67890"
+      transit_gateway_id     = "tgw-0a1b2c3d4e5f67890"
       vpc_id     = "vpc-0c3d4e5f6789abcd"
       subnet_ids = [
         "subnet-0c3d4e5f6789abce",
@@ -120,7 +120,7 @@ module "tgw_inspection_attachment" {
 
   vpc_attachments = {
     inspection-vpc = {
-      tgw_id                = "tgw-0a1b2c3d4e5f67890"
+      transit_gateway_id                = "tgw-0a1b2c3d4e5f67890"
       vpc_id                = "vpc-0d4e5f6789abcdef0"
       subnet_ids            = ["subnet-0d4e5f6789abcdef1", "subnet-0d4e5f6789abcdef2"]
       appliance_mode_support = true
@@ -138,3 +138,7 @@ module "tgw_inspection_attachment" {
   }
 }
 ```
+
+## Notes
+
+- **Breaking:** the per-attachment attribute `tgw_id` was renamed to `transit_gateway_id`. Update existing module calls accordingly.

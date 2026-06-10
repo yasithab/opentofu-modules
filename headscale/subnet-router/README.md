@@ -17,6 +17,16 @@ Deploy this in any VPC/account to give all tailnet clients access to that VPC's 
 
 ## Usage
 
+> **WARNING:** an inline `headscale_auth_key` is rendered into the instance **user_data**
+> and stored in **OpenTofu state** (the variable is marked `sensitive`, which hides it from
+> CLI output but does not encrypt it). For production, leave `headscale_auth_key` empty and
+> use `secrets_manager_arn` (+ `secrets_manager_auth_key_field`) so the key is fetched at
+> boot and never touches user_data or state.
+
+> **NOTE:** logs are now written to `/headscale/subnet-router/<name>` (previously
+> `/headscale/<name>`, which collided with the main Headscale module's log group). The old
+> log group is left behind on upgrade and can be deleted manually.
+
 ```hcl
 module "subnet_router" {
   source = "git::https://github.com/yasithab/opentofu-modules.git//headscale/subnet-router?depth=1&ref=master"

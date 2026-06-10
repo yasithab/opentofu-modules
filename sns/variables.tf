@@ -15,10 +15,14 @@ variable "tags" {
 # Topic
 ################################################################################
 
-variable "topic_name" {
+variable "name" {
   description = "The name of the SNS topic to create"
   type        = string
-  default     = null
+
+  validation {
+    condition     = length(trimspace(var.name)) > 0
+    error_message = "name must be a non-empty string."
+  }
 }
 
 variable "use_name_prefix" {
@@ -88,9 +92,9 @@ variable "http_feedback" {
 }
 
 variable "kms_master_key_id" {
-  description = "The ID of an AWS-managed customer master key (CMK) for Amazon SNS or a custom CMK"
+  description = "The ID of an AWS-managed customer master key (CMK) for Amazon SNS or a custom CMK. Defaults to the AWS managed SNS key (SSE enabled by default); set to `null` to disable server-side encryption."
   type        = string
-  default     = null
+  default     = "alias/aws/sns"
 }
 
 variable "lambda_feedback" {

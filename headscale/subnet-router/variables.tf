@@ -1,5 +1,5 @@
 variable "enabled" {
-  description = "Controls if subnet router resources should be created."
+  description = "Set to false to prevent the module from creating any resources."
   type        = bool
   default     = true
 }
@@ -223,4 +223,21 @@ variable "cloud_init_parts" {
     content_type = string
   }))
   default = []
+}
+
+variable "enable_instance_refresh" {
+  description = "Enable ASG instance refresh (rolling, 90% min healthy) so launch template changes roll out automatically."
+  type        = bool
+  default     = true
+}
+
+variable "kms_key_arn" {
+  description = "ARN of the customer-managed KMS key encrypting the Secrets Manager secret. When set, the instance's kms:Decrypt permission is scoped to this key instead of all keys (the kms:ViaService=secretsmanager condition applies either way). Required to be set explicitly for cross-account secrets encrypted with a CMK."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.kms_key_arn == null || can(regex("^arn:", var.kms_key_arn))
+    error_message = "kms_key_arn must be a valid ARN starting with 'arn:'."
+  }
 }
