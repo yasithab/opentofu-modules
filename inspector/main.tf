@@ -3,6 +3,7 @@ locals {
   name    = var.name
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -141,3 +142,4 @@ resource "aws_inspector2_filter" "this" {
   tags = local.tags
 }
 
+data "aws_region" "current" {}

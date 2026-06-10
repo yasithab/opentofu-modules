@@ -6,6 +6,7 @@ locals {
   # the ones that do (automation rules).
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -361,3 +362,5 @@ resource "aws_securityhub_insight" "this" {
 
   depends_on = [aws_securityhub_account.this]
 }
+
+data "aws_region" "current" {}

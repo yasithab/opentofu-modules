@@ -6,6 +6,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   is_arm         = can(regex("[a-zA-Z]+\\d+g[a-z]*\\..+", var.instance_type))

@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   port = 8182
@@ -234,3 +235,5 @@ check "deletion_protection_enabled" {
     error_message = "Neptune cluster should have deletion protection enabled for production use."
   }
 }
+
+data "aws_region" "current" {}

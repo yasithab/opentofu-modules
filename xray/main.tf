@@ -5,6 +5,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -84,3 +85,5 @@ resource "aws_xray_resource_policy" "this" {
 }
 
 ################################################################################
+
+data "aws_region" "current" {}

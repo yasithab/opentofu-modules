@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -149,3 +150,5 @@ check "snapshot_retention_configured" {
     error_message = "MemoryDB cluster should have snapshot retention enabled for data protection."
   }
 }
+
+data "aws_region" "current" {}

@@ -8,6 +8,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -67,3 +68,5 @@ resource "aws_ram_principal_association" "this" {
 }
 
 ################################################################################
+
+data "aws_region" "current" {}

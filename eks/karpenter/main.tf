@@ -20,6 +20,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = local.region
   })
 }
 

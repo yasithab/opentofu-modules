@@ -31,6 +31,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -950,3 +951,5 @@ check "cluster_encryption_enabled" {
     error_message = "EKS cluster should have envelope encryption enabled for secrets (cluster_encryption_config)."
   }
 }
+
+data "aws_region" "current" {}

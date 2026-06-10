@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -54,3 +55,5 @@ resource "aws_kinesis_resource_policy" "default" {
     enabled = local.enabled && var.resource_policy != null
   }
 }
+
+data "aws_region" "current" {}

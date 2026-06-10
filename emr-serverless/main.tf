@@ -6,6 +6,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -203,3 +204,5 @@ resource "aws_iam_role_policy_attachment" "execution_additional" {
   role       = aws_iam_role.execution.name
   policy_arn = each.value
 }
+
+data "aws_region" "current" {}

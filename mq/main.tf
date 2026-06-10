@@ -12,6 +12,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -175,3 +176,5 @@ check "encryption_enabled" {
 }
 
 ################################################################################
+
+data "aws_region" "current" {}

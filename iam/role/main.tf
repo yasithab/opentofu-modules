@@ -6,7 +6,8 @@ locals {
   policy_name_prefix           = var.policy_name_prefix != null ? "${var.policy_name_prefix}-" : null
   instance_profile_name        = var.instance_profile_name != null ? substr(var.instance_profile_name, 0, 64) : null
   instance_profile_name_prefix = var.instance_profile_name_prefix != null ? "${var.instance_profile_name_prefix}-" : null
-  tags                         = merge(var.tags, { ManagedBy = "opentofu" })
+  tags = merge(var.tags, { ManagedBy = "opentofu"
+  Region = data.aws_region.current.region })
 
   create_policy = local.enabled && length(var.policy_documents) > 0
 
@@ -109,3 +110,5 @@ resource "aws_iam_instance_profile" "default" {
     enabled = local.enabled && var.instance_profile_enabled
   }
 }
+
+data "aws_region" "current" {}

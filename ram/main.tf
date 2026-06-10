@@ -12,6 +12,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -62,3 +63,5 @@ resource "aws_ram_principal_association" "default" {
   principal          = each.value
   resource_share_arn = try(aws_ram_resource_share.default.id, "")
 }
+
+data "aws_region" "current" {}

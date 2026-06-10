@@ -2,6 +2,7 @@ locals {
   enabled = var.enabled
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -261,3 +262,5 @@ check "encryption_in_transit_enabled" {
     error_message = "MSK cluster must have in-cluster encryption in transit enabled."
   }
 }
+
+data "aws_region" "current" {}

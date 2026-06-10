@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -57,3 +58,5 @@ resource "aws_elasticache_serverless_cache" "this" {
     enabled = local.enabled
   }
 }
+
+data "aws_region" "current" {}

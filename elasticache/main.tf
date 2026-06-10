@@ -12,6 +12,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -415,3 +416,5 @@ check "transit_encryption_enabled" {
     error_message = "ElastiCache replication group must have transit encryption enabled."
   }
 }
+
+data "aws_region" "current" {}

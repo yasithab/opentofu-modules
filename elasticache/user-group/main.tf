@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -96,3 +97,5 @@ resource "aws_elasticache_user_group_association" "this" {
     }
   }
 }
+
+data "aws_region" "current" {}

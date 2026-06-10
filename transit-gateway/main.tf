@@ -9,7 +9,8 @@ locals {
   tgw_tags = merge(
     var.tags,
     { Name = local.name },
-    { ManagedBy = "opentofu" },
+    { ManagedBy = "opentofu"
+    Region = data.aws_region.current.region },
     var.tgw_tags,
   )
 
@@ -185,3 +186,5 @@ resource "aws_flow_log" "this" {
 
   tags = merge(local.tags, each.value.tags)
 }
+
+data "aws_region" "current" {}

@@ -8,6 +8,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -94,3 +95,5 @@ resource "aws_route" "requestor" {
 
   depends_on = [data.aws_route_tables.requestor, aws_vpc_peering_connection.default]
 }
+
+data "aws_region" "current" {}

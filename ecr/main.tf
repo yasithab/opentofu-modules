@@ -7,6 +7,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -404,3 +405,5 @@ resource "aws_ecr_replication_configuration" "this" {
     enabled = local.enabled && var.create_registry_replication_configuration
   }
 }
+
+data "aws_region" "current" {}

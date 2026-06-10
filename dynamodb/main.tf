@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -586,3 +587,5 @@ check "server_side_encryption_enabled" {
     error_message = "DynamoDB table should have server-side encryption enabled."
   }
 }
+
+data "aws_region" "current" {}

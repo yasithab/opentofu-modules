@@ -3,9 +3,10 @@ data "aws_organizations_organization" "org" {
 }
 
 locals {
-  enabled                                    = var.enabled
-  name                                       = var.name
-  tags                                       = merge(var.tags, { ManagedBy = "opentofu" })
+  enabled = var.enabled
+  name    = var.name
+  tags = merge(var.tags, { ManagedBy = "opentofu"
+  Region = data.aws_region.current.region })
   deny_leaving_orgs_statement                = var.deny_leaving_orgs ? [""] : []
   deny_creating_iam_users_statement          = var.deny_creating_iam_users ? [""] : []
   deny_deleting_kms_keys_statement           = var.deny_deleting_kms_keys ? [""] : []
@@ -429,3 +430,5 @@ resource "aws_organizations_policy_attachment" "attach_org" {
     enabled = local.enabled && var.attach_to_org
   }
 }
+
+data "aws_region" "current" {}

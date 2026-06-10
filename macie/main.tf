@@ -3,6 +3,7 @@ locals {
   name    = var.name
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   create_organization_admin_account = local.enabled && var.create_organization_admin_account
@@ -202,3 +203,5 @@ resource "aws_macie2_organization_configuration" "this" {
     enabled = local.create_organization_configuration
   }
 }
+
+data "aws_region" "current" {}

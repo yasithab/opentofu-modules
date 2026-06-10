@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   port = 27017
@@ -201,3 +202,5 @@ check "deletion_protection_enabled" {
     error_message = "DocumentDB cluster should have deletion protection enabled for production use."
   }
 }
+
+data "aws_region" "current" {}

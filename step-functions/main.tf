@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   create_role = local.enabled && var.create_role
@@ -394,3 +395,5 @@ resource "aws_sfn_alias" "this" {
     }
   }
 }
+
+data "aws_region" "current" {}

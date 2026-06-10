@@ -5,6 +5,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   partition  = data.aws_partition.current.partition
@@ -384,3 +385,5 @@ resource "aws_iam_role_policy_attachment" "job" {
   role       = aws_iam_role.job.name
   policy_arn = each.value
 }
+
+data "aws_region" "current" {}

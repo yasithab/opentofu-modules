@@ -5,6 +5,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -66,3 +67,5 @@ resource "aws_codeconnections_host" "this" {
     }
   }
 }
+
+data "aws_region" "current" {}

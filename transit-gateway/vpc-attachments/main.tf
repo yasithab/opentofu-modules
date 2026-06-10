@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -29,3 +30,5 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "this" {
 }
 
 ################################################################################
+
+data "aws_region" "current" {}

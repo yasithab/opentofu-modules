@@ -108,6 +108,7 @@ EOF
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -368,3 +369,5 @@ resource "aws_iam_role_policy_attachment" "triggers" {
 #    }
 #  }
 #}
+
+data "aws_region" "current" {}

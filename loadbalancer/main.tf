@@ -6,6 +6,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -873,3 +874,5 @@ resource "aws_lb_trust_store_revocation" "this" {
   revocations_s3_key            = each.value.revocations_s3_key
   revocations_s3_object_version = try(each.value.revocations_s3_object_version, null)
 }
+
+data "aws_region" "current" {}

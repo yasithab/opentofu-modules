@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   # Per-runner configuration consumed by aws_codebuild_project.this and
@@ -88,15 +89,6 @@ resource "aws_iam_role_policy" "policy_codebuild_runners" {
 }
 
 
-data "aws_vpc" "vpc" {
-  count = local.enabled ? 1 : 0
-
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-}
-
 # Creating Codebuild Project
 data "aws_ecr_repository" "codebuild_runner" {
   count = local.enabled && var.codebuild_runner_repository_url == null ? 1 : 0
@@ -123,7 +115,7 @@ data "aws_security_group" "codebuild_runners_sg" {
 resource "aws_security_group" "codebuild_runners" {
   name        = "codebuild-runners-${local.env_name}-security-group"
   description = "Allow internal traffic within the security group and all outbound traffic"
-  vpc_id      = try(data.aws_vpc.vpc[0].id, var.vpc_id)
+  vpc_id      = var.vpc_id
 
   tags = merge(local.tags, { Name = "codebuild-runners-${local.env_name}-security-group" })
 
@@ -437,3 +429,5 @@ resource "aws_codebuild_webhook" "this" {
     }
   }
 }
+
+data "aws_region" "current" {}

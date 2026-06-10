@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -173,3 +174,5 @@ resource "aws_appconfig_extension_association" "this" {
     each.value.resource_arn
   )
 }
+
+data "aws_region" "current" {}

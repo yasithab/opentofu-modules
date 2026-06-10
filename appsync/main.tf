@@ -7,6 +7,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   partition = data.aws_partition.current.partition
@@ -463,3 +464,5 @@ resource "aws_iam_role_policy_attachment" "logging" {
     enabled = local.enabled && var.create_logging_role && var.logging_enabled
   }
 }
+
+data "aws_region" "current" {}

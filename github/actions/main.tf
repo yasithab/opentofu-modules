@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   # Subject claim suffixes. Constrain via github_ref and/or github_environment;
@@ -107,3 +108,5 @@ resource "aws_iam_policy" "github_actions" {
 }
 
 #####################################################################################
+
+data "aws_region" "current" {}

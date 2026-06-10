@@ -9,6 +9,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   launch_template_id = var.create_launch_template ? aws_launch_template.this.id : var.launch_template_id
@@ -671,3 +672,5 @@ resource "aws_autoscaling_traffic_source_attachment" "this" {
     type       = each.value.traffic_source_type
   }
 }
+
+data "aws_region" "current" {}

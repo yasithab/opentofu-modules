@@ -22,6 +22,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -63,19 +64,20 @@ resource "aws_acm_certificate" "this" {
 }
 
 resource "aws_route53_record" "validation" {
-  # Keyed by validation domain name for stable addresses (was count-indexed)
+  # Keyed by the caller-supplied domain names so the keys are known at plan
+  # time; the matching domain_validation_options entry resolves at apply.
   for_each = {
-    for domain in local.validation_domains : domain.domain_name => domain
+    for domain in local.distinct_domain_names : domain => domain
     if local.create_validation_records
   }
 
-  zone_id = lookup(var.zones, each.value.domain_name, var.zone_id)
-  name    = each.value.resource_record_name
-  type    = each.value.resource_record_type
+  zone_id = lookup(var.zones, each.value, var.zone_id)
+  name    = [for o in local.validation_domains : o.resource_record_name if o.domain_name == each.value][0]
+  type    = [for o in local.validation_domains : o.resource_record_type if o.domain_name == each.value][0]
   ttl     = var.dns_ttl
 
   records = [
-    each.value.resource_record_value
+    [for o in local.validation_domains : o.resource_record_value if o.domain_name == each.value][0]
   ]
 
   allow_overwrite = var.validation_allow_overwrite_records
@@ -97,3 +99,5 @@ resource "aws_acm_certificate_validation" "this" {
     enabled = local.enabled && var.validation_method != null && var.validate_certificate && var.wait_for_validation
   }
 }
+
+data "aws_region" "current" {}

@@ -1,6 +1,7 @@
 locals {
   enabled = var.enabled
-  tags    = merge(var.tags, { ManagedBy = "opentofu" })
+  tags = merge(var.tags, { ManagedBy = "opentofu"
+  Region = data.aws_region.current.region })
 }
 
 # -----------------------------------------------------------------------------
@@ -110,3 +111,5 @@ resource "aws_iam_virtual_mfa_device" "this" {
     enabled = local.enabled && var.create_virtual_mfa_device
   }
 }
+
+data "aws_region" "current" {}

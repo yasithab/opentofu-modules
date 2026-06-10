@@ -15,6 +15,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -199,3 +200,5 @@ resource "aws_sqs_queue_redrive_allow_policy" "deadletter" {
     enabled = local.enabled && var.deadletter_queue_enabled && var.deadletter_redrive_allow_policy_enabled
   }
 }
+
+data "aws_region" "current" {}

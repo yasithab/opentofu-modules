@@ -1,6 +1,7 @@
 locals {
   enabled = var.enabled
-  tags    = merge(var.tags, { ManagedBy = "opentofu" })
+  tags = merge(var.tags, { ManagedBy = "opentofu"
+  Region = data.aws_region.current.region })
 }
 
 ################################################################################
@@ -329,3 +330,5 @@ resource "aws_ssoadmin_instance_access_control_attributes" "sso_access_control_a
     }
   }
 }
+
+data "aws_region" "current" {}

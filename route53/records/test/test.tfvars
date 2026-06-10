@@ -16,3 +16,4 @@ records = [
     }
   },
 ]
+zone_name = "example.com"

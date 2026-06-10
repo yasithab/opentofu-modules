@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   artifact_s3_location = var.create_artifact_bucket ? "s3://${aws_s3_bucket.artifacts.id}" : "s3://${var.artifact_s3_bucket_name}"

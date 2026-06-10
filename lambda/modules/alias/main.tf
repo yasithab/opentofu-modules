@@ -3,6 +3,7 @@ locals {
   name    = var.name
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   alias_arn  = try(data.aws_lambda_alias.existing[0].arn, aws_lambda_alias.no_refresh.arn, aws_lambda_alias.with_refresh.arn, "")
@@ -285,3 +286,5 @@ resource "aws_lambda_event_source_mapping" "this" {
 
   tags = merge(local.tags, try(each.value.tags, {}))
 }
+
+data "aws_region" "current" {}

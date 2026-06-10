@@ -1,6 +1,7 @@
 locals {
   enabled = var.enabled
-  tags    = merge(var.tags, { ManagedBy = "opentofu" })
+  tags = merge(var.tags, { ManagedBy = "opentofu"
+  Region = data.aws_region.current.region })
 
   # Use the explicit policy JSON if provided; otherwise merge policy_documents
   # (exactly one of the two is enforced by validation on var.policy)
@@ -25,3 +26,5 @@ resource "aws_iam_policy" "this" {
     enabled = local.enabled
   }
 }
+
+data "aws_region" "current" {}

@@ -14,6 +14,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   # Exactly one key type is created based on the create_* toggles
@@ -512,3 +513,5 @@ resource "aws_kms_grant" "this" {
   grant_creation_tokens = each.value.grant_creation_tokens
   retire_on_delete      = each.value.retire_on_delete
 }
+
+data "aws_region" "current" {}

@@ -3,6 +3,7 @@ locals {
   name    = var.name
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   create_role = local.enabled && var.create_role
@@ -124,3 +125,5 @@ resource "aws_eks_pod_identity_association" "this" {
 
   tags = local.tags
 }
+
+data "aws_region" "current" {}

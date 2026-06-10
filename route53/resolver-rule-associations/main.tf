@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -43,3 +44,5 @@ resource "aws_route53_resolver_rule_association" "default" {
   vpc_id           = coalesce(each.value.vpc_id, var.vpc_id)
   resolver_rule_id = each.value.resolver_rule_id != null ? each.value.resolver_rule_id : aws_route53_resolver_rule.default[each.key].id
 }
+
+data "aws_region" "current" {}

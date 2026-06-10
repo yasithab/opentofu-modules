@@ -11,7 +11,8 @@ locals {
 
   tags = merge(
     var.tags,
-    { ManagedBy = "opentofu" },
+    { ManagedBy = "opentofu"
+    Region = data.aws_region.current.region },
     local.name != null ? { Name = local.name } : {},
   )
 }
@@ -149,3 +150,5 @@ resource "aws_vpn_connection_route" "this" {
   destination_cidr_block = each.key
   vpn_connection_id      = aws_vpn_connection.this.id
 }
+
+data "aws_region" "current" {}

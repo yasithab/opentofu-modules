@@ -12,6 +12,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -192,3 +193,5 @@ resource "aws_sns_topic_data_protection_policy" "this" {
 }
 
 ################################################################################
+
+data "aws_region" "current" {}

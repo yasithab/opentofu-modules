@@ -7,6 +7,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -721,3 +722,5 @@ data "aws_cloudfront_response_headers_policy" "this" {
   ])
   name = each.key
 }
+
+data "aws_region" "current" {}

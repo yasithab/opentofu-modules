@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   # Separate root-level OUs from child OUs for ordered creation
@@ -202,3 +203,5 @@ resource "aws_organizations_resource_policy" "this" {
 
   tags = local.tags
 }
+
+data "aws_region" "current" {}

@@ -12,6 +12,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   # Omit the Name key entirely when name is not set
@@ -101,7 +102,7 @@ resource "aws_instance" "this" {
       volume_type           = try(root_block_device.value.volume_type, null)
       throughput            = try(root_block_device.value.throughput, null)
 
-      tags = merge(local.tags, try(root_block_device.value.tags, {}))
+      tags = var.enable_volume_tags ? null : merge(local.tags, try(root_block_device.value.tags, {}))
     }
   }
 
@@ -119,7 +120,7 @@ resource "aws_instance" "this" {
       volume_type           = try(ebs_block_device.value.volume_type, null)
       throughput            = try(ebs_block_device.value.throughput, null)
 
-      tags = merge(local.tags, try(ebs_block_device.value.tags, {}))
+      tags = var.enable_volume_tags ? null : merge(local.tags, try(ebs_block_device.value.tags, {}))
     }
   }
 
@@ -332,7 +333,7 @@ resource "aws_instance" "ignore_ami" {
       volume_type           = try(root_block_device.value.volume_type, null)
       throughput            = try(root_block_device.value.throughput, null)
 
-      tags = merge(local.tags, try(root_block_device.value.tags, {}))
+      tags = var.enable_volume_tags ? null : merge(local.tags, try(root_block_device.value.tags, {}))
     }
   }
 
@@ -350,7 +351,7 @@ resource "aws_instance" "ignore_ami" {
       volume_type           = try(ebs_block_device.value.volume_type, null)
       throughput            = try(ebs_block_device.value.throughput, null)
 
-      tags = merge(local.tags, try(ebs_block_device.value.tags, {}))
+      tags = var.enable_volume_tags ? null : merge(local.tags, try(ebs_block_device.value.tags, {}))
     }
   }
 
@@ -574,7 +575,7 @@ resource "aws_spot_instance_request" "this" {
       volume_type           = try(root_block_device.value.volume_type, null)
       throughput            = try(root_block_device.value.throughput, null)
 
-      tags = merge(local.tags, try(root_block_device.value.tags, {}))
+      tags = var.enable_volume_tags ? null : merge(local.tags, try(root_block_device.value.tags, {}))
     }
   }
 
@@ -592,7 +593,7 @@ resource "aws_spot_instance_request" "this" {
       volume_type           = try(ebs_block_device.value.volume_type, null)
       throughput            = try(ebs_block_device.value.throughput, null)
 
-      tags = merge(local.tags, try(ebs_block_device.value.tags, {}))
+      tags = var.enable_volume_tags ? null : merge(local.tags, try(ebs_block_device.value.tags, {}))
     }
   }
 
@@ -787,3 +788,5 @@ resource "aws_eip" "this" {
     enabled = local.enabled && var.create_eip && !var.create_spot_instance
   }
 }
+
+data "aws_region" "current" {}

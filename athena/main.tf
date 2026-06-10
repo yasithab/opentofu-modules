@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -153,3 +154,5 @@ resource "aws_athena_capacity_reservation" "this" {
     enabled = local.enabled && var.capacity_reservation != null
   }
 }
+
+data "aws_region" "current" {}

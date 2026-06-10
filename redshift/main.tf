@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -480,3 +481,5 @@ check "logging_enabled" {
 }
 
 ################################################################################
+
+data "aws_region" "current" {}

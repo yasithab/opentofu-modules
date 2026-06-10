@@ -6,6 +6,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   account_id = data.aws_caller_identity.current.account_id
@@ -343,3 +344,5 @@ resource "aws_iam_role_policy" "logging" {
     enabled = local.enabled && var.create_logging_role
   }
 }
+
+data "aws_region" "current" {}

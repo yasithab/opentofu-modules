@@ -5,7 +5,8 @@ data "aws_organizations_organization" "org" {
 locals {
   enabled = var.enabled
   name    = var.name
-  tags    = merge(var.tags, { ManagedBy = "opentofu" })
+  tags = merge(var.tags, { ManagedBy = "opentofu"
+  Region = data.aws_region.current.region })
 
   tag_policy_content = {
     tags = {
@@ -79,3 +80,5 @@ resource "aws_organizations_policy_attachment" "attach_org" {
     enabled = local.enabled && var.attach_to_org
   }
 }
+
+data "aws_region" "current" {}

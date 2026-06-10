@@ -8,6 +8,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   create_log_streams            = local.enabled && var.create_log_streams
@@ -75,3 +76,5 @@ resource "aws_cloudwatch_log_anomaly_detector" "this" {
     enabled = local.create_anomaly_detector
   }
 }
+
+data "aws_region" "current" {}

@@ -6,6 +6,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   partition = data.aws_partition.current.partition
@@ -132,3 +133,5 @@ resource "aws_chatbot_teams_channel_configuration" "this" {
     }
   }
 }
+
+data "aws_region" "current" {}

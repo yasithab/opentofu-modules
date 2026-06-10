@@ -3,6 +3,7 @@ locals {
   name    = var.name
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   is_lustre  = local.enabled && var.file_system_type == "LUSTRE"
@@ -175,7 +176,7 @@ resource "aws_fsx_ontap_file_system" "this" {
   kms_key_id                        = var.kms_key_id
   deployment_type                   = var.ontap_deployment_type
   throughput_capacity               = var.throughput_capacity
-  preferred_subnet_id               = var.ontap_preferred_subnet_id
+  preferred_subnet_id               = coalesce(var.ontap_preferred_subnet_id, var.subnet_ids[0])
   endpoint_ip_address_range         = var.ontap_endpoint_ip_address_range
   route_table_ids                   = var.ontap_route_table_ids
   ha_pairs                          = var.ontap_ha_pairs
@@ -412,7 +413,7 @@ resource "aws_fsx_windows_file_system" "this" {
   kms_key_id                        = var.kms_key_id
   deployment_type                   = var.windows_deployment_type
   throughput_capacity               = var.throughput_capacity
-  preferred_subnet_id               = var.windows_preferred_subnet_id
+  preferred_subnet_id               = try(coalesce(var.windows_preferred_subnet_id, var.subnet_ids[0]), null)
   active_directory_id               = var.windows_active_directory_id
   aliases                           = var.windows_aliases
   copy_tags_to_backups              = var.windows_copy_tags_to_backups
@@ -460,3 +461,5 @@ resource "aws_fsx_windows_file_system" "this" {
     enabled = local.is_windows
   }
 }
+
+data "aws_region" "current" {}

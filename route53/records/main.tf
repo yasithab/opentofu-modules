@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -38,20 +39,26 @@ locals {
   recordsets = { for rs in local.records : (rs.key != null ? rs.key : join(" ", compact(["${rs.name} ${rs.type}", rs.set_identifier]))) => rs }
 }
 
+# Zone lookup only when the caller gives a zone_name without a zone_id;
+# passing both (or zone_id plus FQDN records) avoids any API lookup at plan.
 data "aws_route53_zone" "default" {
-  count = local.enabled && (var.zone_id != null || var.zone_name != null) ? 1 : 0
+  count = local.enabled && var.zone_id == null && var.zone_name != null ? 1 : 0
 
-  zone_id      = var.zone_id
   name         = var.zone_name
   private_zone = var.private_zone
+}
+
+locals {
+  zone_id   = var.zone_id != null ? var.zone_id : try(data.aws_route53_zone.default[0].zone_id, null)
+  zone_name = var.zone_name != null ? var.zone_name : try(data.aws_route53_zone.default[0].name, null)
 }
 
 resource "aws_route53_record" "default" {
   for_each = { for k, v in local.recordsets : k => v if local.enabled && (var.zone_id != null || var.zone_name != null) }
 
-  zone_id = var.zone_id != null ? var.zone_id : data.aws_route53_zone.default[0].zone_id
+  zone_id = local.zone_id
 
-  name                             = each.value.name != "" ? (each.value.full_name_override ? each.value.name : "${each.value.name}.${data.aws_route53_zone.default[0].name}") : data.aws_route53_zone.default[0].name
+  name                             = each.value.name != "" ? (each.value.full_name_override ? each.value.name : "${each.value.name}.${local.zone_name}") : local.zone_name
   type                             = each.value.type
   ttl                              = each.value.ttl
   records                          = each.value.records
@@ -65,7 +72,7 @@ resource "aws_route53_record" "default" {
 
     content {
       name                   = alias.value.name
-      zone_id                = coalesce(try(alias.value.zone_id, null), data.aws_route53_zone.default[0].zone_id)
+      zone_id                = coalesce(try(alias.value.zone_id, null), local.zone_id)
       evaluate_target_health = try(alias.value.evaluate_target_health, false)
     }
   }
@@ -169,3 +176,5 @@ resource "aws_route53_health_check" "default" {
 
   tags = merge(local.tags, try(each.value.tags, {}))
 }
+
+data "aws_region" "current" {}

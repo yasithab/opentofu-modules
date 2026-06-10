@@ -5,6 +5,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -191,3 +192,5 @@ resource "aws_globalaccelerator_cross_account_attachment" "this" {
 
   tags = local.tags
 }
+
+data "aws_region" "current" {}

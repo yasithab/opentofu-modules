@@ -36,6 +36,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -241,3 +242,5 @@ check "health_check_validation" {
     error_message = "Health check configuration errors: ${join(", ", local.health_check_validation_errors)}"
   }
 }
+
+data "aws_region" "current" {}

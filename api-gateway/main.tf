@@ -17,6 +17,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -334,3 +335,5 @@ resource "aws_wafv2_web_acl_association" "this" {
     enabled = local.create_waf_association
   }
 }
+
+data "aws_region" "current" {}

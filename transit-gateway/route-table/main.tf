@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -58,3 +59,5 @@ resource "aws_route" "this" {
   destination_ipv6_cidr_block = each.value.destination_ipv6_cidr_block
   transit_gateway_id          = var.transit_gateway_id
 }
+
+data "aws_region" "current" {}

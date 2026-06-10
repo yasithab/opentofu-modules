@@ -7,6 +7,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   # When rule group associations are used, the Web ACL variant with
@@ -4251,3 +4252,5 @@ resource "aws_wafv2_web_acl_logging_configuration" "this" {
     enabled = local.enabled && length(var.logging_destination_arns) > 0
   }
 }
+
+data "aws_region" "current" {}

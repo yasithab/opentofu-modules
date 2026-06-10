@@ -8,6 +8,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   # Create a security group only when we are not managing rules on an existing one
@@ -151,3 +152,5 @@ resource "aws_vpc_security_group_egress_rule" "this" {
 
   tags = local.tags
 }
+
+data "aws_region" "current" {}

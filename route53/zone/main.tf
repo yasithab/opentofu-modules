@@ -5,6 +5,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   dnssec_zones    = { for k, v in var.zones : k => v if local.enabled && v.dnssec != null }
@@ -125,3 +126,5 @@ resource "aws_route53_query_log" "this" {
 
   depends_on = [aws_cloudwatch_log_resource_policy.query_log]
 }
+
+data "aws_region" "current" {}

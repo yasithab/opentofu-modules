@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   # camelCase field objects for the WAFv2 managed_service_data logging JSON.
@@ -32,3 +33,5 @@ resource "aws_fms_admin_account" "this" {
     enabled = local.enabled && var.associate_admin_account
   }
 }
+
+data "aws_region" "current" {}

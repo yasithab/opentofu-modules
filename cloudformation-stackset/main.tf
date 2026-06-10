@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -124,3 +125,5 @@ resource "aws_cloudformation_stack_set_instance" "this" {
 }
 
 ################################################################################
+
+data "aws_region" "current" {}

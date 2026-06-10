@@ -7,6 +7,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   s3_bucket_name = var.create_s3_bucket ? aws_s3_bucket.this.id : var.s3_bucket_name

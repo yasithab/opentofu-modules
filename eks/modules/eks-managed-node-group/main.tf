@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -777,3 +778,5 @@ resource "aws_autoscaling_schedule" "this" {
   # Cron examples: https://crontab.guru/examples.html
   recurrence = each.value.recurrence
 }
+
+data "aws_region" "current" {}

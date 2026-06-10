@@ -8,6 +8,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -69,3 +70,5 @@ resource "aws_cloudwatch_metric_alarm" "this" {
     enabled = local.enabled
   }
 }
+
+data "aws_region" "current" {}

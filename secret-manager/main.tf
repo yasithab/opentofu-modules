@@ -1,6 +1,7 @@
 locals {
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -165,3 +166,5 @@ resource "aws_secretsmanager_secret_rotation" "this" {
     enabled = var.enabled && var.enable_rotation
   }
 }
+
+data "aws_region" "current" {}

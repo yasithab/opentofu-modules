@@ -39,6 +39,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -604,3 +605,5 @@ resource "aws_apprunner_observability_configuration" "this" {
     enabled = local.enable_observability_configuration
   }
 }
+
+data "aws_region" "current" {}

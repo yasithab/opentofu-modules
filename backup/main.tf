@@ -37,6 +37,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -456,3 +457,5 @@ resource "aws_backup_restore_testing_selection" "this" {
     }
   }
 }
+
+data "aws_region" "current" {}

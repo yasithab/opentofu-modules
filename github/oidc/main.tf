@@ -3,6 +3,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -21,3 +22,5 @@ resource "aws_iam_openid_connect_provider" "this" {
     Provider = each.key
   }, each.value.tags)
 }
+
+data "aws_region" "current" {}

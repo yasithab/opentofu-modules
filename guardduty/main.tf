@@ -3,6 +3,7 @@ locals {
   name    = var.name
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   create_organization_admin_account = local.enabled && var.create_organization_admin_account
@@ -256,3 +257,5 @@ resource "aws_guardduty_member" "this" {
   invitation_message         = try(each.value.invitation_message, "GuardDuty member invitation")
   disable_email_notification = try(each.value.disable_email_notification, true)
 }
+
+data "aws_region" "current" {}

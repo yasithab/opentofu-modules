@@ -7,6 +7,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   # Detect ARM architecture from instance type (t4g, c6g, c6gn, c7g, c7gn, m6g, r6g, etc.)

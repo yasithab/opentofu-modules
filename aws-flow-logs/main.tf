@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 
   resource_id = coalesce(
@@ -158,3 +159,5 @@ data "aws_iam_policy_document" "this" {
 }
 
 ################################################################################
+
+data "aws_region" "current" {}

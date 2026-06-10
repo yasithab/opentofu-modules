@@ -4,6 +4,7 @@ locals {
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"
+    Region    = data.aws_region.current.region
   })
 }
 
@@ -76,3 +77,5 @@ resource "aws_timestreamwrite_table" "this" {
 
   tags = merge(local.tags, each.value.tags)
 }
+
+data "aws_region" "current" {}
