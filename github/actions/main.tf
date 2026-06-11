@@ -26,11 +26,6 @@ locals {
 # GitHub OIDC
 #####################################################################################
 
-data "aws_iam_openid_connect_provider" "github_oidc" {
-  count = var.enabled ? 1 : 0
-  arn   = var.github_oidc_arn
-}
-
 #####################################################################################
 # GitHub Actions Role Based Access
 #####################################################################################
@@ -44,7 +39,7 @@ data "aws_iam_policy_document" "github_actions_oid_assume_role_policy" {
     ]
     principals {
       type        = "Federated"
-      identifiers = [try(data.aws_iam_openid_connect_provider.github_oidc[0].arn, var.github_oidc_arn)]
+      identifiers = [var.github_oidc_arn]
     }
 
     # Require tokens to be issued for STS - without this, any GitHub OIDC token
