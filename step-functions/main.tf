@@ -9,9 +9,9 @@ locals {
 
   create_role = local.enabled && var.create_role
 
-  role_arn       = var.create_role ? aws_iam_role.this.arn : var.role_arn
+  role_arn       = var.create_role ? try(aws_iam_role.this.arn, null) : var.role_arn
   log_group_name = coalesce(var.log_group_name, "/aws/states/${var.name}")
-  log_group_arn  = var.create_log_group ? aws_cloudwatch_log_group.this.arn : var.existing_log_group_arn
+  log_group_arn  = var.create_log_group ? try(aws_cloudwatch_log_group.this.arn, null) : var.existing_log_group_arn
 }
 
 
