@@ -6,7 +6,7 @@ locals {
     Region    = data.aws_region.current.region
   })
 
-  public_key = var.create_private_key ? trimspace(tls_private_key.this.public_key_openssh) : var.public_key
+  public_key = var.create_private_key ? try(trimspace(tls_private_key.this.public_key_openssh), null) : var.public_key
 }
 
 ################################################################################

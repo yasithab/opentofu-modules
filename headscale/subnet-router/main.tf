@@ -350,7 +350,7 @@ data "aws_iam_policy_document" "this" {
         "logs:PutLogEvents",
         "logs:DescribeLogStreams",
       ]
-      resources = ["${aws_cloudwatch_log_group.this.arn}:*"]
+      resources = ["${try(aws_cloudwatch_log_group.this.arn, "")}:*"]
     }
   }
 }
