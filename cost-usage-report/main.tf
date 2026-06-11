@@ -10,7 +10,10 @@ locals {
     Region    = data.aws_region.current.region
   })
 
-  s3_bucket_name = var.create_s3_bucket ? try(aws_s3_bucket.this.id, null) : var.s3_bucket_name
+  # Fall back to "" (not null): when the module is disabled the bucket
+  # resource doesn't exist, and a null here breaks string interpolation in
+  # the bucket-policy document during plan.
+  s3_bucket_name = var.create_s3_bucket ? try(aws_s3_bucket.this.id, "") : var.s3_bucket_name
 
   # Defaults to the previous single hardcoded rule (Glacier transition + expiration)
   s3_lifecycle_rules = var.s3_lifecycle_rules != null ? var.s3_lifecycle_rules : [

@@ -17,6 +17,7 @@ Collection of 128+ reusable OpenTofu modules for AWS infrastructure. All modules
 | `task lint-init` | Install tflint plugins (run once before first lint) |
 | `task test` | Run Terratest validate on all modules (no AWS creds needed) |
 | `task test-plan` | Run Terratest plan on all modules (requires AWS creds) |
+| `task offline-test` | Run native `tofu test` (mocked providers, no AWS creds) in every module with `tests/*.tftest.hcl` |
 | `task security` | Trivy CRITICAL/HIGH misconfiguration scan |
 | `task docs` | Regenerate README Requirements/Providers/Inputs/Outputs tables via terraform-docs (`.terraform-docs.yml`) |
 | `task new-module -- <name>` | Scaffold a new module skeleton (refuses if the directory exists) |
@@ -46,6 +47,17 @@ Every module follows this structure:
 - `test/fixtures/invalid-<case>.tfvars` - negative fixture that MUST fail plan on exactly one variable validation; include the happy-path required vars so only the targeted validation fires (no AWS creds needed - validations fire before provider auth)
 - Modules declaring `variable "enabled"` are automatically plan-tested with `enabled = false` and must plan zero changes (`TestDisabledAllModules`)
 - When adding a variable validation, add a matching `invalid-*.tfvars` fixture to prove it fires
+
+### Offline tests (`tests/offline.tftest.hcl`)
+
+Every module has a generated native `tofu test` file that plans the module
+creds-free with all providers mocked (`mock_provider`): `run "plan_enabled"`
+uses the `test/test.tfvars` values, `run "plan_disabled"` adds
+`enabled = false` (wrappers only get a minimal enabled run). Do not edit these
+files by hand — regenerate with `python3 scripts/generate-offline-tests.py
+[module ...]` (add `--test --fix` to auto-derive mock defaults from
+format-validation errors). Per-module mock overrides live in
+`scripts/offline-test-mocks/`. See test/README.md "Offline tests".
 
 ### Required patterns in every module
 

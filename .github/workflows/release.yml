@@ -82,6 +82,12 @@ jobs:
       - name: Validate all modules
         run: task validate
 
+      # Creds-free native `tofu test` suites (mock providers, enabled +
+      # disabled plan paths) across all modules - same gate as the PR
+      # offline-test job, run again before tagging.
+      - name: Run offline tofu tests (all modules)
+        run: task offline-test
+
       - name: Run Terratest (validate + plan)
         working-directory: test
         run: |

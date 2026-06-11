@@ -79,15 +79,17 @@ output "security_group_arn" {
 
 output "service_role_arn" {
   description = "The effective ARN of the Batch service IAM role (created by the module or passed via `service_role_arn`)."
-  value       = coalesce(try(aws_iam_role.service.arn, null), var.service_role_arn, "")
+  # try() wraps coalesce(): with the module disabled and no override variable
+  # every argument is null and a bare coalesce() errors during plan.
+  value = try(coalesce(try(aws_iam_role.service.arn, null), var.service_role_arn), "")
 }
 
 output "execution_role_arn" {
   description = "The effective ARN of the Batch execution IAM role (created by the module or passed via `execution_role_arn`)."
-  value       = coalesce(try(aws_iam_role.execution.arn, null), var.execution_role_arn, "")
+  value       = try(coalesce(try(aws_iam_role.execution.arn, null), var.execution_role_arn), "")
 }
 
 output "job_role_arn" {
   description = "The effective ARN of the Batch job IAM role (created by the module or passed via `job_role_arn`)."
-  value       = coalesce(try(aws_iam_role.job.arn, null), var.job_role_arn, "")
+  value       = try(coalesce(try(aws_iam_role.job.arn, null), var.job_role_arn), "")
 }

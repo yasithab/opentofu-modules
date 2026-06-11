@@ -9,3 +9,6 @@ users = [
     password = "TerratestPlan123!"
   }
 ]
+encryption_options = {
+  use_aws_owned_key = true
+}

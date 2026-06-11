@@ -180,6 +180,7 @@ task --list
 | `task lint` | Run tflint across all modules |
 | `task test` | Run Terratest validate on all modules (no AWS creds needed) |
 | `task test-plan` | Run Terratest plan on all modules (requires AWS credentials) |
+| `task offline-test` | Run native `tofu test` (mock providers, enabled + disabled paths) in every module with `tests/*.tftest.hcl` (no AWS creds needed) |
 | `task security` | Run Trivy CRITICAL/HIGH misconfiguration scan |
 | `task docs` | Regenerate Requirements/Providers/Inputs/Outputs tables in every module README (terraform-docs) |
 | `task new-module -- <name>` | Scaffold a new module skeleton following repo conventions |
@@ -269,16 +270,18 @@ Runs on every pull request:
 3. Lint with tflint (`task lint`)
 4. Terratest validate - Go-based syntax/type validation
 5. Terratest plan - validates changed modules against real AWS APIs via OIDC (read-only, no resources created)
-6. Trivy security scan (fails on CRITICAL/HIGH)
+6. Offline `tofu test` - native test suites with mock providers on ALL modules (creds-free early net for disabled-path regressions)
+7. Trivy security scan (fails on CRITICAL/HIGH)
 
 ### Release Workflow (`.github/workflows/release.yml`)
 
 Runs on every push to `master`:
 
 1. Validate all modules (`task validate`)
-2. Terratest validate + plan (all modules, via AWS OIDC)
-3. Auto-create semantic version tag based on commit message prefix
-4. Create GitHub release with auto-generated notes
+2. Offline `tofu test` on all modules (`task offline-test`, mock providers, no AWS creds)
+3. Terratest validate + plan (all modules, via AWS OIDC)
+4. Auto-create semantic version tag based on commit message prefix
+5. Create GitHub release with auto-generated notes
 
 ### Module Health Check (`.github/workflows/module-health.yml`)
 
