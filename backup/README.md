@@ -152,130 +152,6 @@ module "backup" {
 }
 ```
 
-## Input Reference
-
-### Core
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `enabled` | `bool` | `true` | Set to false to prevent all resource creation. |
-| `name` | `string` | required | Name used for all resource naming. |
-| `tags` | `map(string)` | `{}` | Tags applied to all resources. |
-
-### Vault
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `vault_enabled` | `bool` | `true` | Create a new vault. False looks up existing vault by `vault_name`. |
-| `vault_name` | `string` | `null` | Override vault name. Defaults to `var.name`. |
-| `kms_key_arn` | `string` | `null` | KMS key ARN for vault encryption. Uses AWS-managed key when null. |
-| `vault_force_destroy` | `bool` | `false` | Allow vault deletion even when it contains recovery points. |
-| `vault_policy` | `string` | `null` | JSON IAM resource policy for cross-account access. |
-| `vault_lock` | `object` | `null` | Vault lock config. `changeable_for_days` enables compliance mode. |
-
-#### vault_lock schema
-
-```hcl
-vault_lock = {
-  changeable_for_days = 14    # optional - omit for governance mode, set for compliance mode
-  min_retention_days  = 7     # optional - minimum enforced retention days
-  max_retention_days  = 365   # optional - maximum enforced retention days
-}
-```
-
-### Notifications
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `notifications` | `object` | `null` | SNS notification config. Null disables notifications entirely. |
-
-#### notifications schema
-
-```hcl
-notifications = {
-  sns_topic_arn = "arn:aws:sns:ap-southeast-1:123456789012:backup-alerts"
-  events        = null   # null defaults to all job start/complete/fail events
-}
-```
-
-When `events` is null, the following events are used:
-`BACKUP_JOB_STARTED`, `BACKUP_JOB_COMPLETED`, `BACKUP_JOB_FAILED`,
-`COPY_JOB_STARTED`, `COPY_JOB_FAILED`,
-`RESTORE_JOB_COMPLETED`, `RESTORE_JOB_FAILED`
-
-### Air-Gapped Vault
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `air_gapped_vault` | `object` | `null` | Creates a logically air-gapped vault. Null disables creation. |
-
-#### air_gapped_vault schema
-
-```hcl
-air_gapped_vault = {
-  name               = null    # optional, defaults to "<name>-airgap"
-  min_retention_days = 7       # required
-  max_retention_days = 365     # required
-  encryption_key_arn = null    # optional KMS key ARN
-}
-```
-
-Both `min_retention_days` and `max_retention_days` are required because AWS enforces them
-when creating a logically air-gapped vault.
-
-### IAM
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `iam_role_enabled` | `bool` | `true` | Create a new IAM role. False looks up existing role by `iam_role_name`. |
-| `iam_role_name` | `string` | `null` | Override IAM role name. Defaults to `"${var.name}-backup"`. |
-| `permissions_boundary` | `string` | `null` | IAM permissions boundary ARN for the role. |
-| `iam_role_extra_policies` | `list(string)` | `[]` | Additional policy ARNs beyond the four default backup policies. |
-
-Default policies always attached:
-- `AWSBackupServiceRolePolicyForBackup`
-- `AWSBackupServiceRolePolicyForS3Backup`
-- `AWSBackupServiceRolePolicyForRestores`
-- `AWSBackupServiceRolePolicyForS3Restore`
-
-### Backup Plan
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `plan_enabled` | `bool` | `true` | Create a backup plan and selections. |
-| `plan_name_suffix` | `string` | `null` | Optional suffix appended as `"<name>_<suffix>"`. |
-| `rules` | `list(object)` | `[]` | Backup plan rules. See Rule Object Schema. |
-| `advanced_backup_setting` | `object` | `null` | Per-resource-type advanced backup options (e.g. Windows VSS for EC2). |
-| `scan_setting` | `object` | `null` | Malware scan settings for the plan. |
-
-### Backup Selections
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `selections` | `map(object)` | `{}` | Map of backup selections. Key is used as the selection name. |
-
-Each selection supports: `iam_role_arn`, `resources`, `not_resources`, `selection_tags`,
-and `conditions` (with `string_equals`, `string_not_equals`, `string_like`, `string_not_like`
-sub-lists).
-
-Condition keys are passed through unchanged. Use full paths such as
-`aws:ResourceTag/MyTag`. Keys are NOT auto-prefixed by this module.
-
-### Frameworks and Reporting
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `frameworks` | `map(object)` | `{}` | AWS Backup compliance frameworks. Key is the framework name. |
-| `report_plans` | `map(object)` | `{}` | AWS Backup report plans. Key is the report plan name. |
-| `region_settings` | `object` | `null` | Region-level opt-in and management preferences. One per region per account. |
-
-### Restore Testing
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `restore_testing_plan` | `object` | `null` | Restore testing plan configuration. |
-| `restore_testing_selections` | `map(object)` | `{}` | Map of restore testing selections. Requires `restore_testing_plan`. |
-
 ## Rule Object Schema
 
 ```hcl
@@ -310,33 +186,6 @@ Condition keys are passed through unchanged. Use full paths such as
   }))
 }
 ```
-
-## Output Reference
-
-| Name | Description |
-|------|-------------|
-| `backup_vault_id` | Backup vault ID (name). |
-| `backup_vault_arn` | Backup vault ARN. |
-| `backup_vault_recovery_points` | Number of recovery points in the vault. |
-| `air_gapped_vault_id` | Air-gapped vault ID. Empty string when not created. |
-| `air_gapped_vault_arn` | Air-gapped vault ARN. Empty string when not created. |
-| `backup_plan_id` | Backup plan ID. |
-| `backup_plan_arn` | Backup plan ARN. |
-| `backup_plan_version` | Backup plan version UUID, updated on every change. |
-| `backup_selection_ids` | Map of selection name to selection ID. |
-| `iam_role_name` | IAM role name. |
-| `iam_role_arn` | IAM role ARN. |
-| `framework_arns` | Map of framework name to ARN. |
-| `report_plan_arns` | Map of report plan name to ARN. |
-| `restore_testing_plan_arn` | Restore testing plan ARN. Null when not created. |
-
-## Requirements
-
-| Name | Version |
-|------|---------|
-| OpenTofu | `>= 1.11.0` |
-| AWS provider | `~> 6.34` |
-
 
 ## Examples
 
@@ -825,3 +674,75 @@ output "air_gapped_vault_arn" {
   value = module.backup.air_gapped_vault_arn
 }
 ```
+
+## Reference
+
+<details>
+<summary>Requirements, providers, inputs and outputs (generated by terraform-docs)</summary>
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| terraform | >= 1.11.0 |
+| aws | >= 6.49, < 7.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| aws | >= 6.49, < 7.0 |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| advanced\_backup\_setting | Advanced backup settings per resource type (e.g. Windows VSS backups for EC2). | <pre>object({<br/>    backup_options = map(string)<br/>    resource_type  = string<br/>  })</pre> | `null` | no |
+| air\_gapped\_vault | Configuration for a logically air-gapped backup vault. No air-gapped vault is created when null.<br/>- name: Override the vault name. Defaults to "<name>-airgap".<br/>- min\_retention\_days / max\_retention\_days: Required retention bounds (non-optional - AWS requires both).<br/>- encryption\_key\_arn: Optional KMS key ARN for encryption. | <pre>object({<br/>    name               = optional(string)<br/>    min_retention_days = number<br/>    max_retention_days = number<br/>    encryption_key_arn = optional(string)<br/>  })</pre> | `null` | no |
+| enabled | Set to false to prevent the module from creating any resources. | `bool` | `true` | no |
+| frameworks | Map of AWS Backup Frameworks to create. Key is used as the framework name. | <pre>map(object({<br/>    description = optional(string)<br/>    controls = list(object({<br/>      name = string<br/>      input_parameters = optional(list(object({<br/>        name  = string<br/>        value = string<br/>      })), [])<br/>      scope = optional(object({<br/>        compliance_resource_ids   = optional(list(string))<br/>        compliance_resource_types = optional(list(string))<br/>        tags                      = optional(map(string))<br/>      }))<br/>    }))<br/>  }))</pre> | `{}` | no |
+| iam\_role\_enabled | Set to true to create an IAM role for AWS Backup. Set to false to use an existing role resolved by iam\_role\_name. | `bool` | `true` | no |
+| iam\_role\_extra\_policies | Additional policy ARNs to attach to the backup IAM role beyond the four default AWS managed backup policies. | `list(string)` | `[]` | no |
+| iam\_role\_name | Override the IAM role name. Defaults to "<name>-backup" when null. | `string` | `null` | no |
+| kms\_key\_arn | ARN of the KMS key used to encrypt the backup vault. Uses the AWS-managed key when null. | `string` | `null` | no |
+| name | Name to use for resource naming and tagging. | `string` | n/a | yes |
+| notifications | SNS notification configuration. Null disables notifications.<br/>- sns\_topic\_arn: ARN of the SNS topic. The topic policy must allow backup.amazonaws.com to publish.<br/>- events: Vault events to send. Defaults to all job start/complete/fail events when null. | <pre>object({<br/>    sns_topic_arn = string<br/>    events        = optional(list(string))<br/>  })</pre> | `null` | no |
+| permissions\_boundary | ARN of the IAM policy to use as permissions boundary for the backup IAM role. | `string` | `null` | no |
+| plan\_enabled | Set to true to create a backup plan and backup selections. | `bool` | `true` | no |
+| plan\_name\_suffix | Optional suffix appended to the plan name as: <name>\_<suffix>. | `string` | `null` | no |
+| region\_settings | AWS Backup region-level settings. When set, configures which resource types are opted in<br/>to backup and which use AWS Backup-managed policies. This is a region-wide resource -<br/>only one configuration exists per region per account. | <pre>object({<br/>    resource_type_opt_in_preference     = map(bool)<br/>    resource_type_management_preference = optional(map(bool))<br/>  })</pre> | `null` | no |
+| report\_plans | Map of AWS Backup Report Plans to create. Key is used as the report plan name.<br/>report\_template must be one of: RESOURCE\_COMPLIANCE\_REPORT, CONTROL\_COMPLIANCE\_REPORT,<br/>BACKUP\_JOB\_REPORT, COPY\_JOB\_REPORT, RESTORE\_JOB\_REPORT. | <pre>map(object({<br/>    description        = optional(string)<br/>    s3_bucket_name     = string<br/>    s3_key_prefix      = optional(string)<br/>    formats            = optional(list(string), ["CSV"])<br/>    report_template    = string<br/>    accounts           = optional(list(string), [])<br/>    regions            = optional(list(string), [])<br/>    framework_arns     = optional(list(string), [])<br/>    organization_units = optional(list(string), [])<br/>  }))</pre> | `{}` | no |
+| restore\_testing\_plan | Restore testing plan configuration. When set, creates an aws\_backup\_restore\_testing\_plan.<br/>- name: Defaults to "<name>-restore-test".<br/>- schedule\_expression: Cron expression for when restore tests run. The module falls back to "cron(0 5 ? * * *)" (daily at 05:00 UTC) if unset.<br/>- algorithm: RANDOM\_WITHIN\_WINDOW or LATEST\_WITHIN\_WINDOW.<br/>- recovery\_point\_types: e.g. ["CONTINUOUS", "SNAPSHOT"]. | <pre>object({<br/>    name                         = optional(string)<br/>    schedule_expression          = string<br/>    schedule_expression_timezone = optional(string)<br/>    start_window_hours           = optional(number)<br/>    recovery_point_selection = object({<br/>      algorithm             = string<br/>      include_vaults        = list(string)<br/>      recovery_point_types  = list(string)<br/>      exclude_vaults        = optional(list(string))<br/>      selection_window_days = optional(number)<br/>    })<br/>  })</pre> | `null` | no |
+| restore\_testing\_selections | Map of restore testing selections. Key is used as the selection name. Requires<br/>restore\_testing\_plan to be configured. Uses the module IAM role when iam\_role\_arn is null. | <pre>map(object({<br/>    protected_resource_type    = string<br/>    iam_role_arn               = optional(string)<br/>    protected_resource_arns    = optional(list(string), [])<br/>    restore_metadata_overrides = optional(map(string), {})<br/>    validation_window_hours    = optional(number)<br/>    protected_resource_conditions = optional(object({<br/>      string_equals     = optional(list(object({ key = string, value = string })), [])<br/>      string_not_equals = optional(list(object({ key = string, value = string })), [])<br/>    }), {})<br/>  }))</pre> | `{}` | no |
+| rules | List of backup plan rules. Each rule defines a backup schedule, retention policy, and optional<br/>cross-region copy actions.<br/>- scan\_mode: "FULL\_SCAN" or "INCREMENTAL\_SCAN".<br/>- Use target\_logically\_air\_gapped\_backup\_vault\_arn = "self" to reference the module's own air-gapped vault. | <pre>list(object({<br/>    name                                         = string<br/>    schedule                                     = optional(string)<br/>    schedule_expression_timezone                 = optional(string)<br/>    enable_continuous_backup                     = optional(bool)<br/>    start_window                                 = optional(number)<br/>    completion_window                            = optional(number)<br/>    target_logically_air_gapped_backup_vault_arn = optional(string)<br/>    recovery_point_tags                          = optional(map(string))<br/>    lifecycle = optional(object({<br/>      cold_storage_after                        = optional(number)<br/>      delete_after                              = optional(number)<br/>      opt_in_to_archive_for_supported_resources = optional(bool)<br/>    }))<br/>    copy_actions = optional(list(object({<br/>      destination_vault_arn = string<br/>      lifecycle = optional(object({<br/>        cold_storage_after                        = optional(number)<br/>        delete_after                              = optional(number)<br/>        opt_in_to_archive_for_supported_resources = optional(bool)<br/>      }))<br/>    })), [])<br/>    scan_action = optional(object({<br/>      malware_scanner = string<br/>      scan_mode       = string<br/>    }))<br/>  }))</pre> | `[]` | no |
+| scan\_setting | Malware scan settings for the backup plan. When set, AWS Backup scans recovery points for<br/>malware using the specified scanner.<br/>- malware\_scanner: Scanner type identifier.<br/>- resource\_types: Resource types to scan (e.g. ["EC2", "EFS"]).<br/>- scanner\_role\_arn: ARN of the IAM role used by the malware scanner. | <pre>object({<br/>    malware_scanner  = string<br/>    resource_types   = list(string)<br/>    scanner_role_arn = string<br/>  })</pre> | `null` | no |
+| selections | Map of backup selections. The map key is used as the selection name. Each selection can<br/>specify resources by ARN, exclusion patterns, tag-based selection, and tag conditions.<br/>Condition keys are full paths, e.g. "aws:ResourceTag/MyTag". They are NOT auto-prefixed.<br/>Uses the module IAM role when iam\_role\_arn is null. | <pre>map(object({<br/>    iam_role_arn  = optional(string)<br/>    resources     = optional(list(string), [])<br/>    not_resources = optional(list(string), [])<br/>    selection_tags = optional(list(object({<br/>      type  = string<br/>      key   = string<br/>      value = string<br/>    })), [])<br/>    conditions = optional(object({<br/>      string_equals     = optional(list(object({ key = string, value = string })), [])<br/>      string_not_equals = optional(list(object({ key = string, value = string })), [])<br/>      string_like       = optional(list(object({ key = string, value = string })), [])<br/>      string_not_like   = optional(list(object({ key = string, value = string })), [])<br/>    }), {})<br/>  }))</pre> | `{}` | no |
+| tags | Map of tags to apply to all resources. | `map(string)` | `{}` | no |
+| vault\_enabled | Set to true to create a new backup vault. Set to false to use an existing vault resolved by vault\_name. | `bool` | `true` | no |
+| vault\_force\_destroy | Allow the vault to be destroyed even when it contains recovery points. All recovery points are deleted before vault deletion. | `bool` | `false` | no |
+| vault\_lock | Vault lock configuration. Null disables vault lock.<br/>- changeable\_for\_days: Creates compliance-mode lock (irremovable for N days). Omit for governance mode.<br/>- min\_retention\_days / max\_retention\_days: Retention range enforced by the lock. | <pre>object({<br/>    changeable_for_days = optional(number)<br/>    max_retention_days  = optional(number)<br/>    min_retention_days  = optional(number)<br/>  })</pre> | `null` | no |
+| vault\_name | Override the vault name. Defaults to var.name when null. | `string` | `null` | no |
+| vault\_policy | JSON IAM resource policy document to attach to the vault (e.g. for cross-account sharing). No policy is attached when null. | `string` | `null` | no |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| air\_gapped\_vault\_arn | Logically air-gapped vault ARN. Empty string when not created. |
+| air\_gapped\_vault\_id | Logically air-gapped vault ID (name). Empty string when not created. |
+| backup\_plan\_arn | Backup plan ARN. |
+| backup\_plan\_id | Backup plan ID. |
+| backup\_plan\_version | Version UUID of the backup plan, updated on every change. |
+| backup\_selection\_ids | Map of selection name to selection ID. |
+| backup\_vault\_arn | Backup vault ARN. |
+| backup\_vault\_id | Backup vault ID (name). |
+| backup\_vault\_recovery\_points | Number of recovery points stored in the vault. |
+| framework\_arns | Map of framework name to ARN. |
+| iam\_role\_arn | ARN of the IAM role used by AWS Backup. |
+| iam\_role\_name | Name of the IAM role used by AWS Backup. |
+| report\_plan\_arns | Map of report plan name to ARN. |
+| restore\_testing\_plan\_arn | Restore testing plan ARN. Null when not created. |
+<!-- END_TF_DOCS -->
+
+</details>

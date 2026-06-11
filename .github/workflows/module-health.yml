@@ -30,7 +30,7 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ env.TF_PLUGIN_CACHE_DIR }}
-          key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/providers.tf', '**/versions.tf') }}
+          key: opentofu-providers-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
           restore-keys: |
             opentofu-providers-${{ runner.os }}-
 
@@ -85,6 +85,21 @@ jobs:
             echo "has_failures=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Validate README usage examples
+        id: readme_examples
+        run: |
+          # Extracts every ```hcl block from module READMEs, rewrites remote
+          # git sources back to local paths and runs tofu validate on each
+          # example - see .github/scripts/validate-readme-examples.sh.
+          set -o pipefail
+          if bash .github/scripts/validate-readme-examples.sh /tmp/failed-readme-examples.txt 2>&1 | tee /tmp/readme-examples-output.txt; then
+            echo "has_failures=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_failures=true" >> "$GITHUB_OUTPUT"
+          fi
+          SUMMARY=$(grep -E '^README examples:' /tmp/readme-examples-output.txt | tail -n 1 || true)
+          echo "summary=${SUMMARY:-README examples: none found}" >> "$GITHUB_OUTPUT"
+
       - name: Generate report
         id: report
         run: |
@@ -93,11 +108,18 @@ jobs:
             echo ""
             echo "**Total modules:** ${{ steps.validate.outputs.total }}"
             echo "**Validation:** ${{ steps.validate.outputs.passed }}/${{ steps.validate.outputs.total }} passed"
+            echo "**${{ steps.readme_examples.outputs.summary }}**"
             echo ""
 
             if [ "${{ steps.validate.outputs.has_failures }}" = "true" ]; then
               echo "### ❌ Validation Failures"
               cat /tmp/failed-validation.txt
+              echo ""
+            fi
+
+            if [ "${{ steps.readme_examples.outputs.has_failures }}" = "true" ]; then
+              echo "### ❌ README Example Failures"
+              cat /tmp/failed-readme-examples.txt
               echo ""
             fi
 
@@ -108,6 +130,7 @@ jobs:
             fi
 
             if [ "${{ steps.validate.outputs.has_failures }}" = "false" ] && \
+               [ "${{ steps.readme_examples.outputs.has_failures }}" = "false" ] && \
                [ "${{ steps.missing_readme.outputs.found }}" = "false" ]; then
               echo "### ✅ All checks passed"
               echo "All modules have valid configuration and documentation."
@@ -115,7 +138,9 @@ jobs:
           } | tee /tmp/report.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create issue if problems found
-        if: steps.validate.outputs.has_failures == 'true'
+        if: >-
+          steps.validate.outputs.has_failures == 'true' ||
+          steps.readme_examples.outputs.has_failures == 'true'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         with:
           script: |

@@ -1,5 +1,7 @@
 locals {
-  replication_role_name = substr("s3-repl-${aws_s3_bucket.this.id}", 0, 64)
+  # try() guards the disabled path: with enabled = false the bucket resource
+  # evaluates to null and a direct .id reference fails the whole plan.
+  replication_role_name = substr("s3-repl-${try(aws_s3_bucket.this.id, "")}", 0, 64)
 }
 
 resource "aws_iam_role" "replication" {
