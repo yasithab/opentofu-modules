@@ -4,6 +4,7 @@
 # fail to join nodes to the cluster
 resource "null_resource" "validate_cluster_service_cidr" {
   lifecycle {
+    enabled = var.enabled
     precondition {
       # The length 6 is currently arbitrary, but it's a safe bet that the CIDR will be longer than that
       # The main point is that a value needs to be provided when `create = true`

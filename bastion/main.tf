@@ -16,7 +16,7 @@ locals {
 
   bastion_id              = local.name != null ? local.name : "bastion"
   ami_ssm_path            = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-${var.cpu_architecture}"
-  eip_allocation_id       = var.public ? aws_eip.this.id : ""
+  eip_allocation_id       = var.public ? try(aws_eip.this.id, "") : ""
   ssh_host_key_ssm_prefix = var.ssh_host_key_ssm_prefix != null ? var.ssh_host_key_ssm_prefix : "/bastion/${local.bastion_id}/ssh-host-keys"
 
   create_sg          = length(var.vpc_security_group_ids) == 0

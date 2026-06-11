@@ -6,7 +6,7 @@ locals {
     Region    = data.aws_region.current.region
   })
 
-  artifact_s3_location = var.create_artifact_bucket ? "s3://${aws_s3_bucket.artifacts.id}" : "s3://${var.artifact_s3_bucket_name}"
+  artifact_s3_location = var.create_artifact_bucket ? "s3://${try(aws_s3_bucket.artifacts.id, "")}" : "s3://${var.artifact_s3_bucket_name}"
 
   default_artifact_bucket_name = "synthetics-artifacts-${var.name}-${data.aws_caller_identity.current.account_id}-${data.aws_region.current.region}"
 }

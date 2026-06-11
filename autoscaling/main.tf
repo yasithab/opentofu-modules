@@ -12,7 +12,7 @@ locals {
     Region    = data.aws_region.current.region
   })
 
-  launch_template_id = var.create_launch_template ? aws_launch_template.this.id : var.launch_template_id
+  launch_template_id = var.create_launch_template ? try(aws_launch_template.this.id, null) : var.launch_template_id
 
   # Name of whichever ASG variant is active (see the two aws_autoscaling_group
   # resources below). try() falls through to the enabled copy.

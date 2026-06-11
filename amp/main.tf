@@ -11,7 +11,7 @@ locals {
 
   # ARN of the log group used for workspace logging - either created by this
   # module or passed in via cloudwatch_log_group_arn.
-  log_group_arn = var.create_cloudwatch_log_group ? aws_cloudwatch_log_group.this.arn : var.cloudwatch_log_group_arn
+  log_group_arn = var.create_cloudwatch_log_group ? try(aws_cloudwatch_log_group.this.arn, null) : var.cloudwatch_log_group_arn
 
   tags = merge(var.tags, {
     ManagedBy = "opentofu"

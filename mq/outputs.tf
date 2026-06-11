@@ -4,17 +4,17 @@
 
 output "arn" {
   description = "The ARN of the broker"
-  value       = aws_mq_broker.this.arn
+  value       = try(aws_mq_broker.this.arn, "")
 }
 
 output "id" {
   description = "The ID of the broker"
-  value       = aws_mq_broker.this.id
+  value       = try(aws_mq_broker.this.id, "")
 }
 
 output "instances" {
   description = "List of information about allocated brokers (if deployment_mode is CLUSTER_MULTI_AZ)"
-  value       = aws_mq_broker.this.instances
+  value       = try(aws_mq_broker.this.instances, [])
   sensitive   = true
 }
 
@@ -49,7 +49,7 @@ output "configuration_id" {
 
 output "security_groups" {
   description = "The list of security groups assigned to the broker"
-  value       = aws_mq_broker.this.security_groups
+  value       = try(aws_mq_broker.this.security_groups, [])
 }
 
 output "security_group_id" {

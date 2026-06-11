@@ -12,7 +12,7 @@ locals {
   dns_suffix = data.aws_partition.current.dns_suffix
 
   # Effective service role ARN: created by this module or passed in by the caller
-  service_role_arn = var.create_service_role ? aws_iam_role.service.arn : var.service_role_arn
+  service_role_arn = var.create_service_role ? try(aws_iam_role.service.arn, null) : var.service_role_arn
 }
 
 ################################################################################
