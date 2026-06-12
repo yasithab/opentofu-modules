@@ -82,7 +82,15 @@ jobs:
       - name: Validate all modules
         run: task validate
 
-      - name: Run Terratest (validate + plan)
+      # Creds-free native `tofu test` suites (mock providers, enabled +
+      # disabled plan paths) across all modules - same gate as the PR
+      # offline-test job, run again before tagging.
+      - name: Run offline tofu tests (all modules)
+        run: task offline-test
+
+      # Remaining Go suites: TestPlanAllModules and TestPlanFixtures
+      # (AWS OIDC plans).
+      - name: Run Terratest (plan + fixtures)
         working-directory: test
         run: |
           set -o pipefail

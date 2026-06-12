@@ -1,6 +1,8 @@
 locals {
-  firehose_role_arn           = local.enabled && var.create_role ? aws_iam_role.firehose.arn : var.firehose_role
-  cw_log_group_name           = "/aws/kinesisfirehose/${local.name}"
+  firehose_role_arn = local.enabled && var.create_role ? aws_iam_role.firehose.arn : var.firehose_role
+  # Null-safe: name may be null (e.g. when role_name is used instead) and the
+  # log-group resource argument is evaluated even on the disabled path.
+  cw_log_group_name           = local.name != null ? "/aws/kinesisfirehose/${local.name}" : null
   cw_log_delivery_stream_name = "DestinationDelivery"
   cw_log_backup_stream_name   = "BackupDelivery"
   is_kinesis_source           = var.input_source == "kinesis" ? true : false

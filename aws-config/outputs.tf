@@ -10,7 +10,7 @@ output "delivery_channel_id" {
 
 output "iam_role_arn" {
   description = "ARN of the IAM role used by the configuration recorder (created or provided)."
-  value       = try(aws_iam_role.config[0].arn, coalesce(var.iam_role_arn, ""))
+  value       = try(aws_iam_role.config[0].arn, var.iam_role_arn, "")
 }
 
 output "iam_role_name" {

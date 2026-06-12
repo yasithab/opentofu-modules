@@ -15,8 +15,8 @@ Collection of 128+ reusable OpenTofu modules for AWS infrastructure. All modules
 | `task lockfiles` | (Re)generate `.terraform.lock.hcl` in every module |
 | `task lint` | Run tflint across all modules |
 | `task lint-init` | Install tflint plugins (run once before first lint) |
-| `task test` | Run Terratest validate on all modules (no AWS creds needed) |
 | `task test-plan` | Run Terratest plan on all modules (requires AWS creds) |
+| `task offline-test` | Run native `tofu test` (mocked providers, no AWS creds) in every module with `tests/*.tftest.hcl` |
 | `task security` | Trivy CRITICAL/HIGH misconfiguration scan |
 | `task docs` | Regenerate README Requirements/Providers/Inputs/Outputs tables via terraform-docs (`.terraform-docs.yml`) |
 | `task new-module -- <name>` | Scaffold a new module skeleton (refuses if the directory exists) |
@@ -43,9 +43,22 @@ Every module follows this structure:
 
 - `test/test.tfvars` - default plan fixture; the plan must contain at least one resource change (opt-out marker: `test/allow-empty-plan`)
 - `test/fixtures/plan-<case>.tfvars` - optional extra plan paths; each is a complete standalone var set, planned on its own
-- `test/fixtures/invalid-<case>.tfvars` - negative fixture that MUST fail plan on exactly one variable validation; include the happy-path required vars so only the targeted validation fires (no AWS creds needed - validations fire before provider auth)
-- Modules declaring `variable "enabled"` are automatically plan-tested with `enabled = false` and must plan zero changes (`TestDisabledAllModules`)
-- When adding a variable validation, add a matching `invalid-*.tfvars` fixture to prove it fires
+- Negative tests are hand-written `run "invalid_<case>"` blocks in `tests/offline.tftest.hcl`: `command = plan` with the bad values inline and `expect_failures = [var.<name>]` targeting the variable whose validation must fire; include the happy-path required vars so only the targeted validation fails (no AWS creds needed)
+- The disabled-path guarantee (module plans cleanly with `enabled = false`) is enforced by each module's `tests/offline.tftest.hcl` (`run "plan_disabled"`, mocked providers) - runs on every PR, no AWS creds needed
+- When adding a variable validation, add a matching `run "invalid_*"` block to prove it fires - the generator preserves these on regeneration
+
+### Offline tests (`tests/offline.tftest.hcl`)
+
+Every module has a generated native `tofu test` file that plans the module
+creds-free with all providers mocked (`mock_provider`): `run "plan_enabled"`
+uses the `test/test.tfvars` values, `run "plan_disabled"` adds
+`enabled = false` (wrappers only get a minimal enabled run). Do not edit the
+generated runs by hand — regenerate with `python3
+scripts/generate-offline-tests.py [module ...]` (add `--test --fix` to
+auto-derive mock defaults from format-validation errors). Hand-written
+`run "invalid_*"` negative tests in the same file are preserved verbatim on
+regeneration. Per-module mock overrides live in `scripts/offline-test-mocks/`.
+See test/README.md "Offline tests".
 
 ### Required patterns in every module
 
@@ -87,13 +100,13 @@ Some modules have submodules under `modules/` (e.g., `eks/modules/`, `cloudwatch
 1. Format check (`tofu fmt -check -recursive`) - fails on drift; run `task format` locally to fix
 2. Validate all modules (`task validate`)
 3. Lint with tflint (`task lint`)
-4. Terratest validate - Go-based syntax/type validation (no AWS creds)
-5. Terratest plan - Go-based plan validation via AWS OIDC (read-only, no resources created)
+4. Offline `tofu test` - native tests with mocked providers, all modules, enabled + disabled paths plus `expect_failures` negative-validation runs (no AWS creds)
+5. Terratest plan - Go-based plan + fixture validation via AWS OIDC (read-only, no resources created)
 6. Trivy security scan (fails on CRITICAL/HIGH)
 
 ### Master Merge
 1. Validate all modules (`task validate`)
-2. Terratest validate + plan (all modules, via AWS OIDC)
+2. Offline `tofu test` (all modules, mocked providers) + Terratest plan suites (via AWS OIDC)
 3. Auto-create semantic version tag and GitHub release
 
 ## Versioning

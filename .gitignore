@@ -22,7 +22,6 @@ override.tf.json
 *.auto.tfvars
 *.auto.tfvars.json
 !**/test/test.tfvars
-!**/test/fixtures/*.tfvars
 
 # Crash logs
 crash.log

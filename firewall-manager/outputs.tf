@@ -4,7 +4,7 @@
 
 output "admin_account_id" {
   description = "AWS account ID of the FMS administrator account."
-  value       = var.associate_admin_account ? aws_fms_admin_account.this.id : null
+  value       = var.associate_admin_account ? try(aws_fms_admin_account.this.id, null) : null
 }
 
 ################################################################################
