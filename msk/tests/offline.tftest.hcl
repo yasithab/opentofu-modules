@@ -101,3 +101,21 @@ run "plan_disabled" {
     enabled = false
   }
 }
+
+# Hand-maintained negative test (preserved verbatim by generate-offline-tests.py).
+# Must fail: provisioned MSK cluster requires broker_subnets with >= 2 subnet IDs.
+run "invalid_single_subnet" {
+  command = plan
+
+  variables {
+    name                   = "terratest-plan"
+    kafka_version          = "3.6.0"
+    number_of_broker_nodes = 2
+    broker_instance_type   = "kafka.t3.small"
+    broker_subnets         = ["subnet-12345678"]
+  }
+
+  expect_failures = [
+    var.broker_subnets,
+  ]
+}

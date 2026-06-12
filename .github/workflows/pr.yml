@@ -281,10 +281,11 @@ jobs:
       working-directory: test
       env:
         TEST_MODULES: ${{ steps.changes.outputs.modules }}
-      # One invocation, no -run filter: validate, plan, fixture-matrix,
-      # disabled-path and invalid-fixture suites all run, and top-level
-      # t.Parallel() lets the suites interleave. tofu init/plan subtests
-      # are I/O-bound (network, AWS API latency), so -parallel goes well
+      # One invocation, no -run filter: the plan and fixture-matrix suites
+      # run, and top-level t.Parallel() lets them interleave (validate,
+      # disabled-path and negative-validation coverage moved to the
+      # creds-free offline tofu tests). tofu init/plan subtests are
+      # I/O-bound (network, AWS API latency), so -parallel goes well
       # beyond core count.
       run: |
         set -o pipefail
@@ -459,7 +460,8 @@ jobs:
   # ── 7. Offline tofu tests (mock providers) ───────────────────────────────
   # Creds-free early net for the disabled-path/null-ref bug class: runs the
   # native `tofu test` suites (tests/*.tftest.hcl with mock providers,
-  # covering enabled + disabled plan paths) across ALL modules - they are
+  # covering enabled + disabled plan paths and the expect_failures
+  # negative-validation runs) across ALL modules - they are
   # fast and need no credentials, so no changed-module scoping; this gives
   # the full-fleet coverage that the changed-module jobs can't. The OIDC
   # terratest job above still does real-API plans on changed modules.

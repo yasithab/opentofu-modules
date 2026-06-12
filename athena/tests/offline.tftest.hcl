@@ -75,3 +75,19 @@ run "plan_disabled" {
     enabled = false
   }
 }
+
+# Hand-maintained negative test (preserved verbatim by generate-offline-tests.py).
+# Must fail: enforce_workgroup_configuration = true requires result_output_location.
+run "invalid_enforce_no_location" {
+  command = plan
+
+  variables {
+    name                            = "terratest-plan"
+    enforce_workgroup_configuration = true
+    # result_output_location intentionally omitted (defaults to null)
+  }
+
+  expect_failures = [
+    var.enforce_workgroup_configuration,
+  ]
+}

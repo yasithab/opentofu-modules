@@ -71,3 +71,29 @@ run "plan_disabled" {
     enabled = false
   }
 }
+
+# Hand-maintained negative test (preserved verbatim by generate-offline-tests.py).
+# Must fail: create_role = true with both name and role_name null leaves the
+# IAM role without a valid name.
+run "invalid_role_no_name" {
+  command = plan
+
+  variables {
+    destination                           = "extended_s3"
+    s3_bucket_arn                         = "arn:aws:s3:::terratest-firehose-dest"
+    vpc_create_destination_security_group = false
+
+    create_role = true
+    # name and role_name intentionally omitted (both default to null)
+
+    # The destination-log path interpolates local.name into the CloudWatch
+    # log group name and hard-errors on null before expect_failures can be
+    # checked - switch it off so only the create_role validation fires.
+    enable_destination_log          = false
+    create_destination_cw_log_group = false
+  }
+
+  expect_failures = [
+    var.create_role,
+  ]
+}

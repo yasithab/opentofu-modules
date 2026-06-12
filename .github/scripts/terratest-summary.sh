@@ -1,8 +1,8 @@
 #!/bin/bash
 # Generate GitHub Step Summary from Terratest output
-# Usage: terratest-summary.sh <output-file> [<output-file2>]
-# If one file: both validate and plan are in it
-# If two files: first is validate, second is plan
+# Usage: terratest-summary.sh <output-file>
+# The file contains the output of a single `go test` run covering the
+# plan and plan-fixture suites.
 
 set -euo pipefail
 
@@ -63,10 +63,5 @@ summary() {
 echo "## Terratest Results"
 echo ""
 
-if [ $# -eq 1 ]; then
-  summary "$1" "TestValidateAllModules" "Validate"
-  summary "$1" "TestPlanAllModules" "Plan"
-elif [ $# -eq 2 ]; then
-  summary "$1" "TestValidateAllModules" "Validate"
-  summary "$2" "TestPlanAllModules" "Plan"
-fi
+summary "$1" "TestPlanAllModules" "Plan"
+summary "$1" "TestPlanFixtures" "Plan Fixtures"

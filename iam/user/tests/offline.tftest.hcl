@@ -51,3 +51,20 @@ run "plan_disabled" {
     enabled = false
   }
 }
+
+# Hand-maintained negative test (preserved verbatim by generate-offline-tests.py).
+# Must fail: create_access_key without pgp_key (and without the explicit
+# allow_plaintext_credentials_in_state opt-out) would store the secret key
+# in plaintext in state.
+run "invalid_access_key_plaintext" {
+  command = plan
+
+  variables {
+    name              = "terratest-plan"
+    create_access_key = true
+  }
+
+  expect_failures = [
+    var.create_access_key,
+  ]
+}

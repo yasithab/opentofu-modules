@@ -54,3 +54,20 @@ run "plan_disabled" {
     enabled = false
   }
 }
+
+# Hand-maintained negative test (preserved verbatim by generate-offline-tests.py).
+# Must fail: manage_data_lake_settings with empty admin_arns would remove all
+# Lake Formation administrators.
+run "invalid_empty_admins" {
+  command = plan
+
+  variables {
+    enabled                   = true
+    manage_data_lake_settings = true
+    admin_arns                = []
+  }
+
+  expect_failures = [
+    var.manage_data_lake_settings,
+  ]
+}

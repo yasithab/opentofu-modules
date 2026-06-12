@@ -83,12 +83,6 @@ tasks:
             cd "MODDIR" && tofu init -backend=false -no-color > /dev/null && tofu test -no-color
           '
 
-  test:
-    desc: Run Terratest on all modules (validate only, no AWS creds needed)
-    dir: test
-    cmds:
-      - go test -v -run "TestValidateAllModules" -timeout 30m -count=1 -parallel=16
-
   test-plan:
     desc: Run Terratest plan on all modules (requires AWS credentials)
     dir: test
@@ -265,5 +259,5 @@ tasks:
         echo "  3. Run: task docs   # populate README Inputs/Outputs"
 
   ci:
-    desc: Run all CI tasks (format + validate + lint + offline-test + test + security)
-    deps: [format, validate, lint, offline-test, test, security]
+    desc: Run all CI tasks (format + validate + lint + offline-test + security)
+    deps: [format, validate, lint, offline-test, security]

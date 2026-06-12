@@ -28,6 +28,15 @@ Usage:
         fake to the module's override file, regenerate and re-run (fixed
         point, max 10 iterations per module)
 
+Hand-maintained negative tests: run blocks whose name starts with "invalid_"
+(one per former test/fixtures/invalid-*.tfvars case, asserting a variable
+validation fires via expect_failures) are written by hand directly in the
+module's tests/offline.tftest.hcl. On regeneration the script extracts every
+existing `run "invalid_*"` block - together with its directly attached
+leading comment lines - and re-appends it verbatim after the generated runs,
+so regeneration never loses them. Everything else in the file is owned by the
+generator and overwritten.
+
 The script is idempotent: regenerating produces identical files unless the
 fixtures, providers or mock overrides changed.
 """
@@ -211,11 +220,48 @@ def indent(text, n):
     return "\n".join(pad + l if l.strip() else "" for l in text.split("\n"))
 
 
+# Hand-maintained negative-test runs (ported from the old Terratest
+# invalid-*.tfvars fixtures) live in the generated file but are preserved
+# verbatim across regenerations - see the module docstring.
+INVALID_RUN_RE = re.compile(r'^run\s+"invalid_[A-Za-z0-9_]+"\s*\{')
+
+
+def extract_invalid_runs(path):
+    """Return the hand-maintained `run "invalid_*"` blocks from an existing
+    tftest file, each with its directly attached leading comment lines."""
+    if not os.path.isfile(path):
+        return []
+    with open(path) as f:
+        lines = f.read().split("\n")
+    blocks, i = [], 0
+    while i < len(lines):
+        if not INVALID_RUN_RE.match(lines[i]):
+            i += 1
+            continue
+        start = i
+        while start > 0 and lines[start - 1].lstrip().startswith("#"):
+            start -= 1
+        depth, j = 0, i
+        while j < len(lines):
+            depth += lines[j].count("{") - lines[j].count("}")
+            j += 1
+            if depth <= 0:
+                break
+        blocks.append("\n".join(lines[start:j]).rstrip("\n"))
+        i = j
+    return blocks
+
+
 def generate(module_dir):
     tests_dir = os.path.join(ROOT, module_dir, "tests")
     os.makedirs(tests_dir, exist_ok=True)
     path = os.path.join(tests_dir, "offline.tftest.hcl")
+    invalid_runs = extract_invalid_runs(path)
     content = render(module_dir)
+    if invalid_runs:
+        content = (
+            content.rstrip("\n") + "\n\n" + "\n\n".join(invalid_runs) + "\n"
+        )
     with open(path, "w") as f:
         f.write(content)
     subprocess.run(

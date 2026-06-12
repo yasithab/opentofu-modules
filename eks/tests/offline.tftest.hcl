@@ -80,3 +80,22 @@ run "plan_disabled" {
     enabled = false
   }
 }
+
+# Hand-maintained negative test (preserved verbatim by generate-offline-tests.py).
+# Must fail: authentication_mode must be one of CONFIG_MAP, API or API_AND_CONFIG_MAP.
+run "invalid_authentication_mode" {
+  command = plan
+
+  variables {
+    name            = "terratest-plan"
+    cluster_version = "1.31"
+    vpc_id          = "vpc-12345678"
+    subnet_ids      = ["subnet-12345678", "subnet-87654321"]
+
+    authentication_mode = "IAM_ONLY"
+  }
+
+  expect_failures = [
+    var.authentication_mode,
+  ]
+}

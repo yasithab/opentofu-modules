@@ -51,3 +51,19 @@ run "plan_disabled" {
     enabled = false
   }
 }
+
+# Hand-maintained negative test (preserved verbatim by generate-offline-tests.py).
+# Must fail: attach_deny_incorrect_kms_key_sse = true requires allowed_kms_key_arn.
+run "invalid_kms_policy_no_key" {
+  command = plan
+
+  variables {
+    name                              = "terratest-plan-bucket"
+    attach_deny_incorrect_kms_key_sse = true
+    # allowed_kms_key_arn intentionally omitted (defaults to null)
+  }
+
+  expect_failures = [
+    var.attach_deny_incorrect_kms_key_sse,
+  ]
+}

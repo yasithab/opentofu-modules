@@ -57,3 +57,17 @@ run "plan_disabled" {
     enabled = false
   }
 }
+
+# Hand-maintained negative test (preserved verbatim by generate-offline-tests.py).
+# Must fail: name must be a non-empty string.
+run "invalid_empty_name" {
+  command = plan
+
+  variables {
+    name = ""
+  }
+
+  expect_failures = [
+    var.name,
+  ]
+}

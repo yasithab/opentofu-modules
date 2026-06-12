@@ -51,3 +51,18 @@ run "plan_disabled" {
     enabled = false
   }
 }
+
+# Hand-maintained negative test (preserved verbatim by generate-offline-tests.py).
+# Must fail: name must not be "default" when create_bus is true.
+run "invalid_default_bus_create" {
+  command = plan
+
+  variables {
+    name       = "default"
+    create_bus = true
+  }
+
+  expect_failures = [
+    var.name,
+  ]
+}

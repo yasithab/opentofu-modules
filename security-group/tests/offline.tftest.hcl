@@ -243,3 +243,28 @@ run "plan_disabled" {
     enabled = false
   }
 }
+
+# Hand-maintained negative test (preserved verbatim by generate-offline-tests.py).
+# Must fail: ingress rule defines no source (no cidr_ipv4/cidr_ipv6/prefix_list_ids,
+# no referenced_security_group_id, self = false).
+run "invalid_rule_no_source" {
+  command = plan
+
+  variables {
+    name   = "terratest-plan"
+    vpc_id = "vpc-12345678"
+
+    ingress_rules = {
+      no-source = {
+        from_port   = 443
+        to_port     = 443
+        ip_protocol = "tcp"
+        description = "Rule with no source - targeted validation must reject this"
+      }
+    }
+  }
+
+  expect_failures = [
+    var.ingress_rules,
+  ]
+}

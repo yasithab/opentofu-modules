@@ -178,9 +178,8 @@ task --list
 | `task validate` | Run `tofu validate` in every module (backend-less) |
 | `task lockfiles` | (Re)generate `.terraform.lock.hcl` in every module |
 | `task lint` | Run tflint across all modules |
-| `task test` | Run Terratest validate on all modules (no AWS creds needed) |
 | `task test-plan` | Run Terratest plan on all modules (requires AWS credentials) |
-| `task offline-test` | Run native `tofu test` (mock providers, enabled + disabled paths) in every module with `tests/*.tftest.hcl` (no AWS creds needed) |
+| `task offline-test` | Run native `tofu test` (mock providers, enabled + disabled paths + negative-validation runs) in every module with `tests/*.tftest.hcl` (no AWS creds needed) |
 | `task security` | Run Trivy CRITICAL/HIGH misconfiguration scan |
 | `task docs` | Regenerate Requirements/Providers/Inputs/Outputs tables in every module README (terraform-docs) |
 | `task new-module -- <name>` | Scaffold a new module skeleton following repo conventions |
