@@ -162,6 +162,8 @@ jobs:
     - name: Init tflint plugins
       if: steps.changes.outputs.count != '0'
       run: tflint --init
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
 
     - name: Lint changed modules
       id: lint
